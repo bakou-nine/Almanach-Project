@@ -1,0 +1,67 @@
+<div class="feed-header">
+  <div class="feed-title">
+    <h2>{{ feed.title }}</h2>
+    <p class="feed-meta">
+      {{ feed.total_articles }} article{{ '' if feed.total_articles == 1 else 's' }}
+      {% if feed.active_source_id is none %}
+        · {{ feed.active_sources }} active source{{ '' if feed.active_sources == 1 else 's' }}
+      {% endif %}
+    </p>
+  </div>
+  <div class="feed-controls">
+    <button class="icon-btn" id="refresh-btn" title="Refresh" aria-label="Refresh">
+      <i class="ti ti-refresh"></i>
+    </button>
+  </div>
+</div>
+
+<div class="article-list">
+  {% if not feed.articles %}
+    <div class="empty-state">
+      <i class="ti ti-news-off"></i>
+      <p>No articles yet. {% if feed.active_source_id %}This source has no articles ingested.{% else %}Add a source from the sidebar to start.{% endif %}</p>
+    </div>
+  {% endif %}
+  {% for a in feed.articles %}
+    <article class="article {% if loop.index > 4 %}compact{% endif %}"
+             data-article-id="{{ a.id }}"
+             data-url="{{ a.url }}">
+      {% if loop.index <= 4 %}
+        <div class="article-meta">
+          {% if a.is_unread %}<span class="badge-new"></span>{% endif %}
+          <span class="source-dot" style="background:{{ a.source_colour }};"></span>
+          <span class="article-source">{{ a.source_name }}</span>
+          <span class="article-sep">·</span>
+          <span>{{ a.relative_time }}</span>
+        </div>
+        <p class="article-title">{{ a.title }}</p>
+        {% if a.summary %}<p class="article-summary">{{ a.summary }}</p>{% endif %}
+      {% else %}
+        {% if a.is_unread %}<span class="badge-new"></span>{% endif %}
+        <span class="source-dot" style="background:{{ a.source_colour }};"></span>
+        <span class="article-source-inline">{{ a.source_name }} · {{ a.relative_time }}</span>
+        <span class="article-title-inline">{{ a.title }}</span>
+      {% endif %}
+    </article>
+  {% endfor %}
+</div>
+
+{% if feed.pages > 1 %}
+<nav class="pagination">
+  {% if feed.has_prev %}
+    <button class="btn" data-page="{{ feed.page - 1 }}">
+      <i class="ti ti-chevron-left"></i> Prev
+    </button>
+  {% else %}
+    <button class="btn" disabled><i class="ti ti-chevron-left"></i> Prev</button>
+  {% endif %}
+  <span class="page-info">Page {{ feed.page }} of {{ feed.pages }}</span>
+  {% if feed.has_next %}
+    <button class="btn" data-page="{{ feed.page + 1 }}">
+      Next <i class="ti ti-chevron-right"></i>
+    </button>
+  {% else %}
+    <button class="btn" disabled>Next <i class="ti ti-chevron-right"></i></button>
+  {% endif %}
+</nav>
+{% endif %}

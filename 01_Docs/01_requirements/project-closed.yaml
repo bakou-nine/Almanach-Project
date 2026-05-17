@@ -1,0 +1,86 @@
+file: project-closed.yaml
+status_filter:
+- CLOSED
+exported_at: '2026-05-17T12:03:07.509651+00:00'
+project_charters: []
+epics: []
+orphans: []
+tests:
+- id: TEST-260517-1200-001
+  project_id: PR-260512-2041-001
+  type: TEST
+  created_at: '2026-05-17T12:00:44.185291'
+  created_by: HUMAN
+  cancelled_at: null
+  locked: false
+  title: BUG-260517-1128-001 - Test 1
+  status: CLOSED
+  result: FAIL
+  updated_at: '2026-05-17T12:03:01.671174'
+  updated_by: HUMAN
+  approved_by_human: null
+  cancellation_reason: null
+  tags: []
+  body: 'working with le figaro but not with a new version of bbc.com, my impression
+    is that each website was hard coded and if i add an already existing one it canno
+    automatically collect information from the wbsite....
+
+
+    Good news is that it add the the bbc.com when pressing add new but it does not
+    add any news, ![no news from bbc.com (as an exemple)](01_docs/04_content/images/no
+    news from bbc.com (as an exemple).png)
+
+
+    bbc is just an exemple, of course it should work with any similar website'
+  acceptance_criteria: null
+  relations:
+  - type: CONFIRMS
+    target_id: BUG-260517-1128-001
+  - type: FULFILLED_BY
+    target_id: AC-260512-2300-002
+bugs: []
+change_requests: []
+acceptance_criteria:
+- id: AC-260512-2300-001
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-12T23:00:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: Submitting a malformed URL (no scheme or no host) shows an inline error below
+    the input and blocks form submission; no POST is made to the server.
+  status: CLOSED
+  result: PASS
+  priority: HIGH
+  updated_at: '2026-05-16T06:24:26.546667'
+  updated_by: HUMAN
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: '## Description
+
+
+    Client-side validation contract for US01. Ensures malformed URLs never
+
+    reach the server-side dedup / discovery chain (US02 / US03).
+
+
+    ## Test Instructions
+
+
+    1. Open the source-add form.
+
+    2. Paste "not a url" (no scheme). Click Submit.
+
+    3. Confirm an inline error appears below the URL input.
+
+    4. Confirm the network panel shows NO POST request fired.
+
+    5. Repeat with "http://" (no host). Confirm same behaviour.
+
+    '
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: US-260512-2300-001

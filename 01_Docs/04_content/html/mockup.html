@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>News Aggregator — MVP Mockup</title>
+<link href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.47.0/tabler-icons.min.css" rel="stylesheet">
+<style>
+  :root {
+    --bg-page: #faf9f5;
+    --bg-primary: #ffffff;
+    --bg-secondary: #f4f2ec;
+    --bg-tertiary: #ebe9e1;
+    --bg-info: #e6f1fb;
+    --text-primary: #1a1a19;
+    --text-secondary: #6b6a64;
+    --text-tertiary: #9a9892;
+    --text-info: #185fa5;
+    --border-light: rgba(0,0,0,0.08);
+    --border-medium: rgba(0,0,0,0.15);
+    --radius-md: 8px;
+    --radius-lg: 12px;
+    --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    padding: 24px;
+    font-family: var(--font-sans);
+    background: var(--bg-page);
+    color: var(--text-primary);
+    font-size: 14px;
+    line-height: 1.5;
+    min-height: 100vh;
+  }
+
+  .app-header {
+    max-width: 1200px;
+    margin: 0 auto 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 4px;
+  }
+
+  .app-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 16px;
+    font-weight: 500;
+  }
+
+  .app-title i {
+    font-size: 20px;
+    color: var(--text-info);
+  }
+
+  .header-actions {
+    display: flex;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--text-secondary);
+  }
+
+  .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 260px minmax(0, 1fr);
+    background: var(--bg-primary);
+    border: 0.5px solid var(--border-light);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    min-height: 720px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+  }
+
+  /* === LEFT PANE === */
+  .sidebar {
+    background: var(--bg-secondary);
+    border-right: 0.5px solid var(--border-light);
+    padding: 16px 12px;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .sidebar-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 4px 8px 14px;
+  }
+
+  .sidebar-title {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+  }
+
+  .icon-btn {
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-md);
+    color: var(--text-secondary);
+    cursor: pointer;
+    border: none;
+    background: transparent;
+    transition: background 0.15s;
+  }
+  .icon-btn:hover {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+  }
+  .icon-btn i { font-size: 16px; }
+
+  .source-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: background 0.15s;
+    margin-bottom: 2px;
+  }
+  .source-item:hover { background: var(--bg-tertiary); }
+  .source-item.active {
+    background: var(--bg-primary);
+    border-left: 2px solid var(--text-info);
+    padding-left: 8px;
+  }
+  .source-item.muted { opacity: 0.5; }
+  .source-item.muted .source-name { text-decoration: line-through; }
+
+  .source-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .source-name {
+    font-size: 13px;
+    color: var(--text-primary);
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .source-count {
+    font-size: 11px;
+    color: var(--text-secondary);
+  }
+
+  .source-count.highlight {
+    color: var(--text-info);
+    background: var(--bg-info);
+    font-weight: 500;
+    padding: 2px 7px;
+    border-radius: 10px;
+  }
+
+  .sidebar-footer {
+    margin-top: auto;
+    padding: 12px 8px 4px;
+    border-top: 0.5px solid var(--border-light);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: var(--text-tertiary);
+  }
+  .sidebar-footer i { font-size: 13px; }
+
+  /* === RIGHT PANE === */
+  .feed {
+    padding: 20px 28px;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    overflow: hidden;
+  }
+
+  .feed-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-bottom: 14px;
+    border-bottom: 0.5px solid var(--border-light);
+    margin-bottom: 16px;
+  }
+
+  .feed-title h2 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 500;
+  }
+
+  .feed-meta {
+    margin: 3px 0 0;
+    font-size: 12px;
+    color: var(--text-secondary);
+  }
+
+  .feed-controls {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .feed-controls select,
+  .feed-controls .btn {
+    font-size: 12px;
+    padding: 6px 10px;
+    border: 0.5px solid var(--border-medium);
+    background: var(--bg-primary);
+    border-radius: var(--radius-md);
+    color: var(--text-primary);
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .feed-controls .btn:hover { background: var(--bg-secondary); }
+
+  .article {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 14px 0;
+    border-bottom: 0.5px solid var(--border-light);
+    cursor: pointer;
+    transition: background 0.15s;
+    margin: 0 -8px;
+    padding-left: 8px;
+    padding-right: 8px;
+    border-radius: var(--radius-md);
+  }
+  .article:hover { background: var(--bg-secondary); }
+  .article:last-child { border-bottom: none; }
+
+  .article-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+    color: var(--text-secondary);
+  }
+
+  .article-source {
+    font-weight: 500;
+    color: var(--text-primary);
+  }
+
+  .article-sep { color: var(--text-tertiary); }
+
+  .article-tag {
+    margin-left: auto;
+    font-size: 10px;
+    padding: 2px 7px;
+    background: var(--bg-info);
+    color: var(--text-info);
+    border-radius: 10px;
+    font-weight: 500;
+  }
+
+  .article-title {
+    margin: 0;
+    font-size: 14.5px;
+    font-weight: 500;
+    line-height: 1.4;
+    color: var(--text-primary);
+  }
+
+  .article-summary {
+    margin: 0;
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.55;
+  }
+
+  .article.compact {
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+    padding-top: 10px;
+    padding-bottom: 10px;
+  }
+  .article.compact .article-source-inline {
+    font-size: 11px;
+    color: var(--text-secondary);
+    white-space: nowrap;
+  }
+  .article.compact .article-title-inline {
+    font-size: 13px;
+    color: var(--text-primary);
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .badge-new {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--text-info);
+    margin-right: 4px;
+  }
+
+  /* Responsive */
+  @media (max-width: 720px) {
+    body { padding: 12px; }
+    .container { grid-template-columns: 1fr; min-height: auto; }
+    .sidebar { border-right: none; border-bottom: 0.5px solid var(--border-light); }
+    .feed { padding: 16px; }
+  }
+</style>
+</head>
+<body>
+
+  <header class="app-header">
+    <div class="app-title">
+      <i class="ti ti-news"></i>
+      <span>News Aggregator</span>
+    </div>
+    <div class="header-actions">
+      <span>Last sync · 4 min ago</span>
+    </div>
+  </header>
+
+  <div class="container">
+
+    <!-- LEFT PANE: Sources -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <span class="sidebar-title">Sources</span>
+        <button class="icon-btn" title="Add source"><i class="ti ti-plus"></i></button>
+      </div>
+
+      <div class="source-item active">
+        <i class="ti ti-stack-2" style="font-size:14px; color:var(--text-info);"></i>
+        <span class="source-name">All sources</span>
+        <span class="source-count highlight">47</span>
+      </div>
+
+      <div style="height: 8px;"></div>
+
+      <div class="source-item">
+        <span class="source-dot" style="background:#378ADD;"></span>
+        <span class="source-name">Le Monde</span>
+        <span class="source-count">12</span>
+      </div>
+
+      <div class="source-item">
+        <span class="source-dot" style="background:#D4537E;"></span>
+        <span class="source-name">The Verge</span>
+        <span class="source-count">8</span>
+      </div>
+
+      <div class="source-item">
+        <span class="source-dot" style="background:#1D9E75;"></span>
+        <span class="source-name">Hacker News</span>
+        <span class="source-count">15</span>
+      </div>
+
+      <div class="source-item">
+        <span class="source-dot" style="background:#BA7517;"></span>
+        <span class="source-name">Reuters</span>
+        <span class="source-count">9</span>
+      </div>
+
+      <div class="source-item muted">
+        <span class="source-dot" style="background:#888780;"></span>
+        <span class="source-name">TechCrunch</span>
+        <i class="ti ti-eye-off" style="font-size:13px; color:var(--text-tertiary);"></i>
+      </div>
+
+      <div class="source-item">
+        <span class="source-dot" style="background:#7F77DD;"></span>
+        <span class="source-name">Ars Technica</span>
+        <span class="source-count">3</span>
+      </div>
+
+      <div class="source-item">
+        <span class="source-dot" style="background:#0F6E56;"></span>
+        <span class="source-name">Les Échos</span>
+        <span class="source-count">6</span>
+      </div>
+
+      <div class="sidebar-footer">
+        <i class="ti ti-refresh"></i>
+        <span>Updated 4 min ago</span>
+      </div>
+    </aside>
+
+    <!-- RIGHT PANE: Feed -->
+    <main class="feed">
+
+      <div class="feed-header">
+        <div class="feed-title">
+          <h2>Latest news</h2>
+          <p class="feed-meta">47 articles · 6 active sources</p>
+        </div>
+        <div class="feed-controls">
+          <select>
+            <option>Newest first</option>
+            <option>By source</option>
+            <option>Most relevant</option>
+          </select>
+          <button class="icon-btn" title="Refresh"><i class="ti ti-refresh"></i></button>
+        </div>
+      </div>
+
+      <!-- Article 1 -->
+      <article class="article">
+        <div class="article-meta">
+          <span class="badge-new"></span>
+          <span class="source-dot" style="background:#378ADD;"></span>
+          <span class="article-source">Le Monde</span>
+          <span class="article-sep">·</span>
+          <span>12 min ago</span>
+          <span class="article-tag">Economy</span>
+        </div>
+        <p class="article-title">European Central Bank holds rates steady amid mixed inflation signals</p>
+        <p class="article-summary">Policymakers cite resilient services inflation as reason for caution despite easing energy prices across the eurozone. Markets had priced in a 60% probability of a hold.</p>
+      </article>
+
+      <!-- Article 2 -->
+      <article class="article">
+        <div class="article-meta">
+          <span class="badge-new"></span>
+          <span class="source-dot" style="background:#1D9E75;"></span>
+          <span class="article-source">Hacker News</span>
+          <span class="article-sep">·</span>
+          <span>34 min ago</span>
+          <span class="article-tag">Tech</span>
+        </div>
+        <p class="article-title">Show HN: I built a self-hosted RSS aggregator with AI summaries</p>
+        <p class="article-summary">A weekend project that combines feedparser, Trafilatura, and Claude Haiku for on-demand summarization. 312 points, 84 comments on the thread.</p>
+      </article>
+
+      <!-- Article 3 -->
+      <article class="article">
+        <div class="article-meta">
+          <span class="source-dot" style="background:#D4537E;"></span>
+          <span class="article-source">The Verge</span>
+          <span class="article-sep">·</span>
+          <span>1 hour ago</span>
+        </div>
+        <p class="article-title">Apple's new on-device AI model can summarize entire books in seconds</p>
+        <p class="article-summary">The 3B parameter model runs locally on the latest iPhone chip, marking a shift toward private, offline-first AI features.</p>
+      </article>
+
+      <!-- Article 4 -->
+      <article class="article">
+        <div class="article-meta">
+          <span class="source-dot" style="background:#BA7517;"></span>
+          <span class="article-source">Reuters</span>
+          <span class="article-sep">·</span>
+          <span>2 hours ago</span>
+          <span class="article-tag">Markets</span>
+        </div>
+        <p class="article-title">Global shipping rates surge as Red Sea disruptions enter fourth month</p>
+        <p class="article-summary">Major carriers reroute around Africa, adding two weeks to Asia-Europe transit times and pushing container costs to 18-month highs.</p>
+      </article>
+
+      <!-- Article 5 (compact) -->
+      <article class="article compact">
+        <span class="source-dot" style="background:#7F77DD;"></span>
+        <span class="article-source-inline">Ars Technica · 3h</span>
+        <span class="article-title-inline">Researchers find new method to extend lithium battery life by 40%</span>
+      </article>
+
+      <!-- Article 6 (compact) -->
+      <article class="article compact">
+        <span class="source-dot" style="background:#0F6E56;"></span>
+        <span class="article-source-inline">Les Échos · 4h</span>
+        <span class="article-title-inline">La BCE maintient ses taux : décryptage de la décision</span>
+      </article>
+
+      <!-- Article 7 (compact) -->
+      <article class="article compact">
+        <span class="source-dot" style="background:#1D9E75;"></span>
+        <span class="article-source-inline">Hacker News · 5h</span>
+        <span class="article-title-inline">PostgreSQL 18 released with native vector search support</span>
+      </article>
+
+    </main>
+
+  </div>
+
+  <script>
+    // Simple interactivity: toggle source selection
+    document.querySelectorAll('.source-item').forEach(item => {
+      item.addEventListener('click', () => {
+        document.querySelectorAll('.source-item').forEach(i => i.classList.remove('active'));
+        item.classList.add('active');
+      });
+    });
+
+    // Article click placeholder
+    document.querySelectorAll('.article').forEach(article => {
+      article.addEventListener('click', () => {
+        console.log('Article clicked — would open detail view or external link');
+      });
+    });
+  </script>
+
+</body>
+</html>

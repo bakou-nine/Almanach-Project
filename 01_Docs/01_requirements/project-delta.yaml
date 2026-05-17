@@ -1,0 +1,62 @@
+file: project-delta.yaml
+generated_at: '2026-05-17T12:03:07.509651+00:00'
+delta_since: '2026-05-17T11:56:37.629019'
+delta_since_event: YAML_IMPORT
+changes:
+  created:
+  - id: TEST-260517-1200-001
+    type: TEST
+    title: BUG-260517-1128-001 - Test 1
+  edited:
+  - id: TEST-260517-1200-001
+    type: TEST
+    title: BUG-260517-1128-001 - Test 1
+    field: body
+  status_changed:
+  - id: AC-260512-2300-002
+    type: AC
+    title: null
+    status_from: OPEN
+    status_to: CLOSED
+  - id: BUG-260517-1128-001
+    type: BUG
+    title: US-260512-2300-001 - Bug 1
+    status_from: SOLVED
+    status_to: CLOSED
+  - id: US-260512-2300-001
+    type: USER_STORY
+    title: Source Add Form
+    status_from: OPEN
+    status_to: CLOSED
+  - id: AC-260512-2300-002
+    type: AC
+    title: null
+    status_from: CLOSED
+    status_to: OPEN
+  - id: BUG-260517-1128-001
+    type: BUG
+    title: US-260512-2300-001 - Bug 1
+    status_from: CLOSED
+    status_to: OPEN
+  - id: US-260512-2300-001
+    type: USER_STORY
+    title: Source Add Form
+    status_from: CLOSED
+    status_to: OPEN
+  - id: TEST-260517-1200-001
+    type: TEST
+    title: null
+    status_from: DRAFT
+    status_to: CLOSED
+  cancelled: []
+  reinstated: []
+  links_changed:
+    created: []
+    removed: []
+  relations_created:
+  - type: FULFILLS
+    source_id: AC-260512-2300-002
+    target_id: TEST-260517-1200-001
+  - type: CONFIRMS
+    source_id: TEST-260517-1200-001
+    target_id: BUG-260517-1128-001

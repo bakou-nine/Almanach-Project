@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{% block body %}
+<header class="app-header">
+  <div class="app-title">
+    <i class="ti ti-news"></i>
+    <span>Almanach</span>
+  </div>
+  <div class="header-actions">
+    <span id="last-sync-label">Last sync · {{ sidebar.last_sync }}</span>
+  </div>
+</header>
+
+<div class="container">
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <span class="sidebar-title">Sources</span>
+      <button class="icon-btn" id="add-source-btn" title="Add source" aria-label="Add source">
+        <i class="ti ti-plus"></i>
+      </button>
+    </div>
+
+    <div id="source-list">
+      {% include "_source_list.html" %}
+    </div>
+
+    <div class="sidebar-footer">
+      <i class="ti ti-refresh"></i>
+      <span>Updated {{ sidebar.last_sync }}</span>
+    </div>
+  </aside>
+
+  <main class="feed" id="feed-pane">
+    {% include "_feed.html" %}
+  </main>
+</div>
+
+{% include "_add_source_form.html" %}
+{% include "_confirm_dialog.html" %}
+{% include "_row_menu.html" %}
+{% include "_toast.html" %}
+{% endblock %}

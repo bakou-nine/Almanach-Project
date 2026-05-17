@@ -1,0 +1,24 @@
+<div class="modal-overlay" id="add-source-modal" hidden>
+  <div class="modal" role="dialog" aria-labelledby="add-source-title">
+    <header class="modal-header">
+      <h3 id="add-source-title">Add a news source</h3>
+      <button class="icon-btn" id="add-source-close" aria-label="Close">
+        <i class="ti ti-x"></i>
+      </button>
+    </header>
+    <form id="add-source-form" novalidate>
+      <label class="form-label" for="add-source-url">Homepage URL</label>
+      <input type="url" id="add-source-url" name="url"
+             placeholder="https://example.com" required autocomplete="off">
+      <p class="form-error" id="add-source-error" hidden></p>
+      <p class="form-hint">Paste any news site homepage. Almanach will discover its RSS feed automatically.</p>
+      <footer class="modal-footer">
+        <button type="button" class="btn" id="add-source-cancel">Cancel</button>
+        <button type="submit" class="btn btn-primary" id="add-source-submit">
+          <span class="submit-label">Add source</span>
+          <span class="submit-spinner" hidden><i class="ti ti-loader-2"></i></span>
+        </button>
+      </footer>
+    </form>
+  </div>
+</div>

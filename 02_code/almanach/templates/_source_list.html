@@ -1,0 +1,26 @@
+<div class="source-item all-sources {% if not active_source_id %}active{% endif %}"
+     data-source-id="">
+  <i class="ti ti-stack-2" style="font-size:14px; color:var(--text-info);"></i>
+  <span class="source-name">All sources</span>
+  <span class="source-count highlight">{{ sidebar.total_unread }}</span>
+</div>
+
+<div style="height: 8px;"></div>
+
+{% for s in sidebar.sources %}
+  <div class="source-item{% if s.muted %} muted{% endif %}{% if active_source_id == s.id %} active{% endif %}"
+       data-source-id="{{ s.id }}"
+       data-muted="{{ '1' if s.muted else '0' }}"
+       data-display-name="{{ s.display_name|e }}">
+    <span class="source-dot" style="background:{{ s.colour }};"></span>
+    <span class="source-name">{{ s.display_name }}</span>
+    {% if s.muted %}
+      <i class="ti ti-eye-off muted-icon" aria-label="muted"></i>
+    {% else %}
+      <span class="source-count">{{ s.unread }}</span>
+    {% endif %}
+    <button class="row-action-btn" title="Source actions" aria-label="Source actions">
+      <i class="ti ti-dots-vertical"></i>
+    </button>
+  </div>
+{% endfor %}

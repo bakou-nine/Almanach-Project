@@ -1,0 +1,2655 @@
+file: project-active.yaml
+status_filter:
+- OPEN
+- SOLVED
+exported_at: '2026-05-17T12:03:07.509651+00:00'
+project_charters:
+- id: PC-260512-2041-001
+  project_id: PR-260512-2041-001
+  type: PROJECT_CHARTER
+  created_at: '2026-05-12T20:41:46.592848'
+  created_by: HUMAN
+  cancelled_at: null
+  locked: false
+  title: Almanach
+  status: OPEN
+  parent_id: null
+  children_ids:
+  - EP-260512-2230-001
+  - EP-260512-2230-002
+  - EP-260512-2230-003
+  - EP-260512-2230-004
+  - EP-260512-2230-005
+  updated_at: '2026-05-12T21:35:39.729602'
+  updated_by: CLAUDE_CODE
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: '# Project Charter — News Aggregator MVP
+
+
+    > A personal multi-source news reader with a clean two-pane interface
+
+
+    | | |
+
+    |---|---|
+
+    | **Project name** | News Aggregator |
+
+    | **Document type** | Project Charter — MVP scope |
+
+    | **Date** | 12 May 2026 |
+
+    | **Status** | Draft v1.0 — pending validation |
+
+    | **Estimated duration** | 3 to 4 weeks for MVP |
+
+
+    ---
+
+
+    ## 1. Context & motivation
+
+
+    Existing news aggregators (Feedly, Inoreader, commercial readers) either come
+    with subscription costs, limited customisation, or require trusting a third party
+    with reading habits. The motivation for this project is to build a personal, self-hosted
+    news aggregator that combines configurable web sources into a single, clean, distraction-free
+    feed.
+
+
+    The application starts with a simple promise: paste any news website URL, and
+    the application figures out how to extract its latest articles, then merges everything
+    into one chronological feed.
+
+
+    ---
+
+
+    ## 2. Objectives
+
+
+    ### Primary objective
+
+
+    Deliver a working MVP that lets a single user add news sources by URL, view a
+    combined feed of recent articles, and click through to read them on the original
+    site.
+
+
+    ### Success criteria
+
+
+    - The application can extract articles from at least 95% of mainstream news sites
+    without manual configuration.
+
+    - Adding a new source takes less than 30 seconds (paste URL, automatic feed discovery).
+
+    - While the app is running, the feed updates automatically in the background every
+    15 to 30 minutes by default (interval configurable from 5 to 120 minutes). Closing
+    the app pauses polling.
+
+    - Running costs stay under 5 USD per month for personal use, even with optional
+    AI features enabled.
+
+    - The interface is fast: the default 50-article feed page loads in under 500 ms
+    (with comfortable headroom up to 200 articles per page for users who increase
+    the page size).
+
+
+    ---
+
+
+    ## 3. Scope
+
+
+    ### In scope (MVP)
+
+
+    - Add, remove, mute, and rename news sources via a simple UI. Each source row
+    in the sidebar reveals a ⋮ action menu on hover with Rename, Mute / Unmute, and
+    Remove. Renaming changes only the displayed label in the sidebar; the canonical
+    URL / hostname used for polling and feed matching is unchanged. Muting hides a
+    source from the combined feed but keeps polling in the background — its articles
+    continue to be ingested and reappear instantly on unmute.
+
+    - Automatic RSS/Atom feed discovery from any homepage URL.
+
+    - Fallback to `sitemap.xml` and `news-sitemap.xml` when no RSS is found.
+
+    - Background polling on a single user-configurable global refresh interval (default
+    20 min, range 5–120 min). All sources poll on the same cadence.
+
+    - Two-pane interface: sources on the left, combined feed on the right. The feed
+    is server-paginated (50 articles per page, newest first, with prev / next controls
+    at the bottom). Sort is fixed to newest-first in MVP — no sort selector.
+
+    - Header bar with the app title and a "last sync · N min ago" indicator; a manual
+    refresh button in the feed header alongside background polling; an "All sources"
+    virtual entry at the top of the sidebar acts as the default view, showing the
+    combined feed and the total unread count.
+
+    - Per-source colour coding (auto-assigned from a curated palette of ~12 distinguishable
+    colours at source-add time; no user override in MVP) and unread counts (clicking
+    an article marks it as read; no manual flip-back).
+
+    - Local storage of articles in SQLite (URL, title, summary, source, dates), with
+    time-based retention: articles older than 30 days are pruned daily by a background
+    cleanup job (retention window user-configurable).
+
+    - Open original articles in a new browser tab.
+
+
+    ### Out of scope (deferred to later phases)
+
+
+    - Multi-user support, accounts, or authentication.
+
+    - Mobile applications (the web UI should be responsive, but no native apps).
+
+    - Social features, sharing, or commenting.
+
+    - Full-text search across history (Phase 2).
+
+    - AI-generated summaries and topic clustering (Phase 3).
+
+    - Paywalled content handling beyond detection and skipping.
+
+    - Manual mark-as-unread — read state is one-way (click marks an article as read;
+    no UI to flip it back).
+
+    - Always-on / daemonised deployment (Raspberry Pi, VPS, Docker, systemd units)
+    — deferred to Phase 4+; MVP runs only while the user has the app open on a local
+    machine.
+
+    - Multi-mode feed sort (by source, by relevance) — MVP ships newest-first only;
+    the sort dropdown shown in the mockup is dropped.
+
+    - Per-article tags / categories — the tag pills shown in the mockup (Economy,
+    Tech, Markets, etc.) are out of scope for MVP. Categorisation is revisited in
+    Phase 3 (AI-derived) if needed.
+
+
+    ---
+
+
+    ## 4. Technical approach
+
+
+    ### Extraction strategy — waterfall
+
+
+    To minimise both complexity and operational cost, the extraction pipeline applies
+    progressively more expensive methods only when simpler ones fail:
+
+
+    1. **RSS/Atom feed discovery.** Scan the HTML head for alternate links. Try common
+    paths (`/feed`, `/rss`, `/atom.xml`) as fallback. *Free.*
+
+    2. **Sitemap fallback.** Parse `sitemap.xml` or `news-sitemap.xml` when no feed
+    is found. *Free.*
+
+    3. **Structured metadata.** Extract Open Graph and JSON-LD `NewsArticle` schema
+    from article pages. *Free.*
+
+    4. **Readability extraction.** Use Trafilatura or Mozilla Readability for article
+    body extraction. *Free.*
+
+    5. **AI fallback (Phase 3 only).** Call Claude Haiku on pre-cleaned HTML for the
+    few stubborn sites that resist the above. *Estimated cost: well under 1 USD per
+    month for typical use.*
+
+
+    ### Stack proposal
+
+
+    - **Backend:** Python 3.11+ with FastAPI for a small HTTP API.
+
+    - **Feed parsing:** `feedparser` library for RSS/Atom.
+
+    - **Article extraction:** Trafilatura for clean text extraction.
+
+    - **Storage:** SQLite with a single `articles` table, indexed by URL and published
+    date.
+
+    - **Scheduling:** APScheduler for background polling jobs.
+
+    - **Frontend:** server-rendered Jinja2 templates served directly by FastAPI. No
+    build step, no bundler, no SPA framework. Light vanilla JS / HTMX-style partials
+    for the interactive bits (source-add, refresh, mark-as-read).
+
+    - **Optional:** Playwright for JavaScript-heavy sites, used only when static fetch
+    fails.
+
+
+    ### AI integration philosophy
+
+
+    AI is treated as an optional enhancement, not a foundation. The MVP runs entirely
+    without AI calls. AI features are introduced in Phase 3 where they provide clear
+    value (summarisation, classification, cross-source analysis) and always after
+    cleaning the input to keep token costs minimal.
+
+
+    ---
+
+
+    ## 5. Key deliverables
+
+
+    - Functional backend API (add source, list articles, refresh).
+
+    - Frontend web interface matching the validated mockup design.
+
+    - SQLite database schema and migration scripts.
+
+    - Background polling service.
+
+    - Brief README with setup instructions for self-hosting.
+
+    - List of 10 to 15 pre-configured popular sources to seed the application.
+
+
+    ---
+
+
+    ## 6. Timeline
+
+
+    | Phase | Duration | Deliverables |
+
+    |---|---|---|
+
+    | **Phase 1** | Week 1 | Backend foundations: RSS discovery, feedparser integration,
+    SQLite schema, background polling, basic `/sources` and `/articles` endpoints.
+    |
+
+    | **Phase 2** | Week 2 | Frontend MVP: two-pane interface, source management,
+    combined feed view, article click-through to original site. |
+
+    | **Phase 3** | Week 3 | Polish: per-source filtering, mute toggles, read/unread
+    state, responsive layout, error handling, deployment setup. |
+
+    | **Phase 4** | Week 4 *(optional)* | AI enhancements: on-demand summaries via
+    Claude Haiku, daily digest, basic topic tagging. |
+
+
+    ---
+
+
+    ## 7. Risks & mitigations
+
+
+    ### Sites without RSS or sitemap
+
+
+    A small percentage of modern news sites publish no RSS feed and no public sitemap.
+
+
+    **Mitigation:** fall back to JSON-LD and Open Graph extraction, which covers most
+    cases. For the residual, AI-assisted extraction in Phase 4 is the safety net.
+
+
+    ### Rate limiting and being blocked
+
+
+    Aggressive polling can get the application blocked or rate-limited.
+
+
+    **Mitigation:** respect `robots.txt`, set a polite User-Agent identifying the
+    application, limit to one request per 2 seconds per domain, and cache aggressively
+    to avoid redundant fetches.
+
+
+    ### Paywalled content
+
+
+    Some sources hide content behind paywalls.
+
+
+    **Mitigation:** detect paywall patterns (common selectors, content truncation
+    indicators) and store metadata only, with a clear visual cue in the feed. The
+    application is not designed to bypass paywalls.
+
+
+    ### Scope creep
+
+
+    News aggregators are easy to over-engineer with features like tagging, smart folders,
+    AI summarisation, and so on.
+
+
+    **Mitigation:** ship the MVP first with strict scope, validate the core experience,
+    then add features based on actual personal usage rather than imagined needs.
+
+
+    ---
+
+
+    ## 8. Resources & estimated costs
+
+
+    - **Development:** one developer, part-time, 3 to 4 weeks for MVP.
+
+    - **Hosting (MVP):** runs on a single local machine (developer laptop or workstation).
+    The app polls only while open; closing the app pauses polling. Always-on deployment
+    (RPi, VPS, Docker) is out of scope for MVP and deferred to Phase 4+.
+
+    - **Database:** SQLite, no licensing cost.
+
+    - **AI API budget (Phase 4 only):** 1 to 5 USD per month with Claude Haiku and
+    aggressive caching.
+
+    - **Total estimated running cost:** under 5 USD per month at the high end — no
+    hosting cost in the MVP (local machine only); only the optional Phase 4 AI budget
+    contributes.
+
+
+    # Mockup
+
+    [mockup](01_docs/04_content/html/mockup.html)
+
+    ---
+
+
+    ## 9. Next steps
+
+
+    - [ ] Review and validate this charter.
+
+    - [ ] Confirm remaining technology choices (feedparser, Trafilatura, APScheduler,
+    SQLite — frontend stack already locked to Jinja2 + FastAPI).
+
+    - [ ] Set up the project repository and base scaffolding.
+
+    - [ ] Begin Phase 1 — backend foundations.
+
+
+    ---
+
+
+    *End of document*
+
+    '
+  acceptance_criteria: null
+  relations: []
+  epics:
+  - id: EP-260512-2230-001
+    project_id: PR-260512-2041-001
+    type: EPIC
+    created_at: '2026-05-12T22:35:00'
+    created_by: CLAUDE_CODE
+    cancelled_at: null
+    locked: false
+    title: Source Management
+    status: OPEN
+    parent_id: PC-260512-2041-001
+    children_ids:
+    - FT-260512-2245-001
+    - FT-260512-2245-002
+    - FT-260512-2245-003
+    - FT-260512-2245-004
+    updated_at: '2026-05-16T06:24:26.565382'
+    updated_by: HUMAN
+    approved_by_human: true
+    cancellation_reason: null
+    tags: []
+    body: "# EP01 — Source Management\n\n## Feature Navigation Flows\n\n(Features\
+      \ pending — next §5.1.1 round.)\n\n---\n\n## Body\n\nSource CRUD + the discovery\
+      \ waterfall that resolves a homepage URL to a\nusable feed. Sidebar ⋮ menu drives\
+      \ rename / mute / remove; rename changes\ndisplay label only, canonical URL\
+      \ is immutable; mute hides from feed and\nkeeps polling.\n\n**Key functional\
+      \ areas:**\n\n- Source-add form (URL paste → discovery waterfall → save).\n\
+      - Discovery waterfall: RSS/Atom alternate-link → /feed | /rss | /atom.xml\n\
+      \  → sitemap.xml | news-sitemap.xml fallback.\n- Sidebar source-row rendering\
+      \ (active, muted, unread-count pill).\n- ⋮ action menu (rename, mute / unmute,\
+      \ remove).\n- Auto colour assignment from the curated palette.\n\n**Out of scope:**\n\
+      \n- Manual feed-URL paste (auto-discovery is the only entry path).\n- AI-assisted\
+      \ discovery (Phase 4+).\n- Per-source polling interval (single global; see EP03).\n\
+      - Article parsing / storage (see EP02).\n\n**Reference documents:**\n\n- DATA_MODEL.md\
+      \ §Source (to be authored).\n- UI_SPEC.md §Sidebar, §SourceAddForm (to be authored).\n\
+      - 04_content/html/mockup.html (sidebar + source rows).\n\n---\n"
+    acceptance_criteria: null
+    relations: []
+    features:
+    - id: FT-260512-2245-001
+      project_id: PR-260512-2041-001
+      type: FEATURE
+      created_at: '2026-05-12T22:45:00'
+      created_by: CLAUDE_CODE
+      cancelled_at: null
+      locked: false
+      title: Source Add Flow
+      status: OPEN
+      parent_id: EP-260512-2230-001
+      children_ids:
+      - US-260512-2300-001
+      - US-260512-2300-002
+      - US-260512-2300-003
+      - US-260512-2300-004
+      updated_at: '2026-05-16T06:24:26.563808'
+      updated_by: HUMAN
+      approved_by_human: true
+      cancellation_reason: null
+      tags: []
+      body: "# FT01 — Source Add Flow\n\n## Wireframes\n\n(Pending §5.1.2 design phase\
+        \ — mockup shows the sidebar `+` button\nat 04_content/html/mockup.html line\
+        \ 346.)\n\n---\n\n## Body\n\nThe user-facing path from \"I want to follow\
+        \ lemonde.fr\" to a saved\nSource in the DB with a sidebar row. Trigger: `+`\
+        \ icon in the sidebar\nheader opens a small form (or modal) with one URL input\
+        \ field. User\npastes a homepage URL.\n\nSubmission flow:\n\n1. Client-side\
+        \ validation: URL format (scheme http/https, valid host).\n   Inline error\
+        \ if invalid.\n2. Server-side dedup check against existing Sources (canonical\
+        \ hostname\n   match). Inline error \"already added\" if duplicate.\n3. Discovery\
+        \ dispatch: call FT02 waterfall with the homepage URL.\n4. On FT02 success\
+        \ → assign next available palette colour (round-robin\n   through the curated\
+        \ 12-colour list, collisions ignored after\n   exhaustion), persist the Source\
+        \ row, return success. Sidebar\n   re-renders to show the new source row.\n\
+        5. On FT02 failure → inline error citing which step failed (per FT02's\n \
+        \  structured error reasons: no_alternate_link, all_common_paths_404,\n  \
+        \ no_sitemap, sitemap_unparsable, fetch_error). No Source persisted.\n\nSuccess\
+        \ target: ≤ 1 s from submit to sidebar row appearing for a\nresponsive target\
+        \ site.\n\n**Out of scope:**\n\n- Discovery algorithm itself (see FT02).\n\
+        - Sidebar rendering (see FT03).\n- Action menu / rename / remove (see FT04).\n\
+        - Bulk import (CSV, OPML) — not in MVP.\n- Manual feed-URL paste (auto-discovery\
+        \ is the only entry path).\n\n**Reference documents:**\n\n- DATA_MODEL.md\
+        \ §Source (fields: id, url, display_name, feed_url,\n  discovery_method, colour,\
+        \ muted, created_at, last_polled_at,\n  last_error — to be authored).\n- UI_SPEC.md\
+        \ §SourceAddForm (to be authored).\n- 04_content/html/mockup.html (sidebar\
+        \ `+` button).\n\n---\n"
+      acceptance_criteria: null
+      relations:
+      - type: FULFILLED_BY
+        target_id: AC-260512-2245-001
+      - type: FULFILLED_BY
+        target_id: AC-260512-2245-002
+      stories:
+      - id: US-260512-2300-001
+        project_id: PR-260512-2041-001
+        type: USER_STORY
+        created_at: '2026-05-12T23:00:00'
+        created_by: CLAUDE_CODE
+        cancelled_at: null
+        locked: false
+        title: Source Add Form
+        status: OPEN
+        parent_id: FT-260512-2245-001
+        children_ids: []
+        updated_at: '2026-05-17T12:00:34.937655'
+        updated_by: HUMAN
+        approved_by_human: true
+        cancellation_reason: null
+        story_statement: As a user, I want to paste a homepage URL into a simple form
+          and see immediate format-level feedback, so that I can quickly add a new
+          news source without guessing whether the URL is valid.
+        tags: []
+        body: 'Renders the source-add form triggered by the sidebar `+` button
+
+          (FT01 entry). A single URL text input + Submit + Cancel/close.
+
+          Client-side validation: URL must have an http or https scheme and
+
+          a non-empty host (regex-checked before submit). If invalid, an
+
+          inline error shows below the input (e.g. "Invalid URL — must start
+
+          with http:// or https://") and submit is blocked. If valid, the
+
+          URL is posted to the server (US02 dedup → US03 persist chain).
+
+          The form stays open until a successful result lands (US04) or the
+
+          user cancels.
+
+
+          **Data model fields touched:**
+
+
+          - (none — UI-only story; persistence happens in US03.)
+
+
+          **Spec reference:** UI_SPEC.md §SourceAddForm (to be authored).
+
+          '
+        acceptance_criteria: null
+        relations:
+        - type: CONFIRMED_BY
+          target_id: BUG-260517-1128-001
+        - type: FULFILLED_BY
+          target_id: AC-260512-2300-001
+        - type: FULFILLED_BY
+          target_id: AC-260512-2300-002
+      - id: US-260512-2300-002
+        project_id: PR-260512-2041-001
+        type: USER_STORY
+        created_at: '2026-05-12T23:00:00'
+        created_by: CLAUDE_CODE
+        cancelled_at: null
+        locked: false
+        title: Server-side Dedup Check
+        status: SOLVED
+        parent_id: FT-260512-2245-001
+        children_ids: []
+        updated_at: '2026-05-12T22:59:09.763913'
+        updated_by: CLAUDE_CODE
+        approved_by_human: true
+        cancellation_reason: null
+        story_statement: As a user, I want the system to detect when I try to add
+          a source that is already in my list, so that I am not adding the same site
+          twice.
+        tags: []
+        body: 'Backend endpoint `POST /sources/check-duplicate` that accepts a
+
+          homepage URL in the body and returns
+
+          `{ is_duplicate: bool, existing_source_id: string | null }`. Called
+
+          by US04 between client-side validation (US01) and discovery
+
+          dispatch (US03) to short-circuit the more expensive FT02 waterfall
+
+          when the source already exists. Canonical comparison: lowercase
+
+          the hostname, strip leading `www.`, strip trailing slash from path,
+
+          then exact-match against existing `Source.url` (which US03
+
+          canonicalises identically at insert time).
+
+
+          **Data model fields touched:**
+
+
+          - `Source.url` (read) — canonical comparison key.
+
+
+          **Spec reference:** DATA_MODEL.md §1.1 Source (`url` field).
+
+          '
+        acceptance_criteria: null
+        relations:
+        - type: FULFILLED_BY
+          target_id: AC-260512-2300-003
+        - type: FULFILLED_BY
+          target_id: AC-260512-2300-004
+      - id: US-260512-2300-003
+        project_id: PR-260512-2041-001
+        type: USER_STORY
+        created_at: '2026-05-12T23:00:00'
+        created_by: CLAUDE_CODE
+        cancelled_at: null
+        locked: false
+        title: Discovery Dispatch & Source Persistence
+        status: SOLVED
+        parent_id: FT-260512-2245-001
+        children_ids: []
+        updated_at: '2026-05-12T22:59:09.773541'
+        updated_by: CLAUDE_CODE
+        approved_by_human: true
+        cancellation_reason: null
+        story_statement: As a user, I want the system to figure out the feed URL automatically
+          and save the source, so that I can start receiving its articles in the next
+          poll cycle.
+        tags: []
+        body: "Backend endpoint `POST /sources` that accepts a homepage URL\n(post-US02\
+          \ dedup), calls FT02 discovery, and on success: assigns\nthe next unused\
+          \ palette colour (round-robin through the curated\n12-list, deterministic\
+          \ across server restarts via a persisted\nnext-colour pointer), inserts\
+          \ a Source row with all required\nfields, returns 201 with the new Source\
+          \ ID. On FT02 failure:\nreturns 422 with the FT02 error reason and details\
+          \ (for US04 to\nsurface). Does NOT trigger article ingestion — EP03 picks\
+          \ up the\nnew source on its next poll cycle. The Source row is inserted\
+          \ in\na single transaction (no partial state on FT02 failure).\n\n**Data\
+          \ model fields touched:**\n\n- `Source.id` (write) — UUID v4 generated on\
+          \ insert.\n- `Source.url` (write) — canonicalised (lowercase host, strip\n\
+          \  `www.`, strip trailing slash).\n- `Source.feed_url` (write) — from FT02\
+          \ response.\n- `Source.discovery_method` (write) — from FT02 response.\n\
+          - `Source.display_name` (write) — feed `<title>` element on\n  success,\
+          \ hostname fallback if absent.\n- `Source.colour` (write) — next palette\
+          \ colour from the\n  curated 12-list.\n- `Source.muted` (write) — defaulted\
+          \ to 0.\n- `Source.created_at` (write) — current timestamp.\n\n**Spec reference:**\
+          \ DATA_MODEL.md §1.1 Source, §3 Indexes\n(`idx_source_url`).\n"
+        acceptance_criteria: null
+        relations:
+        - type: FULFILLED_BY
+          target_id: AC-260512-2300-005
+        - type: FULFILLED_BY
+          target_id: AC-260512-2300-006
+        - type: FULFILLED_BY
+          target_id: AC-260512-2300-007
+      - id: US-260512-2300-004
+        project_id: PR-260512-2041-001
+        type: USER_STORY
+        created_at: '2026-05-12T23:00:00'
+        created_by: CLAUDE_CODE
+        cancelled_at: null
+        locked: false
+        title: Add Result Surface
+        status: SOLVED
+        parent_id: FT-260512-2245-001
+        children_ids: []
+        updated_at: '2026-05-12T22:59:09.779397'
+        updated_by: CLAUDE_CODE
+        approved_by_human: true
+        cancellation_reason: null
+        story_statement: As a user, so that I know whether the action succeeded.
+        tags: []
+        body: "The form's success / error rendering. On successful US03 response\n\
+          (201): trigger an HTMX-style partial refresh of the sidebar (FT03\nendpoint\
+          \ `GET /sidebar-partial`) — the new source row appears\nwithin the 1 s budget,\
+          \ no full-page reload. On failure (any of:\nUS01 client validation, US02\
+          \ dedup hit, US03 discovery failure):\nrender an inline error message below\
+          \ the URL input citing the\nspecific failure reason (\"Already added\",\
+          \ \"No feed found —\n{FT02 reason}\", \"Network error\", etc.). The form\
+          \ stays open with\nthe URL value preserved so the user can fix and retry.\n\
+          \n**Data model fields touched:**\n\n- `Source.*` (read) — via FT03 sidebar\
+          \ refresh (no direct writes\n  in this story).\n\n**Spec reference:** UI_SPEC.md\
+          \ §SourceAddForm, §Sidebar (to be\nauthored); DATA_MODEL.md §1.1 Source\
+          \ (read on sidebar refresh).\n"
+        acceptance_criteria: null
+        relations:
+        - type: FULFILLED_BY
+          target_id: AC-260512-2300-008
+        - type: FULFILLED_BY
+          target_id: AC-260512-2300-009
+    - id: FT-260512-2245-002
+      project_id: PR-260512-2041-001
+      type: FEATURE
+      created_at: '2026-05-12T22:45:00'
+      created_by: CLAUDE_CODE
+      cancelled_at: null
+      locked: false
+      title: Feed Discovery Waterfall
+      status: SOLVED
+      parent_id: EP-260512-2230-001
+      children_ids:
+      - US-260513-0000-001
+      - US-260513-0000-002
+      - US-260513-0000-003
+      - US-260513-0000-004
+      updated_at: '2026-05-12T22:59:35.177135'
+      updated_by: HUMAN
+      approved_by_human: true
+      cancellation_reason: null
+      tags: []
+      body: "# FT02 — Feed Discovery Waterfall\n\n## Wireframes\n\n(Backend service\
+        \ — no UI surface. Error reasons surfaced via FT01.)\n\n---\n\n## Body\n\n\
+        A pure backend service. Input: a homepage URL (e.g. `https://lemonde.fr`).\n\
+        Output on success: `{ feed_url, method: \"alternate_link\" | \"common_path\"\
+        \n| \"sitemap\" }`. Output on failure: `{ error: \"no_alternate_link\" |\n\
+        \"all_common_paths_404\" | \"no_sitemap\" | \"sitemap_unparsable\" |\n\"fetch_error\"\
+        , details }`.\n\nWaterfall order:\n\n1. **HTML head scan.** GET the homepage\
+        \ with a 5 s timeout. Parse the\n   HTML head for `<link rel=\"alternate\"\
+        \ type=\"application/rss+xml\"`\n   or `type=\"application/atom+xml\"`. If\
+        \ found, return its `href`\n   (resolved to absolute URL).\n2. **Common-path\
+        \ probe.** For each of `/feed`, `/rss`, `/atom.xml`\n   (in that order), HEAD-request\
+        \ with a 2 s timeout. If any returns\n   200 with a feed-shaped Content-Type\
+        \ (`application/rss+xml`,\n   `application/atom+xml`, `application/xml`, `text/xml`),\
+        \ return it.\n3. **Sitemap fallback.** GET `/sitemap.xml` then `/news-sitemap.xml`\n\
+        \   (each with a 3 s timeout). Parse XML. If parseable, return a marker\n\
+        \   indicating sitemap-based ingestion — EP02 features handle the\n   periodic\
+        \ parse.\n\nTotal wall-clock budget per call: ≤ 10 s (short-circuit on first\n\
+        success).\n\nMulti-feed selection: when step 1 finds multiple `<link rel=\"\
+        alternate\">`\nentries, MVP picks the first by RSS > Atom priority.\n\n**Out\
+        \ of scope:**\n\n- Article fetching / parsing (see EP02 features).\n- AI-assisted\
+        \ discovery (Phase 4+).\n- JavaScript-rendered sites (Playwright path deferred\
+        \ per EP02).\n- User-facing UI (FT01 owns the form; FT02 has no UI).\n\n**Reference\
+        \ documents:**\n\n- DATA_MODEL.md §Source.feed_url, §Source.discovery_method\
+        \ (to be\n  authored).\n\n---\n"
+      acceptance_criteria: null
+      relations:
+      - type: FULFILLED_BY
+        target_id: AC-260512-2245-003
+      - type: FULFILLED_BY
+        target_id: AC-260512-2245-004
+      stories:
+      - id: US-260513-0000-001
+        project_id: PR-260512-2041-001
+        type: USER_STORY
+        created_at: '2026-05-13T00:00:00'
+        created_by: CLAUDE_CODE
+        cancelled_at: null
+        locked: false
+        title: HTML Head Scan
+        status: SOLVED
+        parent_id: FT-260512-2245-002
+        children_ids: []
+        updated_at: '2026-05-12T22:59:09.795072'
+        updated_by: CLAUDE_CODE
+        approved_by_human: true
+        cancellation_reason: null
+        story_statement: I want to scan a homepage's HTML head for RSS or Atom alternate-link
+          tags, so that I can resolve a feed URL when the source publishes one explicitly.
+        tags: []
+        body: "Step 1 of the FT02 waterfall. Takes a homepage URL, performs a\n`GET`\
+          \ with a 5 s timeout, parses the HTML `<head>` element, and\nlooks for any\
+          \ `<link rel=\"alternate\">` whose `type` is\n`application/rss+xml` or `application/atom+xml`.\
+          \ On match:\nresolves the `href` to an absolute URL (handling\nprotocol-relative\
+          \ and path-relative forms) and returns\n`{step: \"alternate_link\", success:\
+          \ true, feed_url}`. On no match\nin the head: returns\n`{step: \"alternate_link\"\
+          , success: false, reason: \"no_alternate_link\"}`.\nOn HTTP failure (timeout,\
+          \ 4xx, 5xx, DNS error): returns\n`{step: \"alternate_link\", success: false,\
+          \ reason: \"fetch_error\", details}`.\nStateless — no DB reads or writes.\n\
+          \n**Data model fields touched:**\n\n- (none — stateless function. Caller\
+          \ US-260513-0000-004 maps the\n  success result onto `Source.feed_url` and\
+          \ `Source.discovery_method`.)\n\n**Spec reference:** DATA_MODEL.md §1.1\
+          \ Source (`feed_url`,\n`discovery_method` target values).\n"
+        acceptance_criteria: null
+        relations:
+        - type: FULFILLED_BY
+          target_id: AC-260513-0000-001
+        - type: FULFILLED_BY
+          target_id: AC-260513-0000-002
+      - id: US-260513-0000-002
+        project_id: PR-260512-2041-001
+        type: USER_STORY
+        created_at: '2026-05-13T00:00:00'
+        created_by: CLAUDE_CODE
+        cancelled_at: null
+        locked: false
+        title: Common-Path Probe
+        status: SOLVED
+        parent_id: FT-260512-2245-002
+        children_ids: []
+        updated_at: '2026-05-12T22:59:09.810706'
+        updated_by: CLAUDE_CODE
+        approved_by_human: true
+        cancellation_reason: null
+        story_statement: I want to probe common feed paths on the host, so that I
+          can resolve a feed URL for sites that follow the /feed
+        tags: []
+        body: 'Step 2 of the FT02 waterfall. Called by US-260513-0000-004 only
+
+          when US-260513-0000-001 (head scan) returns `success: false`.
+
+          For each path in `["/feed", "/rss", "/atom.xml"]` (in that fixed
+
+          order), issues a `HEAD` request to `{homepage_url}{path}` with a
+
+          2 s timeout. Considers the path a hit when the response is 200
+
+          AND the Content-Type matches one of: `application/rss+xml`,
+
+          `application/atom+xml`, `application/xml`, `text/xml`.
+
+          Short-circuits on the first hit and returns
+
+          `{step: "common_path", success: true, feed_url}`. If all three
+
+          paths fail the check: returns
+
+          `{step: "common_path", success: false, reason: "all_common_paths_404"}`.
+
+          Stateless.
+
+
+          **Data model fields touched:**
+
+
+          - (none — stateless function.)
+
+
+          **Spec reference:** DATA_MODEL.md §1.1 Source (`feed_url`,
+
+          `discovery_method` target values).
+
+          '
+        acceptance_criteria: null
+        relations:
+        - type: FULFILLED_BY
+          target_id: AC-260513-0000-003
+        - type: FULFILLED_BY
+          target_id: AC-260513-0000-004
+      - id: US-260513-0000-003
+        project_id: PR-260512-2041-001
+        type: USER_STORY
+        created_at: '2026-05-13T00:00:00'
+        created_by: CLAUDE_CODE
+        cancelled_at: null
+        locked: false
+        title: Sitemap Fallback
+        status: SOLVED
+        parent_id: FT-260512-2245-002
+        children_ids: []
+        updated_at: '2026-05-12T22:59:09.810706'
+        updated_by: CLAUDE_CODE
+        approved_by_human: true
+        cancellation_reason: null
+        story_statement: I want to fetch and parse the site's sitemap, so that I can
+          still ingest content for sites that publish no RSS or Atom feed.
+        tags: []
+        body: 'Step 3 of the FT02 waterfall. Called by US-260513-0000-004 only
+
+          when both prior steps return `success: false`. Tries
+
+          `GET /sitemap.xml` first (3 s timeout); if that fails or the XML
+
+          is unparseable, tries `GET /news-sitemap.xml` (3 s timeout). On
+
+          the first parseable XML response, returns
+
+          `{step: "sitemap", success: true, feed_url: "<the sitemap URL>"}`
+
+          — the sitemap URL itself is stored as Source.feed_url; EP02
+
+          features handle the periodic parse of individual `<url>` /
+
+          `<loc>` entries into Article rows. On both sitemap URLs failing,
+
+          returns `{step: "sitemap", success: false, reason}` with reason
+
+          in `{no_sitemap, sitemap_unparsable, fetch_error}` according to
+
+          the dominant failure mode (404 on both → `no_sitemap`; parse
+
+          error → `sitemap_unparsable`; timeout / DNS / 5xx → `fetch_error`).
+
+          Stateless.
+
+
+          **Data model fields touched:**
+
+
+          - (none — stateless function.)
+
+
+          **Spec reference:** DATA_MODEL.md §1.1 Source (`feed_url`,
+
+          `discovery_method` target values).
+
+          '
+        acceptance_criteria: null
+        relations:
+        - type: FULFILLED_BY
+          target_id: AC-260513-0000-005
+        - type: FULFILLED_BY
+          target_id: AC-260513-0000-006
+      - id: US-260513-0000-004
+        project_id: PR-260512-2041-001
+        type: USER_STORY
+        created_at: '2026-05-13T00:00:00'
+        created_by: CLAUDE_CODE
+        cancelled_at: null
+        locked: false
+        title: Waterfall Orchestrator
+        status: SOLVED
+        parent_id: FT-260512-2245-002
+        children_ids: []
+        updated_at: '2026-05-12T22:59:09.826716'
+        updated_by: CLAUDE_CODE
+        approved_by_human: true
+        cancellation_reason: null
+        story_statement: As a caller of the discovery service (US-260512-2300-003),
+          I want to receive either a resolved feed URL or a structured error explaining
+          which step in the waterfall failed, so that the source-add flow can surface
+          a specific reason to the user.
+        tags: []
+        body: "Public service entry point: `discover(url: str) → DiscoveryResult`.\n\
+          Calls US-260513-0000-001 (head scan); if `success`, returns\n`{feed_url,\
+          \ method: \"alternate_link\"}`. Otherwise calls\nUS-260513-0000-002 (common-path);\
+          \ if `success`, returns\n`{feed_url, method: \"common_path\"}`. Otherwise\
+          \ calls\nUS-260513-0000-003 (sitemap); if `success`, returns\n`{feed_url,\
+          \ method: \"sitemap\"}`. If all three fail, returns\n`{error: <last step's\
+          \ reason code>, details: <last step's details>}`\n— note the error code\
+          \ is the LAST step's reason (typically\n`no_sitemap` / `sitemap_unparsable`\
+          \ / `fetch_error`), NOT step\n1's `no_alternate_link`. Enforces a total\
+          \ wall-clock budget of\n10 s across all three steps (cumulative timeout\
+          \ — when remaining\nbudget drops below the next step's per-step timeout,\
+          \ the\norchestrator passes the remaining budget instead of the default).\n\
+          Stateless.\n\n**Data model fields touched:**\n\n- (none — stateless function.\
+          \ Caller US-260512-2300-003 maps the\n  success result onto Source fields\
+          \ per its own AC.)\n\n**Spec reference:** DATA_MODEL.md §1.1 Source (`feed_url`,\n\
+          `discovery_method`).\n"
+        acceptance_criteria: null
+        relations:
+        - type: FULFILLED_BY
+          target_id: AC-260513-0000-007
+        - type: FULFILLED_BY
+          target_id: AC-260513-0000-008
+    - id: FT-260512-2245-003
+      project_id: PR-260512-2041-001
+      type: FEATURE
+      created_at: '2026-05-12T22:45:00'
+      created_by: CLAUDE_CODE
+      cancelled_at: null
+      locked: false
+      title: Source List & Sidebar Rendering
+      status: SOLVED
+      parent_id: EP-260512-2230-001
+      children_ids:
+      - US-260513-0010-001
+      - US-260513-0010-002
+      - US-260513-0010-003
+      updated_at: '2026-05-12T22:59:32.913301'
+      updated_by: HUMAN
+      approved_by_human: true
+      cancellation_reason: null
+      tags: []
+      body: "# FT03 — Source List & Sidebar Rendering\n\n## Wireframes\n\nSee 04_content/html/mockup.html\
+        \ lines 343–403 (sidebar). §5.1.2 design\nwill expand to include the muted\
+        \ state explicitly.\n\n---\n\n## Body\n\nThe left pane. Width 260 px, background\
+        \ `--bg-secondary`. Header\nsection with \"SOURCES\" label and the `+` add\
+        \ button (which triggers\nFT01).\n\nSource rows (top to bottom):\n\n- \"All\
+        \ sources\" virtual entry at the very top: stack icon + label\n  \"All sources\"\
+        \ + unread-count pill showing the SUM of every source's\n  unread count. Always\
+        \ rendered, regardless of how many sources\n  exist. Clicking it sets the\
+        \ feed filter to \"combined\" (default).\n- 8 px gap below the virtual entry.\n\
+        - Each real Source as a row: colour dot (the source's assigned\n  palette\
+        \ colour) + display name (with text-ellipsis for overflow) +\n  unread-count\
+        \ pill (right-aligned).\n- Active state (one source clicked / selected): white\
+        \ background,\n  left border in `--text-info` colour. Filter the feed pane\
+        \ to that\n  source.\n- Muted state (per FT04's mute toggle): opacity ~0.5,\
+        \ name with\n  strikethrough, eye-off icon in place of the unread-count pill.\n\
+        \  Clicking a muted row is allowed but does nothing (only FT04's ⋮\n  menu\
+        \ can unmute).\n\nFooter: thin separator + \"Updated N min ago\" indicator\
+        \ (sourced from\nEP04's header-bar last-sync timestamp).\n\nServer-rendered\
+        \ on every page load. HTMX-style partial refresh on\nsource add / remove /\
+        \ mute / rename (FT01 and FT04 dispatch a sidebar\nrefresh, no full page reload).\n\
+        \n**Out of scope:**\n\n- Drag-to-reorder source rows (not in MVP).\n- Source\
+        \ grouping / folders (not in MVP).\n- Search-within-sidebar (not in MVP).\n\
+        - The ⋮ action menu itself (see FT04).\n- Feed pane rendering (see EP04).\n\
+        \n**Reference documents:**\n\n- UI_SPEC.md §Sidebar (to be authored).\n- 04_content/html/mockup.html\
+        \ (lines 343–403).\n\n---\n"
+      acceptance_criteria: null
+      relations:
+      - type: FULFILLED_BY
+        target_id: AC-260512-2245-005
+      - type: FULFILLED_BY
+        target_id: AC-260512-2245-006
+      stories:
+      - id: US-260513-0010-001
+        project_id: PR-260512-2041-001
+        type: USER_STORY
+        created_at: '2026-05-13T00:10:00'
+        created_by: CLAUDE_CODE
+        cancelled_at: null
+        locked: false
+        title: Sidebar Rendering
+        status: SOLVED
+        parent_id: FT-260512-2245-003
+        children_ids: []
+        updated_at: '2026-05-12T22:59:09.826716'
+        updated_by: CLAUDE_CODE
+        approved_by_human: true
+        cancellation_reason: null
+        story_statement: As a user, I want a left-pane sidebar that always shows my
+          list of news sources along with their unread counts, so that I can see at
+          a glance what is in my feed and how much is unread.
+        tags: []
+        body: "Renders the left pane of the two-pane layout. Width 260 px,\nbackground\
+          \ `--bg-secondary`. Three sections:\n\n- **Header (top):** \"SOURCES\" small-caps\
+          \ label + `+` icon button\n  that triggers FT01 Source Add Flow.\n- **Source\
+          \ list (middle):** \"All sources\" virtual entry at the\n  very top (stack\
+          \ icon + label \"All sources\" + unread-count\n  pill = SUM of every Source's\
+          \ unread count), 8 px gap, then\n  one row per Source (colour dot from `Source.colour`\
+          \ +\n  `Source.display_name` with ellipsis on overflow + unread-count\n\
+          \  pill for that source).\n- **Footer (bottom):** thin separator + \"Updated\
+          \ N min ago\"\n  indicator (text sourced from EP04's header-bar last-sync\n\
+          \  timestamp).\n\nServer-rendered on every page load. The state variants\
+          \ (active,\nmuted) are handled by US-260513-0010-002. The partial-refresh\n\
+          endpoint used by FT01 / FT04 / EP03 is owned by US-260513-0010-003.\n\n\
+          **Data model fields touched:**\n\n- `Source.colour` (read) — colour dot.\n\
+          - `Source.display_name` (read) — row label.\n- `Source.muted` (read) — to\
+          \ omit unread count for muted rows\n  (the muted visual styling itself is\
+          \ US-260513-0010-002).\n- `Article.read_at`, `Article.source_id` (read)\
+          \ — for the\n  unread-count aggregation\n  (`COUNT(*) WHERE source_id =\
+          \ ? AND read_at IS NULL`).\n\n**Spec reference:** UI_SPEC.md §Sidebar (to\
+          \ be authored);\nDATA_MODEL.md §1.1 Source, §1.2 Article, §3\n(`idx_article_read_at_null`\
+          \ partial index).\n"
+        acceptance_criteria: null
+        relations:
+        - type: FULFILLED_BY
+          target_id: AC-260513-0010-001
+        - type: FULFILLED_BY
+          target_id: AC-260513-0010-002
+      - id: US-260513-0010-002
+        project_id: PR-260512-2041-001
+        type: USER_STORY
+        created_at: '2026-05-13T00:10:00'
+        created_by: CLAUDE_CODE
+        cancelled_at: null
+        locked: false
+        title: Source-Row State Variants
+        status: SOLVED
+        parent_id: FT-260512-2245-003
+        children_ids: []
+        updated_at: '2026-05-12T22:59:09.858419'
+        updated_by: CLAUDE_CODE
+        approved_by_human: true
+        cancellation_reason: null
+        story_statement: As a user, I want the active source and any muted sources
+          to look visually distinct in the sidebar, so that I can tell at a glance
+          which filter is applied and which sources are dormant.
+        tags: []
+        body: "The two visual state variants of a source row on top of\nUS-260513-0010-001's\
+          \ default rendering.\n\n**Active state (one source row at a time).** Set\
+          \ when the user\nclicks a source row. Visual: white background (vs the sidebar's\n\
+          `--bg-secondary`), 2 px left border in `--text-info` colour.\nBehavioural:\
+          \ the feed pane (EP04) re-filters to show only that\nsource's articles.\
+          \ Clicking a different row clears active on\nthe previous row and applies\
+          \ it to the new one. Clicking the\n\"All sources\" virtual entry clears\
+          \ active across all source\nrows and restores the combined feed.\n\n**Muted\
+          \ state (any number of source rows).** Driven by\n`Source.muted = 1`. Visual:\
+          \ opacity ~0.5 on the whole row,\nstrikethrough on the `display_name` label,\
+          \ eye-off icon in\nplace of the unread-count pill (no count rendered).\n\
+          Behavioural: clicking a muted row does NOT change the feed\nfilter — the\
+          \ click is inert. The only way to interact with a\nmuted source is via the\
+          \ ⋮ menu (FT04, including Unmute).\n\n**Data model fields touched:**\n\n\
+          - `Source.muted` (read) — drives the muted visual.\n- `Source.id` (read)\
+          \ — active-row tracking (via the URL filter\n  parameter or a client-side\
+          \ selection state).\n\n**Spec reference:** UI_SPEC.md §Sidebar (active and\
+          \ muted\nstates — to be authored); DATA_MODEL.md §1.1 Source (`muted`).\n"
+        acceptance_criteria: null
+        relations:
+        - type: FULFILLED_BY
+          target_id: AC-260513-0010-003
+        - type: FULFILLED_BY
+          target_id: AC-260513-0010-004
+      - id: US-260513-0010-003
+        project_id: PR-260512-2041-001
+        type: USER_STORY
+        created_at: '2026-05-13T00:10:00'
+        created_by: CLAUDE_CODE
+        cancelled_at: null
+        locked: false
+        title: Sidebar Partial Refresh Endpoint
+        status: SOLVED
+        parent_id: FT-260512-2245-003
+        children_ids: []
+        updated_at: '2026-05-12T22:59:09.862430'
+        updated_by: CLAUDE_CODE
+        approved_by_human: true
+        cancellation_reason: null
+        story_statement: As a frontend component (FT01 US04, I want a sidebar-partial
+          endpoint that re-renders only the source-list block, so that I can HTMX-swap
+          it without forcing a full-page reload.
+        tags: []
+        body: "Backend route `GET /sidebar-partial` that returns the HTML\nfragment\
+          \ for the source-list block of the sidebar — same\ncontent as US-260513-0010-001\
+          \ produces, but WITHOUT the\nsurrounding header / footer (just the rows\
+          \ including the\n\"All sources\" virtual entry). The fragment is suitable\
+          \ for\nHTMX outer-HTML swap into the source-list container.\n\nRecomputes\
+          \ on each call (no caching beyond the single request)\nso that state changes\
+          \ from polling (new article counts),\nsource CRUD (FT01 add, FT04 rename\
+          \ / mute / remove), and\nread-state writes (EP04 click-to-read) are reflected\n\
+          immediately.\n\nCallers:\n\n- FT01 `US-260512-2300-004` after a successful\
+          \ source add.\n- FT04 (all three actions: rename, mute / unmute, remove).\n\
+          - EP03 poll completion if any Source's unread count changed.\n\n**Data model\
+          \ fields touched:**\n\n- `Source.colour`, `Source.display_name`, `Source.muted`,\n\
+          \  `Source.id` (read).\n- `Article.read_at`, `Article.source_id` (read)\
+          \ for the\n  unread-count aggregation.\n\n**Spec reference:** UI_SPEC.md\
+          \ §Sidebar (rendering identical to\nUS-260513-0010-001 minus chrome — to\
+          \ be authored);\nDATA_MODEL.md §1.1 Source, §1.2 Article, §3\n(`idx_article_read_at_null`).\n"
+        acceptance_criteria: null
+        relations:
+        - type: FULFILLED_BY
+          target_id: AC-260513-0010-005
+        - type: FULFILLED_BY
+          target_id: AC-260513-0010-006
+    - id: FT-260512-2245-004
+      project_id: PR-260512-2041-001
+      type: FEATURE
+      created_at: '2026-05-12T22:45:00'
+      created_by: CLAUDE_CODE
+      cancelled_at: null
+      locked: false
+      title: Source Row Action Menu
+      status: SOLVED
+      parent_id: EP-260512-2230-001
+      children_ids:
+      - US-260513-0020-001
+      - US-260513-0020-002
+      - US-260513-0020-003
+      - US-260513-0020-004
+      updated_at: '2026-05-12T22:59:30.467730'
+      updated_by: HUMAN
+      approved_by_human: true
+      cancellation_reason: null
+      tags: []
+      body: "# FT04 — Source Row Action Menu\n\n## Wireframes\n\n(Pending §5.1.2 —\
+        \ mockup does not show the ⋮ menu open state.)\n\n---\n\n## Body\n\nThe ⋮\
+        \ (vertical dots) icon button on each source row, hover-revealed.\nClick opens\
+        \ a small floating menu beside the row with three items:\n\n- **Rename.**\
+        \ Replaces the source name with an inline editable text\n  input. Enter saves,\
+        \ Esc cancels. Saves the `display_name` field on\n  Source. The canonical\
+        \ `url` / `feed_url` is NOT touched.\n- **Mute / Unmute.** Toggles the `muted`\
+        \ boolean on the Source.\n  Immediately flips the row to muted state (FT03\
+        \ visual) or back.\n  Polling continues regardless of muted state per charter\
+        \ §3.\n- **Remove.** Opens a confirmation dialog with the source name in the\n\
+        \  prompt (\"Remove {name}? This will delete the source and all its\n  articles.\"\
+        ). On confirm: cascade-delete the Source AND every\n  Article whose `source_id`\
+        \ references it, in a single DB transaction.\n  Sidebar row disappears within\
+        \ 500 ms of confirm. On cancel: dialog\n  closes, no DB change.\n\nMenu auto-close:\
+        \ when the user clicks outside the menu, or hovers off\nthe source row for\
+        \ > 300 ms.\n\nThe ⋮ button is hidden on the \"All sources\" virtual entry\
+        \ (no action\nmenu on the aggregate row).\n\n**Out of scope:**\n\n- Source\
+        \ colour change (auto-assigned in FT01, no user override in\n  MVP per charter\
+        \ §3).\n- Per-source interval override (charter §3 — global only, see EP03).\n\
+        - Bulk actions (multi-select remove, etc.) — not in MVP.\n- Undo for remove\
+        \ — the confirmation dialog is the only safety.\n\n**Reference documents:**\n\
+        \n- DATA_MODEL.md §Source.display_name, §Source.muted, cascade-delete\n  rule\
+        \ on Source.remove → Article (to be authored).\n- UI_SPEC.md §SourceRowMenu\
+        \ (to be authored).\n\n---\n"
+      acceptance_criteria: null
+      relations:
+      - type: FULFILLED_BY
+        target_id: AC-260512-2245-007
+      - type: FULFILLED_BY
+        target_id: AC-260512-2245-008
+      stories:
+      - id: US-260513-0020-001
+        project_id: PR-260512-2041-001
+        type: USER_STORY
+        created_at: '2026-05-13T00:20:00'
+        created_by: CLAUDE_CODE
+        cancelled_at: null
+        locked: false
+        title: Action Menu Reveal
+        status: SOLVED
+        parent_id: FT-260512-2245-004
+        children_ids: []
+        updated_at: '2026-05-12T22:59:23.505069'
+        updated_by: HUMAN
+        approved_by_human: true
+        cancellation_reason: null
+        story_statement: As a user, I want a ⋮ icon to appear on each source row when
+          I hover, so that I can manage individual sources without cluttering the
+          default sidebar.
+        tags: []
+        body: "The ⋮ icon button + floating menu UI surface for each source\nrow.\
+          \ Hover on a source row reveals the ⋮ button (right-aligned,\nwhere the\
+          \ unread-count pill would otherwise appear). Clicking\nthe ⋮ button opens\
+          \ a small floating menu beside the row with\nthree items:\n\n- **Rename**\
+          \ (US-260513-0020-002).\n- **Mute / Unmute** (US-260513-0020-003 — label\
+          \ toggles based\n  on `Source.muted`).\n- **Remove** (US-260513-0020-004).\n\
+          \nThe menu auto-closes when the user clicks outside the menu OR\nhovers\
+          \ off the source row for > 300 ms.\n\nConstraint: the ⋮ button is HIDDEN\
+          \ on the \"All sources\" virtual\nentry — no per-source actions on the aggregate\
+          \ row.\n\n**Data model fields touched:**\n\n- `Source.muted` (read) — to\
+          \ display \"Mute\" vs \"Unmute\" label.\n\n**Spec reference:** UI_SPEC.md\
+          \ §SourceRowMenu (to be authored);\nDATA_MODEL.md §1.1 Source (`muted` for\
+          \ menu label state).\n"
+        acceptance_criteria: null
+        relations:
+        - type: FULFILLED_BY
+          target_id: AC-260513-0020-001
+        - type: FULFILLED_BY
+          target_id: AC-260513-0020-002
+      - id: US-260513-0020-002
+        project_id: PR-260512-2041-001
+        type: USER_STORY
+        created_at: '2026-05-13T00:20:00'
+        created_by: CLAUDE_CODE
+        cancelled_at: null
+        locked: false
+        title: Rename Action
+        status: SOLVED
+        parent_id: FT-260512-2245-004
+        children_ids: []
+        updated_at: '2026-05-12T22:59:09.885787'
+        updated_by: CLAUDE_CODE
+        approved_by_human: true
+        cancellation_reason: null
+        story_statement: As a user, I want to rename a source via the ⋮ menu, so that
+          the sidebar shows a label I prefer without changing the source's identity
+          (URL / feed).
+        tags: []
+        body: "Inline edit + persistence of `Source.display_name`. Click\nRename in\
+          \ the ⋮ menu (US-260513-0020-001) → the source row's\ndisplay_name label\
+          \ is replaced with an inline `<input>`\npre-filled with the current name,\
+          \ focused with all text\nselected. Enter saves (calls `PATCH /sources/{id}`\
+          \ body =\n`{display_name}`); Esc cancels and restores the previous\nlabel.\
+          \ After save the row re-renders via the sidebar partial\nrefresh (US-260513-0010-003).\n\
+          \nBackend: `PATCH /sources/{id}` accepts ONLY `{display_name}`\nin the body.\
+          \ Other fields (`url`, `feed_url`,\n`discovery_method`, `colour`) are NOT\
+          \ mutable through this\nendpoint — the rename is display-only per charter\
+          \ §3 source\nrename semantics.\n\n**Data model fields touched:**\n\n- `Source.display_name`\
+          \ (write) — the new label.\n- `Source.url`, `Source.feed_url`, `Source.discovery_method`\n\
+          \  (read-only — explicitly NOT touched).\n\n**Spec reference:** UI_SPEC.md\
+          \ §SourceRowMenu, §Sidebar\n(rename inline state — to be authored); DATA_MODEL.md\
+          \ §1.1\nSource (`display_name` is the only writable field for\nrename).\n"
+        acceptance_criteria: null
+        relations:
+        - type: FULFILLED_BY
+          target_id: AC-260513-0020-003
+        - type: FULFILLED_BY
+          target_id: AC-260513-0020-004
+      - id: US-260513-0020-003
+        project_id: PR-260512-2041-001
+        type: USER_STORY
+        created_at: '2026-05-13T00:20:00'
+        created_by: CLAUDE_CODE
+        cancelled_at: null
+        locked: false
+        title: Mute / Unmute Action
+        status: SOLVED
+        parent_id: FT-260512-2245-004
+        children_ids: []
+        updated_at: '2026-05-12T22:59:09.889973'
+        updated_by: CLAUDE_CODE
+        approved_by_human: true
+        cancellation_reason: null
+        story_statement: As a user, I want to mute or unmute a source via the ⋮ menu,
+          so that I can temporarily hide noisy sources from the feed without removing
+          them from the polling cycle.
+        tags: []
+        body: 'Toggle `Source.muted` and immediately update both the row
+
+          visual (US-260513-0010-002 muted state) and the feed pane
+
+          (EP04 filter excludes muted sources from the combined view).
+
+          The menu label reads "Mute" when `muted = 0`, "Unmute" when
+
+          `muted = 1`.
+
+
+          Backend: `PATCH /sources/{id}/mute` with body
+
+          `{muted: true | false}`. Polling continues regardless of the
+
+          flag (charter §3 mute semantics: hide from feed, keep polling
+
+          — articles still ingested in the background).
+
+
+          After save, sidebar partial refresh (US-260513-0010-003) is
+
+          triggered, and the feed pane re-renders to add or remove this
+
+          source''s articles from the visible list.
+
+
+          **Data model fields touched:**
+
+
+          - `Source.muted` (write) — the new boolean value.
+
+
+          **Spec reference:** UI_SPEC.md §SourceRowMenu (Mute / Unmute
+
+          label state — to be authored); DATA_MODEL.md §1.1 Source
+
+          (`muted` semantics).
+
+          '
+        acceptance_criteria: null
+        relations:
+        - type: FULFILLED_BY
+          target_id: AC-260513-0020-005
+        - type: FULFILLED_BY
+          target_id: AC-260513-0020-006
+      - id: US-260513-0020-004
+        project_id: PR-260512-2041-001
+        type: USER_STORY
+        created_at: '2026-05-13T00:20:00'
+        created_by: CLAUDE_CODE
+        cancelled_at: null
+        locked: false
+        title: Remove Action
+        status: SOLVED
+        parent_id: FT-260512-2245-004
+        children_ids: []
+        updated_at: '2026-05-12T22:59:09.896825'
+        updated_by: CLAUDE_CODE
+        approved_by_human: true
+        cancellation_reason: null
+        story_statement: As a user, I want to remove a source via the ⋮ menu after
+          confirming the action, so that I can clean up sources I no longer follow
+          while being protected from accidental clicks.
+        tags: []
+        body: "Confirmation-protected cascade delete of a Source and every\nArticle\
+          \ that references it.\n\nClick Remove in the ⋮ menu (US-260513-0020-001)\
+          \ → opens a\nconfirmation dialog with the prompt \"Remove\n{Source.display_name}?\
+          \ This will delete the source and all\nits articles.\" plus Cancel and Remove\
+          \ buttons. On Cancel:\ndialog closes, no DB change. On Remove: backend\n\
+          `DELETE /sources/{id}` executes a single-transaction cascade\ndelete (Source\
+          \ row AND every Article whose `source_id`\nmatches — enforced by the SQLite\
+          \ `ON DELETE CASCADE` on\n`Article.source_id` per DATA_MODEL.md §2.1).\n\
+          \nAfter successful delete: sidebar row disappears within 500 ms\nvia sidebar\
+          \ partial refresh (US-260513-0010-003). Feed pane\nremoves those articles\
+          \ from the visible list. If the deleted\nsource was the active filter, the\
+          \ feed pane resets to\n\"All sources\" combined view.\n\n**Data model fields\
+          \ touched:**\n\n- `Source.id` (delete) — the row referenced by the DELETE\n\
+          \  endpoint.\n- `Article.source_id` (delete, cascade) — every Article row\n\
+          \  matching is deleted in the same transaction.\n\n**Spec reference:** UI_SPEC.md\
+          \ §SourceRowMenu, §ConfirmDialog\n(to be authored); DATA_MODEL.md §2.1 Source\
+          \ → Article\n(ON DELETE CASCADE).\n"
+        acceptance_criteria: null
+        relations:
+        - type: FULFILLED_BY
+          target_id: AC-260513-0020-007
+        - type: FULFILLED_BY
+          target_id: AC-260513-0020-008
+  - id: EP-260512-2230-002
+    project_id: PR-260512-2041-001
+    type: EPIC
+    created_at: '2026-05-12T22:35:00'
+    created_by: CLAUDE_CODE
+    cancelled_at: null
+    locked: false
+    title: Article Ingestion & Storage
+    status: OPEN
+    parent_id: PC-260512-2041-001
+    children_ids: []
+    updated_at: '2026-05-12T22:19:11.784576'
+    updated_by: CLAUDE_CODE
+    approved_by_human: true
+    cancellation_reason: null
+    tags: []
+    body: "# EP02 — Article Ingestion & Storage\n\n## Feature Navigation Flows\n\n\
+      (Features pending — next §5.1.1 round.)\n\n---\n\n## Body\n\nTurns a polled\
+      \ feed into stored, deduplicated article metadata. feedparser\nparses RSS /\
+      \ Atom; Open Graph + JSON-LD enrich thin entries; Trafilatura is\nthe readability\
+      \ fallback for summary text. Articles persist in SQLite with\nURL as dedup key,\
+      \ indexed by published_at. A daily cleanup prunes records\nolder than 30 days\
+      \ (configurable).\n\n**Key functional areas:**\n\n- feedparser-driven RSS /\
+      \ Atom parsing.\n- SQLite schema: Source and Article tables, indexes by URL\
+      \ + published_at.\n- Deduplication by canonical URL.\n- Open Graph + JSON-LD\
+      \ metadata enrichment.\n- Trafilatura summary fallback.\n- 30-day retention\
+      \ cleanup job.\n\n**Out of scope:**\n\n- Full-text body storage (charter restricts\
+      \ to metadata only).\n- AI extraction fallback (Phase 4+).\n- Playwright / dynamic-fetch\
+      \ path (deferred — separate feature gated on\n  static-fetch failure).\n- Per-article\
+      \ tagging (charter §3 out-of-scope).\n- Polling scheduling (see EP03).\n- Feed\
+      \ display (see EP04).\n\n**Reference documents:**\n\n- DATA_MODEL.md §Source,\
+      \ §Article (to be authored).\n\n---\n"
+    acceptance_criteria: null
+    relations: []
+    features: []
+  - id: EP-260512-2230-003
+    project_id: PR-260512-2041-001
+    type: EPIC
+    created_at: '2026-05-12T22:35:00'
+    created_by: CLAUDE_CODE
+    cancelled_at: null
+    locked: false
+    title: Background Polling
+    status: OPEN
+    parent_id: PC-260512-2041-001
+    children_ids: []
+    updated_at: '2026-05-12T22:19:11.790585'
+    updated_by: CLAUDE_CODE
+    approved_by_human: true
+    cancellation_reason: null
+    tags: []
+    body: "# EP03 — Background Polling\n\n## Feature Navigation Flows\n\n(Features\
+      \ pending — next §5.1.1 round.)\n\n---\n\n## Body\n\nThe scheduler that wakes\
+      \ every N minutes (5–120, default 20), iterates the\nsource list, and triggers\
+      \ the EP02 ingestion path for each non-paused\nsource. Polite-fetcher rules\
+      \ enforce 1 request per 2 s per domain, respect\nrobots.txt, and send a polite\
+      \ User-Agent. Runs only while the app process\nis up (no daemon; charter §3\
+      \ out-of-scope).\n\n**Key functional areas:**\n\n- APScheduler integration and\
+      \ lifecycle (start on boot, stop on shutdown).\n- Global polling interval setting\
+      \ (5–120 min, default 20).\n- Per-source poll-state tracking (last_polled_at,\
+      \ last_error, consecutive\n  failure count).\n- Polite-fetcher rules: robots.txt\
+      \ honouring, custom User-Agent, 1 req /\n  2 s / domain throttle.\n- Manual\
+      \ refresh trigger wired from the EP04 header refresh button.\n\n**Out of scope:**\n\
+      \n- Per-source interval override (charter §3 — global only).\n- Smart cadence\
+      \ auto-detection from publish history (Phase 4+).\n- Always-on / daemonised\
+      \ polling (charter §3 — Phase 4+).\n- Feed parsing logic (see EP02).\n\n**Reference\
+      \ documents:**\n\n- DATA_MODEL.md §Source.last_polled_at, §Source.last_error\
+      \ (to be authored).\n- AUDIT_MODEL.md §PollEvent (to be authored).\n\n---\n"
+    acceptance_criteria: null
+    relations: []
+    features: []
+  - id: EP-260512-2230-004
+    project_id: PR-260512-2041-001
+    type: EPIC
+    created_at: '2026-05-12T22:35:00'
+    created_by: CLAUDE_CODE
+    cancelled_at: null
+    locked: false
+    title: Feed Reading Experience
+    status: OPEN
+    parent_id: PC-260512-2041-001
+    children_ids: []
+    updated_at: '2026-05-12T22:19:11.796092'
+    updated_by: CLAUDE_CODE
+    approved_by_human: true
+    cancellation_reason: null
+    tags: []
+    body: "# EP04 — Feed Reading Experience\n\n## Feature Navigation Flows\n\n(Features\
+      \ pending — next §5.1.1 round.)\n\n---\n\n## Body\n\nThe reader UI. Two panes:\
+      \ sidebar (sources + \"All sources\" virtual entry +\nunread counts + auto colours)\
+      \ on the left, paginated combined feed on the\nright (50 / page, newest-first,\
+      \ prev / next at bottom). Header bar above\nboth panes shows app title plus\
+      \ \"last sync · N min ago\" and a manual\nrefresh button. Clicking an article\
+      \ opens it in a new browser tab and\nmarks it as read (one-way; charter §3 out-of-scope).\n\
+      \n**Key functional areas:**\n\n- Two-pane layout template + responsive breakpoint\
+      \ at 720px.\n- Sidebar rendering: source rows, active state, muted state visual,\n\
+      \  unread-count pills, \"All sources\" virtual entry at top.\n- Feed pagination\
+      \ (50 / page, newest-first, prev / next).\n- Article row layout: full (with\
+      \ summary) above the fold, compact\n  (one-liner) below — exact breakpoint deferred\
+      \ to §5.1.2 design.\n- Click-to-read: open new tab, write read_at on Article.\n\
+      - Header bar: app title + last-sync indicator + manual refresh button\n  (wires\
+      \ to EP03 manual refresh).\n\n**Out of scope:**\n\n- Multi-mode feed sort (charter\
+      \ §3 — newest-first only).\n- Per-article tag pills (charter §3 out-of-scope).\n\
+      - Manual mark-as-unread (charter §3 — read state is one-way).\n- Native mobile\
+      \ apps (responsive web only).\n- Source CRUD (see EP01).\n- Article ingestion\
+      \ / storage (see EP02).\n\n**Reference documents:**\n\n- UI_SPEC.md §TwoPaneLayout,\
+      \ §Sidebar, §Feed, §Header (to be authored).\n- 04_content/html/mockup.html\
+      \ (whole-screen reference).\n\n---\n"
+    acceptance_criteria: null
+    relations: []
+    features: []
+  - id: EP-260512-2230-005
+    project_id: PR-260512-2041-001
+    type: EPIC
+    created_at: '2026-05-12T22:35:00'
+    created_by: CLAUDE_CODE
+    cancelled_at: null
+    locked: false
+    title: Setup & Self-Hosting
+    status: OPEN
+    parent_id: PC-260512-2041-001
+    children_ids: []
+    updated_at: '2026-05-12T22:19:11.802748'
+    updated_by: CLAUDE_CODE
+    approved_by_human: true
+    cancellation_reason: null
+    tags: []
+    body: "# EP05 — Setup & Self-Hosting\n\n## Feature Navigation Flows\n\n(Features\
+      \ pending — next §5.1.1 round.)\n\n---\n\n## Body\n\nWhat turns a fresh checkout\
+      \ into a running app. A local launcher\n(`python -m almanach` or equivalent)\
+      \ spawns FastAPI, runs DB migrations,\nstarts the scheduler. First-run experience\
+      \ seeds the DB with 10–15 popular\nsources. README covers install + run. Base\
+      \ error handling surfaces RSS\ndiscovery failures, paywall visual cues, and\
+      \ network errors in the UI\ninstead of crashing the app.\n\n**Key functional\
+      \ areas:**\n\n- Local launcher entry point.\n- DB migration / first-run schema\
+      \ bootstrap.\n- 10–15 pre-configured seed sources loaded on first run.\n- README\
+      \ (install, run, configure).\n- Error handling: RSS discovery failure, paywall\
+      \ visual cue, network\n  errors surfaced to the user.\n- Responsive breakpoint\
+      \ at 720px (narrow viewport behaviour).\n\n**Out of scope:**\n\n- Docker / RPi\
+      \ / VPS deployment (charter §3, §8 — Phase 4+).\n- Automated install scripts\
+      \ beyond the README.\n- Always-on / systemd integration (charter §3 — Phase\
+      \ 4+).\n- Multi-user / authentication (charter §3 — out of scope entirely).\n\
+      \n**Reference documents:**\n\n- README.md (to be authored).\n- 04_content/html/mockup.html\
+      \ (responsive layout).\n\n---\n"
+    acceptance_criteria: null
+    relations: []
+    features: []
+epics: []
+orphans: []
+tests: []
+bugs:
+- id: BUG-260517-1128-001
+  project_id: PR-260512-2041-001
+  type: BUG
+  created_at: '2026-05-17T11:28:48.517392'
+  created_by: HUMAN
+  cancelled_at: null
+  locked: false
+  title: US-260512-2300-001 - Bug 1
+  status: SOLVED
+  priority: CRITICAL
+  updated_at: '2026-05-17T13:15:00'
+  updated_by: CLAUDE_CODE
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: AC failed as adding a totally legitimate url is generating erro message, see
+    screenshot part in yello ![error for legitimate url](01_docs/04_content/images/error
+    for legitimate url.png)
+  acceptance_criteria: null
+  relations:
+  - type: CONFIRMED_BY
+    target_id: TEST-260517-1200-001
+  - type: CONFIRMS
+    target_id: US-260512-2300-001
+  - type: FULFILLED_BY
+    target_id: AC-260512-2300-002
+change_requests: []
+acceptance_criteria:
+- id: AC-260512-2245-001
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-12T22:45:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: Pasting a valid news website URL and submitting the source-add form persists
+    a new Source with an assigned palette colour and a visible sidebar row within
+    1 second.
+  status: OPEN
+  result: null
+  priority: CRITICAL
+  updated_at: '2026-05-12T22:19:11.809372'
+  updated_by: CLAUDE_CODE
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: "## Description\n\nHappy-path integration check for FT01. Verifies the chain:\
+    \ form submit →\nvalidation pass → FT02 discovery success → palette colour assignment\
+    \ →\nDB persist → sidebar re-render. The 1 s budget assumes a responsive\ntarget\
+    \ site.\n\n## Test Instructions\n\n1. Open the app at the default route.\n2. Click\
+    \ the `+` icon in the sidebar header. The source-add form opens.\n3. Paste `https://www.theverge.com`\
+    \ (or any site with an RSS feed) and\n   submit.\n4. Confirm a new source row\
+    \ appears in the sidebar within 1 second, with\n   a colour dot distinct from\
+    \ existing rows.\n5. Refresh the page. Confirm the source row is still present\n\
+    \   (persistence).\n"
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: FT-260512-2245-001
+- id: AC-260512-2245-003
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-12T22:45:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: The discovery waterfall returns a feed URL for any site that publishes a
+    valid RSS or Atom feed (head alternate-link or common path) or a parseable sitemap.
+  status: OPEN
+  result: null
+  priority: CRITICAL
+  updated_at: '2026-05-12T22:19:11.817178'
+  updated_by: CLAUDE_CODE
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: "## Description\n\nCore contract of FT02. Exercises all three waterfall steps\
+    \ (head scan,\ncommon-path probe, sitemap fallback) by hitting one site per step.\n\
+    \n## Test Instructions\n\n1. Call the discovery service with a homepage URL that\
+    \ exposes an RSS\n   alternate-link in its HTML head (e.g. `https://www.theverge.com`).\n\
+    \   Confirm returned `method: \"alternate_link\"` and a non-empty feed_url.\n\
+    2. Call with a site that has no head alternate-link but exposes `/feed`\n   returning\
+    \ 200 with a feed-shaped Content-Type. Confirm\n   `method: \"common_path\"`.\n\
+    3. Call with a site that has no head link, no common paths, but exposes\n   a\
+    \ parseable `/sitemap.xml`. Confirm `method: \"sitemap\"`.\n4. For each call,\
+    \ confirm total wall-clock time ≤ 10 s.\n"
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: FT-260512-2245-002
+- id: AC-260512-2245-005
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-12T22:45:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: The sidebar renders every active source with its colour dot, name, and unread-count
+    pill; the All-sources virtual entry sits at the top with the sum of all unread
+    counts.
+  status: OPEN
+  result: null
+  priority: CRITICAL
+  updated_at: '2026-05-12T22:19:11.827548'
+  updated_by: CLAUDE_CODE
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: "## Description\n\nHappy-path rendering check for FT03. Confirms the sidebar's\
+    \ basic visual\ncontract — colour dot per source, name, count pill, and the All-sources\n\
+    sum row at top.\n\n## Test Instructions\n\n1. Seed the DB with 3 sources (each\
+    \ assigned a different colour) and N\n   articles per source (e.g. 5, 8, 12 unread).\n\
+    2. Open the app. Confirm the sidebar shows:\n   - An \"All sources\" row at the\
+    \ top with an unread-count pill showing\n     25 (the sum).\n   - 3 source rows\
+    \ below, each with its colour dot, name, and unread\n     pill.\n3. Confirm the\
+    \ 3 colour dots are visually distinct (no two sources share\n   the same palette\
+    \ colour while the palette is not exhausted).\n"
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: FT-260512-2245-003
+- id: AC-260512-2245-007
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-12T22:45:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: Removing a source via the ⋮ menu opens a confirmation dialog; on confirm,
+    the Source AND all its Articles are deleted from the DB, and the sidebar row disappears
+    within 500 ms.
+  status: OPEN
+  result: null
+  priority: CRITICAL
+  updated_at: '2026-05-12T22:19:11.832963'
+  updated_by: CLAUDE_CODE
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: "## Description\n\nData-integrity check for FT04 remove. Verifies the cascade\
+    \ delete commits\nSource + Articles atomically and the UI updates within the responsiveness\n\
+    budget.\n\n## Test Instructions\n\n1. Add a source and let it poll until N articles\
+    \ are stored (N ≥ 5).\n2. Hover the source row to reveal the ⋮ menu. Click Remove.\n\
+    3. Confirm a confirmation dialog appears with the source name in the\n   prompt.\n\
+    4. Click Cancel. Confirm the dialog closes, the source row is still\n   present,\
+    \ and the DB is unchanged.\n5. Click Remove again, then Confirm. Confirm the source\
+    \ row disappears\n   from the sidebar within 500 ms.\n6. Query the DB. Confirm\
+    \ the Source row is gone AND zero Article rows\n   reference its `source_id`.\n"
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: FT-260512-2245-004
+- id: AC-260512-2300-005
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-12T23:00:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: A POST to /sources with a URL that FT02 successfully resolves inserts a new
+    Source row with all required fields populated and returns 201 with the new Source
+    ID.
+  status: OPEN
+  result: null
+  priority: CRITICAL
+  updated_at: '2026-05-12T22:19:11.860574'
+  updated_by: CLAUDE_CODE
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: "## Description\n\nCore write contract of US03. Verifies the Source row is\
+    \ created with\nevery required DATA_MODEL.md §1.1 field populated, and the response\
+    \ is\na proper 201 with the new ID.\n\n## Test Instructions\n\n1. POST to `/sources`\
+    \ with `{ url: \"https://www.theverge.com\" }`.\n2. Confirm response is 201 and\
+    \ body contains a new Source ID.\n3. Query the Source table by that ID. Confirm:\
+    \ `id`, `url`,\n   `feed_url`, `discovery_method`, `display_name`, `colour`, `muted`,\n\
+    \   and `created_at` are all populated. `muted` is 0; `created_at` is\n   within\
+    \ 1 s of submit.\n4. Confirm `display_name` matches the feed's `<title>` element\
+    \ (or the\n   URL hostname if the feed has no title).\n"
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: US-260512-2300-003
+- id: AC-260512-2300-007
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-12T23:00:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: A POST to /sources with a URL that FT02 fails to resolve returns 422 with
+    the FT02 error reason and details, and no Source row is inserted (atomic — no
+    partial state).
+  status: OPEN
+  result: null
+  priority: CRITICAL
+  updated_at: '2026-05-12T22:19:11.874434'
+  updated_by: CLAUDE_CODE
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: "## Description\n\nAtomicity contract for US03. Ensures partial Source state\
+    \ never lands\nwhen FT02 discovery fails — no row with NULL `feed_url`, no row\
+    \ with\na placeholder `display_name`, nothing.\n\n## Test Instructions\n\n1. Count\
+    \ the rows in the Source table — call it N.\n2. POST to `/sources` with a URL\
+    \ known to fail FT02 (e.g. a 404 host,\n   or a page with no feed and no sitemap).\n\
+    3. Confirm response is 422 with body containing `error: \"<one of the\n   FT02\
+    \ reason codes>\"` and a human-readable `details` string.\n4. Re-query the Source\
+    \ table. Confirm the row count is still N (no\n   partial insert).\n"
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: US-260512-2300-003
+- id: AC-260512-2300-008
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-12T23:00:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: On a successful POST /sources response, the sidebar partial refreshes and
+    the new source row appears in the DOM within 1 second of submit, with no full-page
+    reload.
+  status: OPEN
+  result: null
+  priority: CRITICAL
+  updated_at: '2026-05-12T22:19:11.878768'
+  updated_by: CLAUDE_CODE
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: "## Description\n\nHappy-path UI surface for US04. Verifies the HTMX-style\
+    \ partial swap\nworks, meets the 1 s budget, and does not trigger a full reload.\n\
+    \n## Test Instructions\n\n1. Open the app. Note the current set of sidebar rows.\n\
+    2. Open the source-add form, paste a valid feed-having URL, submit.\n3. Confirm\
+    \ the new source row appears in the sidebar DOM within 1 s of\n   the submit click.\n\
+    4. Confirm the page did NOT undergo a full reload (e.g. window.location\n   did\
+    \ not change, and any client-side state on the feed pane is\n   preserved).\n"
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: US-260512-2300-004
+- id: AC-260513-0000-007
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-13T00:00:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: Waterfall orchestrator calls steps in order (US01 head_scan, US02 common_path_probe,
+    US03 sitemap_fallback), returns the first successful step's result, and short-circuits
+    without calling later steps.
+  status: OPEN
+  result: null
+  priority: CRITICAL
+  updated_at: '2026-05-12T22:19:11.916419'
+  updated_by: CLAUDE_CODE
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: "## Description\n\nCore chain logic for US-260513-0000-004. Verifies ordered\
+    \ evaluation\nand short-circuit on first success.\n\n## Test Instructions\n\n\
+    1. Stub US-260513-0000-001 (head scan) to return\n   `{success: true, feed_url:\
+    \ \"X\", step: \"alternate_link\"}`.\n2. Call `discover(\"https://example.com\"\
+    )`.\n3. Confirm response is `{feed_url: \"X\", method: \"alternate_link\"}`.\n\
+    4. Confirm US-260513-0000-002 and US-260513-0000-003 were NOT invoked\n   (no\
+    \ network calls to `/feed`, `/sitemap.xml`, etc.).\n5. Stub US01 to fail and US02\
+    \ to succeed. Call. Confirm\n   `method: \"common_path\"` and US03 was NOT invoked.\n"
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: US-260513-0000-004
+- id: AC-260513-0000-008
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-13T00:00:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: Waterfall orchestrator enforces a total 10 s wall-clock budget across all
+    three steps and, on full failure, returns the LAST step's error code (not step
+    1's).
+  status: OPEN
+  result: null
+  priority: CRITICAL
+  updated_at: '2026-05-12T22:19:11.919682'
+  updated_by: CLAUDE_CODE
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: "## Description\n\nBudget and error-mapping contract for US-260513-0000-004.\
+    \ Two\ndistinct guarantees verified in one AC: (a) total time bounded at\n10 s,\
+    \ (b) when every step fails, the user-visible error is the\ndeepest step's reason\
+    \ — typically `no_sitemap` /\n`sitemap_unparsable` / `fetch_error`, never `no_alternate_link`.\n\
+    \n## Test Instructions\n\n1. Stub each step to take 4 s (12 s total). Call `discover`.\
+    \ Confirm\n   the call returns within ~10 s (not 12 s) — the orchestrator\n  \
+    \ short-circuits the last step when the remaining budget drops\n   below its per-step\
+    \ timeout.\n2. Stub all three steps to fail synchronously with their respective\n\
+    \   reasons (`no_alternate_link`, `all_common_paths_404`,\n   `no_sitemap`). Call.\n\
+    3. Confirm response is\n   `{error: \"no_sitemap\", details: <step 3's details>}`\
+    \ — NOT\n   `error: \"no_alternate_link\"`.\n"
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: US-260513-0000-004
+- id: AC-260513-0010-001
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-13T00:10:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: The sidebar renders its template (260 px wide, header with SOURCES label
+    and add button, footer with last-sync indicator) plus a row per Source (colour
+    dot + display_name + unread-count pill) and the All-sources virtual entry at the
+    top with the global unread sum.
+  status: OPEN
+  result: null
+  priority: CRITICAL
+  updated_at: '2026-05-12T22:19:11.927300'
+  updated_by: CLAUDE_CODE
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: "## Description\n\nCore rendering contract for US-260513-0010-001. Verifies\
+    \ all three\nsidebar sections render and the data binding is correct.\n\n## Test\
+    \ Instructions\n\n1. Seed the DB with 3 Sources (each a different colour) and\
+    \ N unread\n   Articles per source (e.g. 5, 8, 12).\n2. Open the app. Confirm\
+    \ the sidebar:\n   a. Is 260 px wide with the `--bg-secondary` background colour.\n\
+    \   b. Has a \"SOURCES\" header label and a visible `+` button.\n   c. Shows an\
+    \ \"All sources\" row at the top with an unread-count\n      pill reading \"25\"\
+    \ (the sum).\n   d. Below \"All sources\", shows 3 source rows in DB insertion\n\
+    \      order, each with its own colour dot, display_name, and\n      unread-count\
+    \ pill (5, 8, 12 respectively).\n   e. Has a footer with \"Updated N min ago\"\
+    \ text.\n3. Confirm the colour dots are visually distinct (no two sources\n  \
+    \ share the same palette colour while the palette is not exhausted).\n"
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: US-260513-0010-001
+- id: AC-260513-0010-005
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-13T00:10:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: GET /sidebar-partial returns ONLY the source-list block of the sidebar HTML
+    (no full page, no header chrome, no footer outside the source-list block), with
+    current Source and Article state reflected on each call.
+  status: OPEN
+  result: null
+  priority: CRITICAL
+  updated_at: '2026-05-12T22:19:11.944388'
+  updated_by: CLAUDE_CODE
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: "## Description\n\nCore endpoint contract for US-260513-0010-003. Verifies\
+    \ response\nshape is suitable for HTMX outer-HTML swap and reflects live DB\n\
+    state.\n\n## Test Instructions\n\n1. Seed the DB. Open the app. Note the sidebar\
+    \ shows N source rows.\n2. `GET /sidebar-partial`. Confirm the response body is\
+    \ HTML, contains\n   row elements for each Source AND the \"All sources\" entry,\
+    \ but\n   does NOT contain the outer page `<html>` / `<head>`, the\n   \"SOURCES\"\
+    \ header label, or the footer outside the source-list\n   block.\n3. Mute a Source\
+    \ via FT04. `GET /sidebar-partial` again. Confirm the\n   newly-muted source's\
+    \ row reflects muted state in the response\n   (eye-off icon, no count).\n4. Click\
+    \ an article (sets `read_at`). `GET /sidebar-partial`. Confirm\n   the relevant\
+    \ source's unread-count pill decremented AND the\n   \"All sources\" sum decremented\
+    \ in the response.\n"
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: US-260513-0010-003
+- id: AC-260513-0020-007
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-13T00:20:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: Clicking Remove opens a confirmation dialog; on confirm, DELETE /sources/{id}
+    cascades the delete to every Article referencing that source in a single transaction,
+    and the sidebar row disappears within 500 ms.
+  status: OPEN
+  result: null
+  priority: CRITICAL
+  updated_at: '2026-05-12T22:19:11.984251'
+  updated_by: CLAUDE_CODE
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: "## Description\n\nCore data-integrity contract for US-260513-0020-004 — the\
+    \ cascade\ndelete and the responsiveness budget.\n\n## Test Instructions\n\n1.\
+    \ Pick a source with N articles already ingested (N ≥ 5). Note the\n   Article\
+    \ count = N.\n2. Hover the row, open the ⋮ menu, click Remove.\n3. Confirm a confirmation\
+    \ dialog appears with the source's\n   display_name in the prompt.\n4. Click Remove\
+    \ (the dialog's confirm button).\n5. Confirm a DELETE to `/sources/{id}` fires.\n\
+    6. Confirm the sidebar row disappears within 500 ms of click.\n7. Query the DB.\
+    \ Confirm the Source row is gone AND zero Article\n   rows reference its `source_id`.\n"
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: US-260513-0020-004
+- id: AC-260512-2245-002
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-12T22:45:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: Submitting a homepage URL with no discoverable feed shows an inline error
+    explaining which step failed and leaves no Source row in the DB.
+  status: OPEN
+  result: null
+  priority: HIGH
+  updated_at: '2026-05-12T22:19:11.813372'
+  updated_by: CLAUDE_CODE
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: "## Description\n\nError-path check for FT01. Ensures partial state is never\
+    \ persisted when\nFT02 discovery fails, and that the user sees an actionable explanation.\n\
+    \n## Test Instructions\n\n1. Open the source-add form.\n2. Paste a URL known to\
+    \ have no RSS/Atom feed and no parseable sitemap\n   (e.g. a plain landing page).\n\
+    3. Submit. Confirm an inline error appears below the URL input citing\n   the\
+    \ failure reason (e.g. \"No RSS or Atom feed found and no sitemap\n   available\"\
+    ).\n4. Close the form. Confirm no new source row appears in the sidebar.\n5. Query\
+    \ the DB (or hit the sources API). Confirm no Source row was\n   created.\n"
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: FT-260512-2245-001
+- id: AC-260512-2245-004
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-12T22:45:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: When no feed can be resolved, the discovery waterfall returns a structured
+    error with one of the documented reason codes (no_alternate_link, all_common_paths_404,
+    no_sitemap, sitemap_unparsable, fetch_error).
+  status: OPEN
+  result: null
+  priority: HIGH
+  updated_at: '2026-05-12T22:19:11.823356'
+  updated_by: CLAUDE_CODE
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: "## Description\n\nFailure-mode coverage for FT02. Ensures FT01 receives a\
+    \ specific reason\ncode it can surface to the user, not a generic \"discovery\
+    \ failed\".\n\n## Test Instructions\n\n1. Call discovery on a URL that returns\
+    \ 404. Confirm\n   `error: \"fetch_error\"` and `details` describes the HTTP status.\n\
+    2. Call on a site with HTML but no feed link, no `/feed`/`/rss`/`/atom.xml`,\n\
+    \   and no sitemap. Confirm `error: \"no_sitemap\"` (the last waterfall\n   step's\
+    \ failure code).\n3. Call on a site whose `sitemap.xml` is malformed XML. Confirm\n\
+    \   `error: \"sitemap_unparsable\"` and `details` describes the parse\n   failure.\n\
+    4. For each case, confirm `details` contains a human-readable explanation.\n"
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: FT-260512-2245-002
+- id: AC-260512-2245-006
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-12T22:45:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: A muted source renders in the sidebar with reduced opacity, strikethrough
+    label, an eye-off icon in place of the unread-count pill, and remains clickable
+    but takes no filtering action.
+  status: OPEN
+  result: null
+  priority: HIGH
+  updated_at: '2026-05-12T22:19:11.830547'
+  updated_by: CLAUDE_CODE
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: "## Description\n\nMuted state visual contract per the mockup. Confirms the\
+    \ four visual\ndifferences from default (opacity, strikethrough, icon swap, no\
+    \ count)\nand the click-is-inert rule.\n\n## Test Instructions\n\n1. Add a source.\
+    \ Use the ⋮ menu (FT04) to mute it.\n2. Confirm the row's opacity drops (~0.5).\n\
+    3. Confirm the source name renders with strikethrough.\n4. Confirm the unread-count\
+    \ pill is replaced by an eye-off icon.\n5. Click the muted row. Confirm the feed\
+    \ pane does NOT switch to filter\n   on that source (muted rows are not filterable;\
+    \ only the ⋮ menu can\n   unmute).\n"
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: FT-260512-2245-003
+- id: AC-260512-2245-008
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-12T22:45:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: Renaming a source via the ⋮ menu changes the displayed label in the sidebar
+    without a page reload; the Source's canonical URL and feed URL are unchanged in
+    the DB.
+  status: OPEN
+  result: null
+  priority: HIGH
+  updated_at: '2026-05-12T22:19:11.837471'
+  updated_by: CLAUDE_CODE
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: "## Description\n\nRename semantics check for FT04. Verifies display label\
+    \ is the only\nmutable field on rename; canonical URL and feed URL stay immutable.\n\
+    \n## Test Instructions\n\n1. Add a source with display name \"The Verge\" and\
+    \ URL\n   `https://www.theverge.com`.\n2. Hover the row, click ⋮, click Rename.\n\
+    3. Edit the label to \"Verge News\". Press Enter.\n4. Confirm the sidebar row\
+    \ shows \"Verge News\" with no full-page reload\n   (only the row re-renders).\n\
+    5. Query the DB. Confirm Source.display_name = \"Verge News\" but\n   Source.url\
+    \ and Source.feed_url are unchanged from initial values.\n"
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: FT-260512-2245-004
+- id: AC-260512-2300-003
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-12T23:00:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: The dedup endpoint reports a duplicate when the submitted URL canonicalises
+    to an already-stored Source URL (lowercased host, www stripped, trailing slash
+    stripped).
+  status: OPEN
+  result: null
+  priority: HIGH
+  updated_at: '2026-05-12T22:19:11.850511'
+  updated_by: CLAUDE_CODE
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: "## Description\n\nCanonical-match contract for US02 dedup. Ensures `https://www.theverge.com/`\n\
+    and `https://theverge.com` are treated as the same source.\n\n## Test Instructions\n\
+    \n1. Seed the DB with a Source whose `url` is `https://theverge.com`.\n2. POST\
+    \ to `/sources/check-duplicate` with body `{ url: \"https://www.theverge.com/\"\
+    \ }`.\n3. Confirm the response body is `{ is_duplicate: true, existing_source_id:\
+    \ \"<the seeded Source ID>\" }`.\n4. Repeat with `HTTPS://THEVERGE.COM` (uppercase).\
+    \ Confirm same duplicate\n   result.\n"
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: US-260512-2300-002
+- id: AC-260512-2300-009
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-12T23:00:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: On any failure (client validation, dedup, discovery), an inline error message
+    appears below the URL input citing the specific failure; the form stays open and
+    the URL value is preserved.
+  status: OPEN
+  result: null
+  priority: HIGH
+  updated_at: '2026-05-12T22:19:11.882768'
+  updated_by: CLAUDE_CODE
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: "## Description\n\nError-state UX contract for US04. Covers every failure\
+    \ mode in the\nadd-source pipeline and confirms the user sees a specific cause\
+    \ and\ncan retry without re-typing.\n\n## Test Instructions\n\n1. Submit a malformed\
+    \ URL (US01 fail). Confirm inline error citing\n   format, form stays open, URL\
+    \ field retains the bad input.\n2. Submit a URL that already exists (US02 dedup\
+    \ hit). Confirm inline\n   error \"Already added\" (or equivalent), form stays\
+    \ open, URL\n   preserved.\n3. Submit a URL whose FT02 discovery fails (US03 error).\
+    \ Confirm\n   inline error citing the specific FT02 reason (e.g. \"No feed found\
+    \ —\n   no sitemap available\"), form stays open, URL preserved.\n4. In each case,\
+    \ click Cancel. Confirm the form closes without\n   persisting anything.\n"
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: US-260512-2300-004
+- id: AC-260513-0000-001
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-13T00:00:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: HTML head scan returns success with method=alternate_link and a resolved
+    absolute feed_url when the homepage HTML head contains a valid alternate-link
+    for RSS or Atom.
+  status: OPEN
+  result: null
+  priority: HIGH
+  updated_at: '2026-05-12T22:19:11.886293'
+  updated_by: CLAUDE_CODE
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: "## Description\n\nHappy-path coverage of US-260513-0000-001. Includes relative-href\n\
+    resolution to absolute URL.\n\n## Test Instructions\n\n1. Use a test page whose\
+    \ HTML head contains\n   `<link rel=\"alternate\" type=\"application/rss+xml\"\
+    \ href=\"/feed\">`\n   at `https://example.com`.\n2. Call `head_scan(\"https://example.com\"\
+    )`.\n3. Confirm the response is\n   `{step: \"alternate_link\", success: true,\
+    \ feed_url: \"https://example.com/feed\"}`.\n4. Confirm `feed_url` is absolute,\
+    \ not the relative `/feed`.\n5. Repeat with a head containing `application/atom+xml`.\
+    \ Confirm same\n   success shape.\n"
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: US-260513-0000-001
+- id: AC-260513-0000-002
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-13T00:00:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: HTML head scan returns step-fail with reason=no_alternate_link (or fetch_error
+    when the HTTP request fails) when no matching alternate-link is present.
+  status: OPEN
+  result: null
+  priority: HIGH
+  updated_at: '2026-05-12T22:19:11.894046'
+  updated_by: CLAUDE_CODE
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: "## Description\n\nFailure-mode coverage for US-260513-0000-001 head scan.\
+    \ Distinguishes\n\"no alternate-link in head\" from \"HTTP fetch failed\".\n\n\
+    ## Test Instructions\n\n1. Use a test page with HTML but no `<link rel=\"alternate\"\
+    >` in the\n   head. Call `head_scan`.\n2. Confirm response is\n   `{step: \"alternate_link\"\
+    , success: false, reason: \"no_alternate_link\"}`.\n3. Point the call at a URL\
+    \ that returns 404. Confirm response is\n   `{step: \"alternate_link\", success:\
+    \ false, reason: \"fetch_error\", details: <e.g. \"HTTP 404\">}`.\n4. Point the\
+    \ call at a URL that times out (use a delay > 5 s).\n   Confirm response is `{...\
+    \ reason: \"fetch_error\", details: <timeout>}`.\n"
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: US-260513-0000-001
+- id: AC-260513-0000-003
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-13T00:00:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: Common-path probe returns success with method=common_path on the first 200-plus-feed-Content-Type
+    hit and short-circuits without probing later paths.
+  status: OPEN
+  result: null
+  priority: HIGH
+  updated_at: '2026-05-12T22:19:11.897514'
+  updated_by: CLAUDE_CODE
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: "## Description\n\nHappy-path + short-circuit order check for US-260513-0000-002.\n\
+    Verifies the probe tries `/feed` before `/rss` before `/atom.xml`\nand stops on\
+    \ the first hit.\n\n## Test Instructions\n\n1. Set up a test server that returns\
+    \ 200 + `application/rss+xml` at\n   BOTH `/feed` and `/atom.xml` (and anything\
+    \ you like at `/rss`).\n2. Call `common_path_probe(\"https://example.com\")`.\n\
+    3. Confirm response is\n   `{step: \"common_path\", success: true, feed_url: \"\
+    https://example.com/feed\"}`\n   — the `/feed` URL wins because it is tried first.\n\
+    4. Inspect the test server's request log. Confirm `/feed` was\n   HEAD-requested\
+    \ but `/rss` and `/atom.xml` were NOT.\n"
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: US-260513-0000-002
+- id: AC-260513-0000-005
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-13T00:00:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: Sitemap fallback returns success with method=sitemap when /sitemap.xml (or
+    /news-sitemap.xml as fallback) is 200 with parseable XML, trying /sitemap.xml
+    first.
+  status: OPEN
+  result: null
+  priority: HIGH
+  updated_at: '2026-05-12T22:19:11.908133'
+  updated_by: CLAUDE_CODE
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: "## Description\n\nHappy-path + try-order for US-260513-0000-003.\n\n## Test\
+    \ Instructions\n\n1. Set up a test server returning 200 + valid XML at `/sitemap.xml`.\n\
+    \   Call `sitemap_fallback(\"https://example.com\")`. Confirm response\n   is\
+    \ `{step: \"sitemap\", success: true, feed_url: \"https://example.com/sitemap.xml\"\
+    }`.\n2. Set up a server returning 404 at `/sitemap.xml` and 200 + valid\n   XML\
+    \ at `/news-sitemap.xml`. Call. Confirm `feed_url` is\n   `https://example.com/news-sitemap.xml`\
+    \ (fallback path).\n"
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: US-260513-0000-003
+- id: AC-260513-0000-006
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-13T00:00:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: Sitemap fallback returns step-fail with a specific reason (no_sitemap, sitemap_unparsable,
+    or fetch_error) according to the dominant failure mode.
+  status: OPEN
+  result: null
+  priority: HIGH
+  updated_at: '2026-05-12T22:19:11.912132'
+  updated_by: CLAUDE_CODE
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: "## Description\n\nFailure-mode mapping for US-260513-0000-003. Confirms the\
+    \ three\ndistinct reason codes are emitted for the three distinct failure\nmodes.\n\
+    \n## Test Instructions\n\n1. Server returns 404 at both `/sitemap.xml` and `/news-sitemap.xml`.\n\
+    \   Call `sitemap_fallback`. Confirm reason is `no_sitemap`.\n2. Server returns\
+    \ 200 + malformed XML at `/sitemap.xml`. Call.\n   Confirm reason is `sitemap_unparsable`\
+    \ with `details` mentioning\n   the parse failure.\n3. Server times out (delay\
+    \ > 3 s) on both. Call. Confirm reason is\n   `fetch_error` with `details` mentioning\
+    \ the timeout.\n"
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: US-260513-0000-003
+- id: AC-260513-0010-002
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-13T00:10:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: The All-sources virtual entry shows the SUM of every active Source's unread
+    count, recomputed on each render (full page or partial refresh).
+  status: OPEN
+  result: null
+  priority: HIGH
+  updated_at: '2026-05-12T22:19:11.931531'
+  updated_by: CLAUDE_CODE
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: "## Description\n\nCross-source aggregation contract for US-260513-0010-001.\
+    \ The\nAll-sources sum is not a cached value — it recomputes from\n`COUNT(Article.*\
+    \ WHERE read_at IS NULL)` on every render.\n\n## Test Instructions\n\n1. Seed\
+    \ the DB with 3 Sources, unread counts 5, 8, 12. Open the app.\n   Confirm \"\
+    All sources\" pill shows 25.\n2. Click an article (sets its `read_at`). Refresh\
+    \ the page.\n3. Confirm \"All sources\" pill now shows 24.\n4. Add a 4th Source\
+    \ with 10 unread articles. Refresh. Confirm pill\n   shows 34.\n"
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: US-260513-0010-001
+- id: AC-260513-0010-003
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-13T00:10:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: Clicking a source row sets it to the active state (white background, left
+    border in info colour) and applies the feed filter to that source; clicking another
+    row clears active on the previous row and applies it to the new one.
+  status: OPEN
+  result: null
+  priority: HIGH
+  updated_at: '2026-05-12T22:19:11.935033'
+  updated_by: CLAUDE_CODE
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: "## Description\n\nActive-state behaviour contract for US-260513-0010-002.\n\
+    \n## Test Instructions\n\n1. With 3 sources in the sidebar, observe that no source\
+    \ row is\n   active on first load (default is the \"All sources\" combined\n \
+    \  view).\n2. Click the first source row. Confirm:\n   a. It renders with a white\
+    \ background and 2 px left border.\n   b. The feed pane updates to show only that\
+    \ source's articles.\n3. Click the second source row. Confirm the first row loses\
+    \ its\n   active state, the second row gains it, AND the feed updates to\n   the\
+    \ second source.\n4. Click the \"All sources\" entry. Confirm all source rows\
+    \ return to\n   the default state and the feed shows combined.\n"
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: US-260513-0010-002
+- id: AC-260513-0010-004
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-13T00:10:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: A source with muted=1 renders in the sidebar with opacity ~0.5, strikethrough
+    display_name, an eye-off icon in place of the unread-count pill, and click on
+    the row is inert (does not change the feed filter).
+  status: OPEN
+  result: null
+  priority: HIGH
+  updated_at: '2026-05-12T22:19:11.941063'
+  updated_by: CLAUDE_CODE
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: "## Description\n\nMuted-state visual + click-inert contract for US-260513-0010-002.\n\
+    \n## Test Instructions\n\n1. Set up a Source with `muted = 1` (directly in the\
+    \ DB or via FT04\n   mute action).\n2. Observe the source row. Confirm:\n   a.\
+    \ Opacity is approximately 0.5 on the whole row.\n   b. The display_name renders\
+    \ with strikethrough.\n   c. An eye-off icon is shown where the unread-count pill\
+    \ would be.\n   d. No unread-count number is visible on that row.\n3. Click the\
+    \ muted row. Confirm:\n   a. The feed pane does NOT switch to filter on this source.\n\
+    \   b. No active-state visual is applied to the row.\n"
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: US-260513-0010-002
+- id: AC-260513-0010-006
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-13T00:10:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: GET /sidebar-partial response is byte-equivalent (modulo timing-sensitive
+    values) to the source-list section of a full-page render of US-260513-0010-001.
+  status: OPEN
+  result: null
+  priority: HIGH
+  updated_at: '2026-05-12T22:19:11.948865'
+  updated_by: CLAUDE_CODE
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: "## Description\n\nRound-trip compatibility check for US-260513-0010-003 —\
+    \ ensures the\npartial output is functionally identical to the equivalent slice\
+    \ of\nthe full page, so HTMX swap produces the same DOM as a reload.\n\n## Test\
+    \ Instructions\n\n1. Load the app full-page. Extract the source-list section's\
+    \ HTML\n   by DOM-querying its outer container.\n2. `GET /sidebar-partial`. Capture\
+    \ the response body.\n3. Compare. Confirm the two HTML fragments are equivalent\
+    \ (same tag\n   structure, same class names, same data attributes — modulo\n \
+    \  dynamic timestamps and counts that may have ticked between the\n   two reads).\n"
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: US-260513-0010-003
+- id: AC-260513-0020-001
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-13T00:20:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: Hovering on a source row reveals the ⋮ icon button; clicking the button opens
+    a floating menu beside the row with Rename, Mute / Unmute, and Remove items.
+  status: OPEN
+  result: null
+  priority: HIGH
+  updated_at: '2026-05-12T22:19:11.952233'
+  updated_by: CLAUDE_CODE
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: "## Description\n\nCore menu-reveal contract for US-260513-0020-001. Verifies\
+    \ the\nhover affordance, menu open, and the three expected menu items.\n\n## Test\
+    \ Instructions\n\n1. Load the app with at least one source in the sidebar.\n2.\
+    \ Hover over a source row. Confirm a ⋮ icon button becomes visible\n   on the\
+    \ row (right-aligned area).\n3. Click the ⋮ button. Confirm a floating menu opens\
+    \ adjacent to\n   the row with three visible items: Rename, Mute (or Unmute),\
+    \ and\n   Remove.\n4. Confirm the menu is anchored near the row (not centred on\
+    \ screen,\n   not at the cursor's exact pixel) and remains visible while the\n\
+    \   cursor is on the row OR the menu.\n"
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: US-260513-0020-001
+- id: AC-260513-0020-003
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-13T00:20:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: Clicking Rename replaces the source name with an inline input; pressing Enter
+    saves the new display_name via PATCH /sources/{id} and the row re-renders with
+    the new label, no page reload.
+  status: OPEN
+  result: null
+  priority: HIGH
+  updated_at: '2026-05-12T22:19:11.968320'
+  updated_by: CLAUDE_CODE
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: "## Description\n\nHappy-path rename contract for US-260513-0020-002.\n\n\
+    ## Test Instructions\n\n1. Hover a source row, open the ⋮ menu, click Rename.\n\
+    2. Confirm the source name in the row is replaced by an inline\n   `<input>` element,\
+    \ focused with the current name selected.\n3. Type a new name \"My Renamed Source\"\
+    \ and press Enter.\n4. Confirm a PATCH request to `/sources/{id}` fires with body\n\
+    \   `{display_name: \"My Renamed Source\"}`.\n5. Confirm the row re-renders with\
+    \ the new label, no full-page\n   reload. Confirm refreshing the page preserves\
+    \ the new name\n   (persistence).\n"
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: US-260513-0020-002
+- id: AC-260513-0020-004
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-13T00:20:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: A successful rename modifies ONLY Source.display_name; Source.url, Source.feed_url,
+    and Source.discovery_method are unchanged in the DB.
+  status: OPEN
+  result: null
+  priority: HIGH
+  updated_at: '2026-05-12T22:19:11.972856'
+  updated_by: CLAUDE_CODE
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: "## Description\n\nRename immutability guarantee for US-260513-0020-002 —\
+    \ canonical\nidentity (URL, feed_url, discovery_method) is untouched, only the\n\
+    display label changes.\n\n## Test Instructions\n\n1. Note a source's current `url`,\
+    \ `feed_url`, `discovery_method`,\n   and `display_name` directly from the DB.\n\
+    2. Rename via the ⋮ menu to a different label.\n3. Re-query the DB. Confirm `display_name`\
+    \ is the new value AND\n   `url`, `feed_url`, `discovery_method` are byte-identical\
+    \ to the\n   pre-rename values.\n4. Attempt to PATCH `/sources/{id}` with `{url:\
+    \ \"https://other.com\"}`.\n   Confirm the endpoint rejects (4xx) or ignores the\
+    \ field (the\n   canonical URL remains).\n"
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: US-260513-0020-002
+- id: AC-260513-0020-005
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-13T00:20:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: Clicking Mute / Unmute toggles Source.muted via PATCH /sources/{id}/mute,
+    immediately re-renders the row to its muted or default visual state, and updates
+    the feed pane to add or remove that source's articles.
+  status: OPEN
+  result: null
+  priority: HIGH
+  updated_at: '2026-05-12T22:19:11.977251'
+  updated_by: CLAUDE_CODE
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: "## Description\n\nMute toggle round-trip for US-260513-0020-003. Verifies\
+    \ the\nbackend PATCH, the row re-render, and the feed-pane filter update\nall\
+    \ fire from a single user action.\n\n## Test Instructions\n\n1. Pick a source\
+    \ with `muted = 0`. Hover the row, open the ⋮ menu.\n   Confirm the menu item\
+    \ reads \"Mute\".\n2. Click Mute. Confirm a PATCH to `/sources/{id}/mute` fires\
+    \ with\n   body `{muted: true}`.\n3. Confirm the row immediately flips to the\
+    \ muted visual state\n   (opacity, strikethrough, eye-off icon — per AC-260513-0010-004).\n\
+    4. Confirm the feed pane no longer shows articles from that source\n   in the\
+    \ combined view.\n5. Re-open the ⋮ menu. Confirm the item now reads \"Unmute\"\
+    . Click\n   it. Confirm the row returns to default and the feed pane shows\n \
+    \  that source's articles again.\n"
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: US-260513-0020-003
+- id: AC-260513-0020-008
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-13T00:20:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: Clicking Cancel in the Remove dialog leaves the DB unchanged; after a successful
+    Remove, if the deleted source was the active feed filter, the feed pane resets
+    to All-sources combined view.
+  status: OPEN
+  result: null
+  priority: HIGH
+  updated_at: '2026-05-12T22:19:11.987759'
+  updated_by: CLAUDE_CODE
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: "## Description\n\nCancel safety + active-filter recovery for US-260513-0020-004.\n\
+    Confirms the dialog is the actual safety net AND that removing the\ncurrently-filtered\
+    \ source returns the feed pane to a usable state.\n\n## Test Instructions\n\n\
+    1. Open the ⋮ menu on a source row, click Remove. The confirmation\n   dialog\
+    \ appears.\n2. Click Cancel. Confirm the dialog closes, the source row remains\n\
+    \   in the sidebar, and the Source / Article tables are unchanged.\n3. Click that\
+    \ source row in the sidebar to set it as the active\n   filter. Confirm the feed\
+    \ pane shows only that source's articles.\n4. Open the ⋮ menu on that same row,\
+    \ click Remove, then Confirm.\n5. Confirm the source row disappears AND the feed\
+    \ pane resets to\n   the \"All sources\" combined view (no orphan filter state).\n"
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: US-260513-0020-004
+- id: AC-260512-2300-002
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-12T23:00:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: Submitting a properly-formatted URL (http or https scheme plus valid host)
+    passes client-side validation and POSTs to the server.
+  status: OPEN
+  result: FAIL
+  priority: MED
+  updated_at: '2026-05-17T12:00:34.937655'
+  updated_by: HUMAN
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: "## Description\n\nHappy-pass check for US01 client-side validation — ensures\
+    \ valid URLs\nproceed to the server-side handlers without being blocked.\n\n##\
+    \ Test Instructions\n\n1. Open the source-add form.\n2. Paste a well-formed URL\
+    \ (e.g. an https URL with a real host).\n3. Click Submit.\n4. Confirm no inline\
+    \ error appears under the input.\n5. Confirm the network panel shows a POST to\
+    \ the server-side endpoint\n   (US02 / US03 chain).\n"
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: BUG-260517-1128-001
+  - type: FULFILLS
+    target_id: TEST-260517-1200-001
+  - type: FULFILLS
+    target_id: US-260512-2300-001
+- id: AC-260512-2300-004
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-12T23:00:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: The dedup endpoint reports no duplicate when the submitted URL has no canonical
+    match against any stored Source.
+  status: OPEN
+  result: null
+  priority: MED
+  updated_at: '2026-05-12T22:19:11.856576'
+  updated_by: CLAUDE_CODE
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: "## Description\n\nNon-match happy-path for US02 dedup. Ensures fresh URLs\
+    \ proceed to FT02\ndiscovery (US03 dispatch).\n\n## Test Instructions\n\n1. Empty\
+    \ the DB of Sources (or seed with unrelated entries only).\n2. POST to `/sources/check-duplicate`\
+    \ with a URL that has no stored\n   canonical match.\n3. Confirm the response\
+    \ body is `{ is_duplicate: false, existing_source_id: null }`.\n"
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: US-260512-2300-002
+- id: AC-260512-2300-006
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-12T23:00:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: Palette colour assignment uses the next unused colour from the curated 12-list
+    in deterministic order; restarting the app preserves the next-available colour
+    pointer.
+  status: OPEN
+  result: null
+  priority: MED
+  updated_at: '2026-05-12T22:19:11.865119'
+  updated_by: CLAUDE_CODE
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: "## Description\n\nEdge-guard for US03 palette assignment. Ensures the next-colour\
+    \ pointer\nis persisted (in the settings table or equivalent) so that an app\n\
+    restart between two adds yields distinct colours, not collisions.\n\n## Test Instructions\n\
+    \n1. Empty the Source table. Add a source. Note the assigned `colour` —\n   call\
+    \ it C1 (should be palette index 0).\n2. Stop the app, restart it.\n3. Add a second\
+    \ source. Note the assigned `colour` — call it C2.\n4. Confirm C2 is palette index\
+    \ 1 (the next colour after C1), not C1.\n5. Repeat until palette is exhausted\
+    \ (12 sources). The 13th add reuses\n   palette index 0 (round-robin).\n"
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: US-260512-2300-003
+- id: AC-260513-0000-004
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-13T00:00:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: Common-path probe returns step-fail with reason=all_common_paths_404 when
+    none of /feed, /rss, /atom.xml returns a 200 with a feed-shaped Content-Type.
+  status: OPEN
+  result: null
+  priority: MED
+  updated_at: '2026-05-12T22:19:11.901514'
+  updated_by: CLAUDE_CODE
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: "## Description\n\nFailure-mode check for US-260513-0000-002 when no common\
+    \ path matches.\n\n## Test Instructions\n\n1. Use a test server that returns 404\
+    \ at `/feed`, `/rss`, and\n   `/atom.xml`.\n2. Call `common_path_probe`.\n3. Confirm\
+    \ response is\n   `{step: \"common_path\", success: false, reason: \"all_common_paths_404\"\
+    }`.\n4. Repeat with a server that returns 200 at all three paths but with\n  \
+    \ `text/html` Content-Type (not feed-shaped). Confirm same\n   `all_common_paths_404`\
+    \ reason (the path returned 200 but the\n   content type disqualified it).\n"
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: US-260513-0000-002
+- id: AC-260513-0020-002
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-13T00:20:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: The ⋮ menu auto-closes when the user clicks outside the menu OR hovers off
+    the source row for more than 300 ms; the ⋮ button does NOT appear on the All-sources
+    virtual entry.
+  status: OPEN
+  result: null
+  priority: MED
+  updated_at: '2026-05-12T22:19:11.963091'
+  updated_by: CLAUDE_CODE
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: "## Description\n\nAuto-close behaviour + the All-sources exclusion rule for\n\
+    US-260513-0020-001.\n\n## Test Instructions\n\n1. Hover a source row, click ⋮\
+    \ to open the menu.\n2. Click anywhere outside the menu (and outside the source\
+    \ row).\n   Confirm the menu closes within 100 ms.\n3. Re-open the menu. Move\
+    \ the cursor off the source row and the\n   menu. Wait > 300 ms. Confirm the menu\
+    \ auto-closes.\n4. Hover over the \"All sources\" virtual entry at the top of\
+    \ the\n   sidebar. Confirm NO ⋮ icon appears.\n"
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: US-260513-0020-001
+- id: AC-260513-0020-006
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-13T00:20:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: A muted source continues to be polled by EP03 — articles are still ingested
+    into the DB during the muted period and become visible immediately when the source
+    is unmuted.
+  status: OPEN
+  result: null
+  priority: MED
+  updated_at: '2026-05-12T22:19:11.980249'
+  updated_by: CLAUDE_CODE
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: "## Description\n\nMute semantics guarantee for US-260513-0020-003 — mute\
+    \ hides from\nthe feed but does NOT pause polling (charter §3 source mute\ndecision).\n\
+    \n## Test Instructions\n\n1. Pick a source. Mute it.\n2. Wait for EP03 to complete\
+    \ at least one poll cycle (or trigger\n   a manual refresh).\n3. Query the Article\
+    \ table for that source. Confirm new article\n   rows have been ingested with\
+    \ `fetched_at` after the mute time.\n4. Unmute the source. Confirm the newly-ingested\
+    \ articles appear\n   in the feed pane immediately (no further wait for the next\
+    \ poll).\n"
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: US-260513-0020-003
