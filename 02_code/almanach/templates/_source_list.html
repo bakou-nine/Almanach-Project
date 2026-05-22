@@ -1,17 +1,18 @@
-<div class="source-item all-sources {% if not active_source_id %}active{% endif %}"
-     data-source-id="">
-  <i class="ti ti-stack-2" style="font-size:14px; color:var(--text-info);"></i>
-  <span class="source-name">All sources</span>
-  <span class="source-count highlight">{{ sidebar.total_unread }}</span>
-</div>
+{# Sidebar source-list partial (CR-260522-2101-001 iteration 3).
+   Recursive folder tree, depth ≤ 5. Two render modes:
+   - sidebar.tree_mode = False → flat list (FT03 fallback, identical to pre-CR).
+   - sidebar.tree_mode = True  → recursive Folder → … → Source tree plus
+                                 Ungrouped overflow.
+#}
 
-<div style="height: 8px;"></div>
-
-{% for s in sidebar.sources %}
+{% macro source_row(s) %}
   <div class="source-item{% if s.muted %} muted{% endif %}{% if active_source_id == s.id %} active{% endif %}"
        data-source-id="{{ s.id }}"
        data-muted="{{ '1' if s.muted else '0' }}"
-       data-display-name="{{ s.display_name|e }}">
+       data-display-name="{{ s.display_name|e }}"
+       data-folder-id="{{ s.folder_id or '' }}"
+       data-position="{{ s.position }}"
+       draggable="true">
     <span class="source-dot" style="background:{{ s.colour }};"></span>
     <span class="source-name">{{ s.display_name }}</span>
     {% if s.muted %}
@@ -23,4 +24,80 @@
       <i class="ti ti-dots-vertical"></i>
     </button>
   </div>
-{% endfor %}
+{% endmacro %}
+
+{% macro folder_node(f) %}
+  <div class="folder-row{% if f.collapsed %} collapsed{% endif %}{% if f.muted or f.cascade_muted %} muted{% endif %}"
+       data-folder-id="{{ f.id }}"
+       data-folder-name="{{ f.name|e }}"
+       data-parent-id="{{ f.parent_id or '' }}"
+       data-depth="{{ f.depth }}"
+       data-muted="{{ '1' if f.muted else '0' }}"
+       data-position="{{ f.position }}"
+       style="--depth: {{ f.depth }};"
+       draggable="true">
+    <button class="chevron" data-folder-id="{{ f.id }}"
+            type="button" aria-label="Toggle folder">
+      <i class="ti ti-chevron-{{ 'right' if f.collapsed else 'down' }}"></i>
+    </button>
+    <span class="folder-name" data-folder-id="{{ f.id }}">{{ f.name }}</span>
+    {% if f.muted or f.cascade_muted %}
+      <i class="ti ti-eye-off folder-muted-icon" aria-label="muted"></i>
+    {% else %}
+      <span class="folder-count">{{ f.unread }}</span>
+    {% endif %}
+    {% if f.depth < 5 %}
+      <button class="folder-add-btn" data-parent-id="{{ f.id }}"
+              type="button" title="Add sub-folder" aria-label="Add sub-folder">
+        <i class="ti ti-plus"></i>
+      </button>
+    {% endif %}
+    <button class="row-action-btn folder-menu-btn"
+            data-folder-id="{{ f.id }}"
+            type="button" title="Folder actions" aria-label="Folder actions">
+      <i class="ti ti-dots-vertical"></i>
+    </button>
+  </div>
+  {% if not f.collapsed %}
+    <div class="folder-children {% if f.cascade_muted %}cascade-muted{% endif %}"
+         data-parent-folder-id="{{ f.id }}"
+         data-parent-depth="{{ f.depth }}">
+      {% for child in f.children %}
+        {{ folder_node(child) }}
+      {% endfor %}
+      {% for s in f.sources %}
+        {{ source_row(s) }}
+      {% endfor %}
+    </div>
+  {% endif %}
+{% endmacro %}
+
+<div class="source-item all-sources {% if not active_source_id %}active{% endif %}"
+     data-source-id="">
+  <i class="ti ti-stack-2" style="font-size:14px; color:var(--text-info);"></i>
+  <span class="source-name">All sources</span>
+  <span class="source-count highlight">{{ sidebar.total_unread }}</span>
+</div>
+
+<div style="height: 8px;"></div>
+
+{% if sidebar.tree_mode %}
+  {% for f in sidebar.roots %}
+    {{ folder_node(f) }}
+  {% endfor %}
+
+  <div class="ungrouped-zone" data-drop-zone="ungrouped">
+    <div class="ungrouped-label">
+      <span>Ungrouped</span>
+      <span class="folder-count">{{ sidebar.ungrouped_unread }}</span>
+    </div>
+    {% for s in sidebar.ungrouped_sources %}
+      {{ source_row(s) }}
+    {% endfor %}
+  </div>
+{% else %}
+  {# Flat mode — FT03 contract preserved. #}
+  {% for s in sidebar.sources %}
+    {{ source_row(s) }}
+  {% endfor %}
+{% endif %}

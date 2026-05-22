@@ -18,10 +18,10 @@ POLL_JOB_ID = "almanach_poll"
 RETENTION_JOB_ID = "almanach_retention"
 
 _scheduler: Optional[BackgroundScheduler] = None
-_last_sync_at: Optional[datetime] = None
 _domain_locks: dict[str, threading.Lock] = {}
 _domain_last_hit: dict[str, float] = {}
 _domain_locks_lock = threading.Lock()
+_manual_poll_lock = threading.Lock()
 
 
 def _domain_of(url: str) -> str:
@@ -44,7 +44,6 @@ def _acquire_polite_slot(url: str, min_gap_s: float = 2.0) -> None:
 
 
 def _poll_all_sources() -> None:
-    global _last_sync_at
     log.info("poll cycle start")
     sources = list(models.sources_to_poll())
     for src in sources:
@@ -63,7 +62,6 @@ def _poll_all_sources() -> None:
                 models.record_poll_failure(src["id"], str(e))
             except Exception:
                 pass
-    _last_sync_at = datetime.now(timezone.utc)
     log.info("poll cycle done")
 
 
@@ -74,15 +72,28 @@ def _retention_sweep() -> None:
 
 
 def last_sync_at() -> Optional[datetime]:
-    return _last_sync_at
+    """Read MAX(source.last_polled_at) from the DB so the value survives restarts."""
+    return models.latest_poll_at()
 
 
 def trigger_manual_poll() -> None:
-    """Run a poll cycle now in a worker thread (used by the header refresh)."""
+    """Run a poll cycle now in a worker thread (legacy fire-and-forget)."""
     if _scheduler is None:
         threading.Thread(target=_poll_all_sources, daemon=True).start()
         return
     _scheduler.add_job(_poll_all_sources, id=f"manual-{time.time()}", replace_existing=False)
+
+
+def run_manual_poll_blocking() -> None:
+    """Run a poll cycle synchronously in the caller's thread.
+
+    Used by the /refresh HTTP endpoint so the response only returns once the
+    cycle has completed — the frontend can then show real completion feedback
+    (BUG-260521-2051-001 defect #2). Serialised via _manual_poll_lock so
+    concurrent /refresh clicks queue rather than racing.
+    """
+    with _manual_poll_lock:
+        _poll_all_sources()
 
 
 def start() -> None:

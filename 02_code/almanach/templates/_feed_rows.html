@@ -1,0 +1,19 @@
+{# Article rows partial — returned by /feed-partial?rows_only=true for
+   scroll-append (US-260522-2230-003). No feed header, no empty state,
+   no spinner — just the cards. #}
+{% for a in feed.articles %}
+  <article class="article"
+           data-article-id="{{ a.id }}"
+           data-url="{{ a.url }}"
+           data-published-at="{{ a.published_at }}">
+    <div class="article-meta">
+      {% if a.is_unread %}<span class="badge-new"></span>{% endif %}
+      <span class="source-dot" style="background:{{ a.source_colour }};"></span>
+      <span class="article-source">{{ a.source_name }}</span>
+      <span class="article-sep">·</span>
+      <span class="article-time">{{ a.relative_time }}</span>
+    </div>
+    <p class="article-title">{{ a.title }}</p>
+    {% if a.summary %}<p class="article-summary">{{ a.summary }}</p>{% endif %}
+  </article>
+{% endfor %}

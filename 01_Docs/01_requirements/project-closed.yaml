@@ -1,10 +1,220 @@
 file: project-closed.yaml
 status_filter:
 - CLOSED
-exported_at: '2026-05-17T12:03:07.509651+00:00'
+exported_at: '2026-05-22T23:14:07.064090+00:00'
 project_charters: []
 epics: []
-orphans: []
+orphans:
+- id: US-260522-2050-001
+  project_id: PR-260512-2041-001
+  type: USER_STORY
+  created_at: '2026-05-22T20:50:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: Periodic Poll Scheduler
+  status: CLOSED
+  parent_id: FT-260522-2050-001
+  children_ids: []
+  updated_at: '2026-05-22T20:45:19.005874'
+  updated_by: HUMAN
+  approved_by_human: true
+  cancellation_reason: null
+  story_statement: As a user, I want the app to automatically poll my sources on a
+    configurable interval (default 10 min) while the app is running, so that my feed
+    stays fresh without me clicking refresh.
+  tags: []
+  body: 'Background scheduler that fires a poll cycle every N minutes (configurable;
+    runtime default 10 min per BUG-260521-2051-001) while the app process is up. Each
+    cycle iterates every non-muted Source and triggers the EP02 ingestion path. On
+    successful completion of a source''s poll, updates `Source.last_polled_at` to
+    the current timestamp.
+
+
+    Lifecycle: scheduler is registered + started at app boot (FastAPI startup hook)
+    and stopped cleanly at shutdown (no orphan threads). On boot, the first scheduled
+    tick happens N minutes after boot — the app-open one-shot poll (US-260522-2050-002)
+    covers the immediate refresh.
+
+
+    **Data model fields touched:**
+
+
+    - `Source.last_polled_at` (write) — current timestamp on successful poll.
+
+    - `Source.muted` (read) — skip muted sources from polling? No: charter §3 / US-260513-0020-003
+    mute keeps polling. Read only to confirm the source is still ingestable.
+
+    - `Article.*` (write via EP02 ingestion) — new article rows on each cycle.
+
+
+    **Spec reference:** Charter §3 (auto-refresh range 5–120 min, runtime default
+    10 min per BUG02); DATA_MODEL.md §1.1 Source (`last_polled_at` write).
+
+    '
+  acceptance_criteria: null
+  relations:
+  - type: CONFIRMED_BY
+    target_id: BUG-260521-2051-001
+  - type: FULFILLED_BY
+    target_id: AC-260522-2030-005
+- id: US-260522-2050-002
+  project_id: PR-260512-2041-001
+  type: USER_STORY
+  created_at: '2026-05-22T20:50:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: App-Open Initial Poll
+  status: CLOSED
+  parent_id: FT-260522-2050-001
+  children_ids: []
+  updated_at: '2026-05-22T20:45:51.485543'
+  updated_by: HUMAN
+  approved_by_human: true
+  cancellation_reason: null
+  story_statement: As a user, I want a poll cycle to fire automatically the moment
+    I open the app, so that the header's last-sync indicator reflects the open moment
+    without me waiting for the next scheduled tick.
+  tags: []
+  body: 'One-shot poll fired during app startup (FastAPI startup hook, after scheduler
+    registration but before the first scheduled tick). Same per-source iteration +
+    EP02 ingestion as the periodic cycle (US-260522-2050-001), but runs exactly once
+    per process boot and writes `Source.last_polled_at` on success.
+
+
+    Resolves BUG-260521-2051-001 defect #3''s auto-sync-on-open expectation. The header''s
+    last-sync indicator (US-260522-2050-003) reads MAX(`Source.last_polled_at`) and
+    therefore reflects this boot-time poll within seconds of app open.
+
+
+    **Data model fields touched:**
+
+
+    - `Source.last_polled_at` (write) — current timestamp on successful boot-time
+    poll.
+
+    - `Article.*` (write via EP02 ingestion) — any new article rows landed during
+    the boot poll.
+
+
+    **Spec reference:** DATA_MODEL.md §1.1 Source (`last_polled_at`); FastAPI startup
+    hook docs (lifespan event).
+
+    '
+  acceptance_criteria: null
+  relations:
+  - type: CONFIRMED_BY
+    target_id: BUG-260521-2051-001
+  - type: FULFILLED_BY
+    target_id: AC-260522-2030-008
+- id: US-260522-2050-003
+  project_id: PR-260512-2041-001
+  type: USER_STORY
+  created_at: '2026-05-22T20:50:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: Last-Sync Indicator Display
+  status: CLOSED
+  parent_id: FT-260522-2050-002
+  children_ids: []
+  updated_at: '2026-05-22T20:45:53.502181'
+  updated_by: HUMAN
+  approved_by_human: true
+  cancellation_reason: null
+  story_statement: As a user, I want the header to always show me how long ago the
+    last successful poll completed (across sessions), so that I know whether my feed
+    is fresh without having to remember when I last refreshed.
+  tags: []
+  body: 'Header-bar text element rendering ''last sync · N min ago'' (or ''last sync
+    · just now'' for <1 min). Value source: server reads MAX(`Source.last_polled_at`)
+    across all sources on every render of the header. Result: opens of the app immediately
+    reflect the most recent prior successful poll regardless of which session it ran
+    in. The ''never'' / placeholder text is shown ONLY when zero sources have ever
+    been polled (genuine empty state).
+
+
+    Partial-refresh mechanism: after any poll cycle completes (manual via US-260522-2050-004
+    OR scheduled via US-260522-2050-001 OR boot-time via US-260522-2050-002), the
+    header element re-renders via an HTMX-style partial swap of the indicator subtree
+    — no full page reload. Implementation: a small endpoint `GET /header-last-sync-partial`
+    returns the rendered text fragment; poll-completion handlers trigger the swap.
+
+
+    **Data model fields touched:**
+
+
+    - `Source.last_polled_at` (read, aggregate MAX) — the indicator''s value source.
+
+
+    **Spec reference:** UI_SPEC.md §Header (to be authored); DATA_MODEL.md §1.1 Source
+    (`last_polled_at`).
+
+    '
+  acceptance_criteria: null
+  relations:
+  - type: CONFIRMED_BY
+    target_id: BUG-260521-2051-001
+  - type: FULFILLED_BY
+    target_id: AC-260522-2030-007
+  - type: FULFILLED_BY
+    target_id: AC-260522-2030-009
+- id: US-260522-2050-004
+  project_id: PR-260512-2041-001
+  type: USER_STORY
+  created_at: '2026-05-22T20:50:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: Manual Refresh Button
+  status: CLOSED
+  parent_id: FT-260522-2050-002
+  children_ids: []
+  updated_at: '2026-05-22T20:45:23.429294'
+  updated_by: HUMAN
+  approved_by_human: true
+  cancellation_reason: null
+  story_statement: As a user, I want a refresh button in the header that visibly enters
+    a loading state on click and signals when the refresh completes (success or failure),
+    so that I know whether my action took effect and when it finished.
+  tags: []
+  body: 'Header-bar refresh button + click handler + completion signal surface. Click
+    → button enters loading state (spinner / disabled / animated icon) → backend `POST
+    /refresh` triggers a synchronous poll cycle (same EP02 ingestion path as the scheduled
+    cycle in US-260522-2050-001) → on completion, button exits loading state AND at
+    least one of: a toast appears, a transient success/error state shows on the button,
+    OR the header last-sync indicator (US-260522-2050-003) re-renders to the new timestamp.
+
+
+    Failure path: on backend 5xx / network failure, the button shows a transient error
+    state AND a toast surfaces the failure reason. The button is re-enabled so the
+    user can retry.
+
+
+    Button is disabled while a refresh is in flight to prevent double-clicks producing
+    concurrent poll cycles.
+
+
+    **Data model fields touched:**
+
+
+    - `Source.last_polled_at` (write, via the poll cycle dispatched by the endpoint)
+    — updated on successful per-source poll.
+
+    - `Article.*` (write via EP02 ingestion).
+
+
+    **Spec reference:** UI_SPEC.md §Header, §Toast (to be authored); DATA_MODEL.md
+    §1.1 Source (`last_polled_at` write).
+
+    '
+  acceptance_criteria: null
+  relations:
+  - type: CONFIRMED_BY
+    target_id: BUG-260521-2051-001
+  - type: FULFILLED_BY
+    target_id: AC-260522-2030-006
 tests:
 - id: TEST-260517-1200-001
   project_id: PR-260512-2041-001
@@ -15,8 +225,8 @@ tests:
   locked: false
   title: BUG-260517-1128-001 - Test 1
   status: CLOSED
-  result: FAIL
-  updated_at: '2026-05-17T12:03:01.671174'
+  result: PASS
+  updated_at: '2026-05-21T20:43:37.095560'
   updated_by: HUMAN
   approved_by_human: null
   cancellation_reason: null
@@ -38,9 +248,515 @@ tests:
     target_id: BUG-260517-1128-001
   - type: FULFILLED_BY
     target_id: AC-260512-2300-002
-bugs: []
+bugs:
+- id: BUG-260517-1128-001
+  project_id: PR-260512-2041-001
+  type: BUG
+  created_at: '2026-05-17T11:28:48.517392'
+  created_by: HUMAN
+  cancelled_at: null
+  locked: false
+  title: US-260512-2300-001 - Bug 1
+  status: CLOSED
+  priority: CRITICAL
+  updated_at: '2026-05-21T20:43:44.413664'
+  updated_by: HUMAN
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: AC failed as adding a totally legitimate url is generating erro message, see
+    screenshot part in yello ![error for legitimate url](01_docs/04_content/images/error
+    for legitimate url.png)
+  acceptance_criteria: null
+  relations:
+  - type: CONFIRMED_BY
+    target_id: TEST-260517-1200-001
+  - type: CONFIRMS
+    target_id: US-260512-2300-001
+  - type: FULFILLED_BY
+    target_id: AC-260512-2300-002
+- id: BUG-260521-2047-001
+  project_id: PR-260512-2041-001
+  type: BUG
+  created_at: '2026-05-21T20:47:31.695171'
+  created_by: HUMAN
+  cancelled_at: null
+  locked: false
+  title: Single source 3 dot button
+  status: CLOSED
+  priority: CRITICAL
+  updated_at: '2026-05-22T20:44:54.547537'
+  updated_by: HUMAN
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: '# BUG01 — Single source 3 dot button
+
+
+    ## Defect Summary
+
+
+    Three separate defects observed on the per-source ⋮ action menu (FT-260512-2245-004)
+    on the sidebar. Reported by HUMAN via Filum on 2026-05-21.
+
+
+    1. Menu auto-closes too aggressively — the floating menu disappears as soon as
+    the cursor moves off the spawning row, even when the cursor is over the menu surface.
+    Expected per US-260513-0020-001: menu stays visible while cursor is over the menu
+    OR the row, closes only after >300 ms off both.
+
+    2. Remove action (US-260513-0020-004) does not delete the source — clicking Remove
+    → confirming produces no DB delete and the sidebar row remains.
+
+    3. Mute action (US-260513-0020-003) has no visible effect — the row''s muted visual
+    state (US-260513-0010-002: opacity ~0.5, strikethrough, eye-off icon) is not applied,
+    and the menu label / icon does not toggle from Mute to Unmute on re-open.
+
+
+    ![3 dot bugs](01_docs/04_content/images/3 dot bugs.png)
+
+
+    ---
+
+
+    ## Affected Requirements (CONFIRMS targets)
+
+
+    - `US-260513-0020-001` — Action Menu Reveal — failing AC: AC-260522-2030-001 (defect
+    #1).
+
+    - `US-260513-0020-004` — Remove Action — failing AC: AC-260522-2030-002 (defect
+    #2).
+
+    - `US-260513-0020-003` — Mute / Unmute Action — failing AC: AC-260522-2030-003,
+    AC-260522-2030-004 (defect #3).
+
+    - `US-260513-0010-002` — Source-Row State Variants — failing AC: AC-260522-2030-003
+    (defect #3 visual sub-issue, multi-FULFILLS).
+
+
+    ---
+
+
+    ## Technical Approach
+
+
+    **Files / functions to change:**
+
+
+    - `02_code/filum/frontend/templates/_design-system/molecules/row-action-menu.html`
+    — menu hover/auto-close logic.
+
+    - `02_code/filum/frontend/static/css/design-system/molecules/row-action-menu.css`
+    — hover-bridge styling so the menu surface keeps the row hover-active.
+
+    - `02_code/filum/frontend/templates/_design-system/organisms/sidebar.html` — per-row
+    menu spawning + mute label binding.
+
+    - `02_code/filum/frontend/__init__.py` — verify `DELETE /sources/{id}` and `PATCH
+    /sources/{id}/mute` routes are wired and not silently 404-ing.
+
+    - Backend: `02_code/filum/backend/sources.py` (or wherever the source CRUD lives)
+    — confirm cascade-delete and mute toggle commit to DB.
+
+
+    **Root cause (hypotheses — confirm during fix):**
+
+
+    - Defect #1: menu likely uses `:hover` only on the spawning row with no hover-bridge
+    over the floating menu surface; cursor moving onto the menu collapses the row''s
+    hover state and the menu hides. Fix = pointer-events hover-bridge OR JS open-state
+    separated from row hover.
+
+    - Defect #2: most likely the frontend POSTs to a path that doesn''t match the
+    Flask route, or the JS handler is bound to the wrong button. Confirm by inspecting
+    browser network tab on click.
+
+    - Defect #3: mute PATCH may succeed silently but the sidebar partial refresh (US-260513-0010-003)
+    is not re-fetched, OR the muted-state CSS class is keyed to a flag the template
+    doesn''t pass through, OR the menu label is statically rendered without binding
+    to `Source.muted`.
+
+
+    **Fix outline:**
+
+
+    1. Reproduce each defect locally and capture network + console state.
+
+    2. Fix defect #1 first (purely frontend — design-system molecule). Apply §6.7
+    pre-flight before any frontend write.
+
+    3. Fix defect #2 — restore Remove wiring end to end. Verify cascade delete by
+    inspecting DB after click-confirm.
+
+    4. Fix defect #3 — restore Mute wiring, ensure sidebar partial refresh fires post-PATCH,
+    and bind menu label / icon to live `Source.muted`. Cross-check US-260513-0010-002
+    muted visual fires.
+
+    5. Run §6.7 post-edit static checks + visual confirmation gate on every preview
+    surface after any frontend file is touched.
+
+
+    ---
+
+    '
+  acceptance_criteria: null
+  relations:
+  - type: CONFIRMS
+    target_id: US-260513-0010-002
+  - type: CONFIRMS
+    target_id: US-260513-0020-001
+  - type: CONFIRMS
+    target_id: US-260513-0020-003
+  - type: CONFIRMS
+    target_id: US-260513-0020-004
+  - type: FULFILLED_BY
+    target_id: AC-260522-2030-001
+  - type: FULFILLED_BY
+    target_id: AC-260522-2030-002
+  - type: FULFILLED_BY
+    target_id: AC-260522-2030-003
+  - type: FULFILLED_BY
+    target_id: AC-260522-2030-004
+- id: BUG-260521-2051-001
+  project_id: PR-260512-2041-001
+  type: BUG
+  created_at: '2026-05-21T20:51:22.278690'
+  created_by: HUMAN
+  cancelled_at: null
+  locked: false
+  title: Last synch and manual refresh bugs
+  status: CLOSED
+  priority: HIGH
+  updated_at: '2026-05-22T20:45:58.820502'
+  updated_by: HUMAN
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: '# BUG02 — Last synch and manual refresh bugs
+
+
+    ## Defect Summary
+
+
+    Five related defects on the header bar''s last-sync indicator + manual refresh
+    button + sidebar footer ''Updated'' text. Cuts across EP03 (Background Polling)
+    and EP04 (Feed Reading Experience). Reported by HUMAN via Filum on 2026-05-21.
+
+
+    1. Background polling is not running on a 10-minute cadence as expected — the
+    auto-refresh either never fires or fires on a different schedule. Note: charter
+    §3 defaults to 20 min (range 5–120 min, configurable); the user expects 10 min
+    as the configured value — if 10 min reflects a deliberate default change, this
+    defect-1 element is closer to a CR scope tweak, but kept under this BUG since
+    the broader defect is that auto-refresh isn''t working at all. Confirm cadence
+    + configurability during fix.
+
+    2. Manual refresh button gives no completion feedback — clicking it produces no
+    visible indication that the refresh has finished (no toast, no spinner-off transition,
+    no updated last-sync text).
+
+    3. The header''s ''last sync · N min ago'' indicator does not reflect the real
+    most-recent successful poll across sessions — when the app is re-opened, last-sync
+    shows ''never'' / ''unknown'' instead of the timestamp from the previous session''s
+    last successful poll. The user also expects a one-shot auto-sync on app open so
+    ''last sync'' equals the open moment.
+
+    4. After a manual or scheduled refresh, the header''s ''last sync'' text does
+    not re-render to the new timestamp — it remains stale.
+
+    5. The sidebar footer currently shows ''Updated never'' (per FT-260512-2245-003
+    FT03 body) which both is wrong (state-disconnected) and duplicates the header''s
+    last-sync surface. Single source of truth should be the header indicator; the
+    sidebar footer ''Updated'' line should be removed.
+
+
+    ![last synch and manual bugsrefresh](01_docs/04_content/images/last synch and
+    manual  bugsrefresh.png)
+
+
+    ---
+
+
+    ## Affected Requirements (CONFIRMS targets)
+
+
+    - `US-260522-2050-001` — Periodic Poll Scheduler — failing AC: AC-260522-2030-005
+    (defect #1).
+
+    - `US-260522-2050-002` — App-Open Initial Poll — failing AC: AC-260522-2030-008
+    (defect #3 auto-sync sub).
+
+    - `US-260522-2050-003` — Last-Sync Indicator Display — failing AC: AC-260522-2030-007
+    (defect #3 indicator sub), AC-260522-2030-009 (defect #4).
+
+    - `US-260522-2050-004` — Manual Refresh Button — failing AC: AC-260522-2030-006
+    (defect #2).
+
+    - `US-260513-0010-001` — Sidebar Rendering — failing AC: AC-260522-2030-010 (defect
+    #5, sidebar footer ''Updated'' line removal).
+
+
+    **WBS note:** EP-260512-2230-003 and EP-260512-2230-004 were decomposed in the
+    same backfill cycle as this BUG so the AC could be properly multi-FULFILLS''d
+    to US-level hosts (per the user''s request). The two new features (FT-260522-2050-001
+    Scheduler Lifecycle & Cadence, FT-260522-2050-002 Header Bar Last-Sync Indicator)
+    are minimum-impact carves — only what the BUG02 AC needed. The rest of EP03 /
+    EP04 remains undecomposed pending future §5.1.1 rounds.
+
+
+    ---
+
+
+    ## Technical Approach
+
+
+    **Files / functions to change:**
+
+
+    - `02_code/filum/backend/scheduler.py` (or APScheduler bootstrap) — confirm the
+    periodic job is registered, fires on configured cadence, and uses the correct
+    interval setting.
+
+    - `02_code/filum/backend/sources.py` — manual refresh endpoint (`POST /refresh`
+    or similar) returns a structured completion payload the frontend can render against.
+
+    - `02_code/filum/backend/app_lifecycle.py` (or wherever startup hooks live) —
+    wire a one-shot poll on app open per defect #3 expectation.
+
+    - `02_code/filum/frontend/templates/_design-system/organisms/header.html` — last-sync
+    indicator binding + manual refresh button loading/completion states.
+
+    - `02_code/filum/frontend/static/css/design-system/organisms/header.css` — refresh
+    button loading + done transient state.
+
+    - `02_code/filum/frontend/templates/_design-system/organisms/sidebar.html` — remove
+    the footer ''Updated N min ago'' line per defect #5.
+
+    - `02_code/filum/frontend/__init__.py` — verify the manual-refresh route + the
+    partial that re-renders the header last-sync text.
+
+    - Persistence: ensure `Source.last_polled_at` is committed on every successful
+    poll (charter §3) so cross-session last-sync survives.
+
+
+    **Root cause (hypotheses — confirm during fix):**
+
+
+    - Defect #1: scheduler not started, or interval setting is hardcoded to a non-10
+    value, or job silently raises on first run.
+
+    - Defect #2: refresh endpoint returns 204 / no body and the frontend has no success
+    handler binding to it.
+
+    - Defect #3: header last-sync is computed at template render time against an in-process
+    variable instead of the persisted `Source.last_polled_at` max; on a fresh process
+    the variable is null even if the DB has prior timestamps. Plus no startup-poll
+    wiring.
+
+    - Defect #4: header last-sync element is rendered server-side once and never refreshed
+    via partial swap after poll completion.
+
+    - Defect #5: sidebar footer ''Updated N min ago'' is hardcoded literal in the
+    FT03 template AND is sourced from a stale variable that defaults to ''never''.
+
+
+    **Fix outline:**
+
+
+    1. Confirm the actual current state of the scheduler + last-sync wiring (read
+    backend + frontend files end to end) before changing anything.
+
+    2. Confirm with the user (in Filum review of this BUG) whether 10 min is the desired
+    auto-refresh interval (vs charter §3 default 20 min) — if it''s truly a deliberate
+    value change, that part may need to be re-triaged as a CR. Default proceed: configurable,
+    set to 10 min as the runtime value.
+
+    3. Fix scheduler → ensure a poll fires every 10 min while the app is up, plus
+    a one-shot poll on app open.
+
+    4. Make `Source.last_polled_at` the persisted source of truth; header reads the
+    MAX across all non-muted sources.
+
+    5. Wire the manual refresh button + endpoint round-trip so completion is visible
+    (button transient state + header last-sync re-render).
+
+    6. Remove the sidebar footer ''Updated'' line. Update FT-260512-2245-003 body
+    if scope change is confirmed — but that requirement edit is a §5.2.4 CR-class
+    change, NOT to be made inside this BUG fix. Flag for the human during review.
+
+    7. Apply §6.7 pre-flight before any frontend write and the post-edit static +
+    visual confirmation gate after every frontend write.
+
+
+    ---
+
+    '
+  acceptance_criteria: null
+  relations:
+  - type: CONFIRMS
+    target_id: US-260513-0010-001
+  - type: CONFIRMS
+    target_id: US-260522-2050-001
+  - type: CONFIRMS
+    target_id: US-260522-2050-002
+  - type: CONFIRMS
+    target_id: US-260522-2050-003
+  - type: CONFIRMS
+    target_id: US-260522-2050-004
+  - type: FULFILLED_BY
+    target_id: AC-260522-2030-005
+  - type: FULFILLED_BY
+    target_id: AC-260522-2030-006
+  - type: FULFILLED_BY
+    target_id: AC-260522-2030-007
+  - type: FULFILLED_BY
+    target_id: AC-260522-2030-008
+  - type: FULFILLED_BY
+    target_id: AC-260522-2030-009
+  - type: FULFILLED_BY
+    target_id: AC-260522-2030-010
 change_requests: []
 acceptance_criteria:
+- id: AC-260512-2245-001
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-12T22:45:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: Pasting a valid news website URL and submitting the source-add form persists
+    a new Source with an assigned palette colour and a visible sidebar row within
+    1 second.
+  status: CLOSED
+  result: PASS
+  priority: CRITICAL
+  updated_at: '2026-05-21T20:43:14.148803'
+  updated_by: HUMAN
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: "## Description\n\nHappy-path integration check for FT01. Verifies the chain:\
+    \ form submit →\nvalidation pass → FT02 discovery success → palette colour assignment\
+    \ →\nDB persist → sidebar re-render. The 1 s budget assumes a responsive\ntarget\
+    \ site.\n\n## Test Instructions\n\n1. Open the app at the default route.\n2. Click\
+    \ the `+` icon in the sidebar header. The source-add form opens.\n3. Paste `https://www.theverge.com`\
+    \ (or any site with an RSS feed) and\n   submit.\n4. Confirm a new source row\
+    \ appears in the sidebar within 1 second, with\n   a colour dot distinct from\
+    \ existing rows.\n5. Refresh the page. Confirm the source row is still present\n\
+    \   (persistence).\n"
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: FT-260512-2245-001
+- id: AC-260522-2030-002
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-22T20:30:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: Clicking Remove → confirming in the dialog → the source row disappears from
+    the sidebar within 500 ms AND the Source plus every Article referencing it are
+    deleted from the DB in a single transaction.
+  status: CLOSED
+  result: PASS
+  priority: CRITICAL
+  updated_at: '2026-05-22T20:43:53.671752'
+  updated_by: HUMAN
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: '## Description
+
+
+    Fix verification for BUG-260521-2047-001 defect #2 — Remove must execute the cascade
+    delete that US-260513-0020-004 promises. Reference: US-260513-0020-004 body, DATA_MODEL.md
+    §2.1 (Source → Article ON DELETE CASCADE).
+
+
+    ## Test Instructions
+
+
+    1. Pick an existing source with at least one article in the DB. Note the source
+    id and the article count.
+
+    2. Open the ⋮ menu on that row and click Remove. Confirm the confirmation dialog
+    shows the source''s display_name.
+
+    3. Click Remove in the dialog. Confirm the sidebar row disappears within 500 ms
+    (sidebar partial refresh fires).
+
+    4. Query the DB: `SELECT * FROM Source WHERE id = ''<id>''` returns zero rows.
+
+    5. Query the DB: `SELECT COUNT(*) FROM Article WHERE source_id = ''<id>''` returns
+    zero (cascade fired).
+
+    6. Repeat the click-confirm cycle but click Cancel on the dialog: confirm no DB
+    change and the row remains.
+
+    '
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: BUG-260521-2047-001
+  - type: FULFILLS
+    target_id: US-260513-0020-004
+- id: AC-260522-2030-003
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-22T20:30:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: Clicking Mute on an unmuted source flips `Source.muted` to 1 AND the row
+    immediately renders in muted visual state (opacity ~0.5, strikethrough on display_name,
+    eye-off icon replacing the unread-count pill).
+  status: CLOSED
+  result: PASS
+  priority: CRITICAL
+  updated_at: '2026-05-22T20:44:30.136006'
+  updated_by: HUMAN
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: '## Description
+
+
+    Fix verification for BUG-260521-2047-001 defect #3 (visual half) — restores both
+    the persistence contract of US-260513-0020-003 and the visual contract of US-260513-0010-002.
+    Multi-FULFILLS targets both hosts since the AC asserts behaviour spanning the
+    toggle action and the row state rendering. Reference: US-260513-0020-003 body,
+    US-260513-0010-002 body (Muted state section).
+
+
+    ## Test Instructions
+
+
+    1. Pick an existing unmuted source. Confirm the row shows colour dot + name +
+    unread-count pill.
+
+    2. Open the ⋮ menu and click Mute.
+
+    3. Confirm the backend `PATCH /sources/<id>/mute` returns success (HTTP 2xx).
+
+    4. Query the DB: `SELECT muted FROM Source WHERE id = ''<id>''` returns 1.
+
+    5. Without reloading the page, confirm the sidebar row now renders with opacity
+    ~0.5, strikethrough on the display_name, and an eye-off icon in place of the unread-count
+    pill (sidebar partial refresh fired).
+
+    6. Reload the page; confirm the muted visual persists.
+
+    '
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: BUG-260521-2047-001
+  - type: FULFILLS
+    target_id: US-260513-0010-002
+  - type: FULFILLS
+    target_id: US-260513-0020-003
 - id: AC-260512-2300-001
   project_id: PR-260512-2041-001
   type: AC
@@ -84,3 +800,403 @@ acceptance_criteria:
   relations:
   - type: FULFILLS
     target_id: US-260512-2300-001
+- id: AC-260522-2030-001
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-22T20:30:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: The ⋮ floating menu stays visible while the cursor is over either the menu
+    surface or its spawning source row, and auto-closes only after the cursor leaves
+    both for >300 ms (or on outside-click).
+  status: CLOSED
+  result: PASS
+  priority: HIGH
+  updated_at: '2026-05-22T20:44:44.160433'
+  updated_by: HUMAN
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: '## Description
+
+
+    Fix verification for BUG-260521-2047-001 defect #1 — restores the hover/auto-close
+    contract of US-260513-0020-001. Reference: FT-260512-2245-004 body, US-260513-0020-001
+    body (auto-close after >300 ms off both surfaces).
+
+
+    ## Test Instructions
+
+
+    1. Hover a source row. Confirm the ⋮ button reveals.
+
+    2. Click the ⋮ button. Confirm the floating menu opens beside the row.
+
+    3. Move the cursor from the row directly onto the menu surface (without leaving
+    the menu+row combined area). Confirm the menu stays visible.
+
+    4. Move the cursor anywhere over the menu surface for several seconds. Confirm
+    the menu does not close.
+
+    5. Move the cursor off both the menu and the row. Confirm the menu auto-closes
+    after >300 ms.
+
+    6. Re-open the menu and click outside the menu (on the feed pane). Confirm the
+    menu closes immediately.
+
+    '
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: BUG-260521-2047-001
+  - type: FULFILLS
+    target_id: US-260513-0020-001
+- id: AC-260522-2030-004
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-22T20:30:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: After muting a source, re-opening the ⋮ menu shows the action label as 'Unmute'
+    (and its icon reflects the new state); clicking Unmute reverts both the menu label
+    and the row visual back to the default rendering.
+  status: CLOSED
+  result: PASS
+  priority: HIGH
+  updated_at: '2026-05-22T20:44:54.543535'
+  updated_by: HUMAN
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: '## Description
+
+
+    Fix verification for BUG-260521-2047-001 defect #3 (label/icon toggle half) —
+    restores the bidirectional menu label binding promised by US-260513-0020-003 body
+    (label reads ''Mute'' when `muted = 0`, ''Unmute'' when `muted = 1`). Reference:
+    FT-260512-2245-004 body bullet ''Mute / Unmute'', US-260513-0020-003 body.
+
+
+    ## Test Instructions
+
+
+    1. Start with an unmuted source. Open its ⋮ menu. Confirm the label reads ''Mute''
+    (and the icon matches).
+
+    2. Click Mute. Wait for the sidebar partial refresh.
+
+    3. Re-open the same row''s ⋮ menu. Confirm the label now reads ''Unmute'' (and
+    the icon has updated to the unmute glyph).
+
+    4. Click Unmute. Confirm the row visual reverts to default (colour dot + name
+    + unread-count pill) and `Source.muted` is 0 in the DB.
+
+    5. Re-open the ⋮ menu. Confirm the label reads ''Mute'' again.
+
+    '
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: BUG-260521-2047-001
+  - type: FULFILLS
+    target_id: US-260513-0020-003
+- id: AC-260522-2030-005
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-22T20:30:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: While the app process is up, the background poll cycle fires automatically
+    every 10 minutes (±30 s tolerance), running the EP02 ingestion path for every
+    non-muted source.
+  status: CLOSED
+  result: PASS
+  priority: HIGH
+  updated_at: '2026-05-22T20:45:18.999346'
+  updated_by: HUMAN
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: '## Description
+
+
+    Fix verification for BUG-260521-2051-001 defect #1 — restores the auto-refresh
+    cadence promised by EP-260512-2230-003 (the user''s target value is 10 min, within
+    the charter §3 range 5–120 min). Note: if 10 min becomes the new default, EP03
+    body should be updated under a separate CR. This AC only verifies the runtime
+    cadence.
+
+
+    ## Test Instructions
+
+
+    1. Start the app with at least 2 non-muted sources configured.
+
+    2. Note the current `Source.last_polled_at` values.
+
+    3. Wait 10 minutes (±30 s) without touching the manual refresh button.
+
+    4. Confirm a poll cycle fired: every source''s `last_polled_at` advanced; any
+    new feed entries are now in the Article table.
+
+    5. Wait another 10 minutes. Confirm a second cycle fired.
+
+    6. Inspect scheduler logs to verify the job is registered with a 10 min interval
+    and ran with no exceptions.
+
+    '
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: BUG-260521-2051-001
+  - type: FULFILLS
+    target_id: US-260522-2050-001
+- id: AC-260522-2030-006
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-22T20:30:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: Clicking the manual refresh button in the header → the button enters a visible
+    loading state → on completion (success or failure) the loading state ends AND
+    a visible completion signal appears (toast OR transient button confirmation OR
+    updated last-sync text within the same render).
+  status: CLOSED
+  result: PASS
+  priority: HIGH
+  updated_at: '2026-05-22T20:45:23.423274'
+  updated_by: HUMAN
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: '## Description
+
+
+    Fix verification for BUG-260521-2051-001 defect #2 — the header refresh button
+    must surface a completion signal so the user knows the refresh finished. Reference:
+    EP-260512-2230-004 body (header bar, manual refresh button).
+
+
+    ## Test Instructions
+
+
+    1. Open the app on the default view. Note the current header last-sync text.
+
+    2. Click the manual refresh button in the header.
+
+    3. Confirm the button immediately enters a loading state (spinner / disabled /
+    animated icon — any visible ''in progress'' affordance).
+
+    4. Wait for the refresh round-trip to complete. Confirm the loading state ends.
+
+    5. Confirm at least one of: a toast appears saying refresh complete, OR the button
+    shows a transient checkmark / success state, OR the header last-sync text re-renders
+    to the new timestamp.
+
+    6. Simulate a failed refresh (kill network or stub the backend to return 5xx).
+    Confirm a visible failure signal appears (error toast OR button error state) —
+    the user must know the action terminated either way.
+
+    '
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: BUG-260521-2051-001
+  - type: FULFILLS
+    target_id: US-260522-2050-004
+- id: AC-260522-2030-007
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-22T20:30:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: On app open, the header's 'last sync · N min ago' indicator shows a timestamp
+    derived from the persisted MAX(`Source.last_polled_at`) across all sources — never
+    'never' / 'unknown' when at least one prior successful poll exists in the DB.
+  status: CLOSED
+  result: PASS
+  priority: HIGH
+  updated_at: '2026-05-22T20:45:29.848713'
+  updated_by: HUMAN
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: '## Description
+
+
+    Fix verification for BUG-260521-2051-001 defect #3 (indicator persistence half)
+    — last-sync must reflect persisted poll history, not an in-process variable that
+    resets on app boot. Reference: EP-260512-2230-004 body (header bar ''last sync
+    · N min ago'').
+
+
+    ## Test Instructions
+
+
+    1. Run the app and wait for at least one successful poll cycle. Confirm `Source.last_polled_at`
+    is populated for at least one source.
+
+    2. Close the app process.
+
+    3. Re-open the app.
+
+    4. Confirm the header''s last-sync indicator shows the timestamp from step 1 (e.g.
+    ''2 min ago'' if 2 min have passed since step 1) — NOT ''never'', NOT empty, NOT
+    a default placeholder.
+
+    5. Confirm the indicator''s value matches MAX(`Source.last_polled_at`) across
+    all sources by querying the DB.
+
+    '
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: BUG-260521-2051-001
+  - type: FULFILLS
+    target_id: US-260522-2050-003
+- id: AC-260522-2030-008
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-22T20:30:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: On app open, a one-shot poll cycle fires automatically (no user action required)
+    so the most recent open of the app is reflected as the last sync.
+  status: CLOSED
+  result: PASS
+  priority: HIGH
+  updated_at: '2026-05-22T20:45:51.479502'
+  updated_by: HUMAN
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: '## Description
+
+
+    Fix verification for BUG-260521-2051-001 defect #3 (auto-sync-on-open half) —
+    the user expects opening the app to immediately refresh, not wait up to 10 min
+    for the next scheduled cycle. Reference: EP-260512-2230-003 body (scheduler lifecycle).
+
+
+    ## Test Instructions
+
+
+    1. Note the current MAX(`Source.last_polled_at`) and the current wall-clock time.
+
+    2. Close the app.
+
+    3. Wait ≥ 2 minutes (so any test passes only if a NEW poll fires, not the prior
+    one).
+
+    4. Open the app.
+
+    5. Within 30 s of app open, confirm MAX(`Source.last_polled_at`) advanced to a
+    value within 30 s of the app-open timestamp.
+
+    6. Confirm the header last-sync indicator reflects this new timestamp.
+
+    '
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: BUG-260521-2051-001
+  - type: FULFILLS
+    target_id: US-260522-2050-002
+- id: AC-260522-2030-009
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-22T20:30:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: After any poll cycle completes (manual or scheduled), the header's 'last
+    sync · N min ago' text re-renders to the new timestamp without a full page reload.
+  status: CLOSED
+  result: PASS
+  priority: HIGH
+  updated_at: '2026-05-22T20:45:53.495640'
+  updated_by: HUMAN
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: '## Description
+
+
+    Fix verification for BUG-260521-2051-001 defect #4 — the header last-sync element
+    must partial-refresh on poll completion. Reference: EP-260512-2230-004 body (header
+    bar last-sync).
+
+
+    ## Test Instructions
+
+
+    1. Open the app. Note the current header last-sync text (e.g. ''5 min ago'').
+
+    2. Click the manual refresh button. Wait for completion.
+
+    3. Confirm the header text re-renders to a fresh value (e.g. ''just now'' or ''<1
+    min ago'') WITHOUT a full page reload (check by observing no browser refresh indicator).
+
+    4. Wait for the next scheduled poll cycle (per AC-260522-2030-005). Confirm the
+    header text again re-renders without manual page reload.
+
+    '
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: BUG-260521-2051-001
+  - type: FULFILLS
+    target_id: US-260522-2050-003
+- id: AC-260522-2030-010
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-22T20:30:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: The sidebar footer no longer renders the 'Updated N min ago' line; last-sync
+    state lives exclusively in the header bar indicator (single source of truth).
+  status: CLOSED
+  result: PASS
+  priority: MED
+  updated_at: '2026-05-22T20:45:58.815503'
+  updated_by: HUMAN
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: '## Description
+
+
+    Fix verification for BUG-260521-2051-001 defect #5 — removes the duplicate ''Updated
+    N min ago'' line from the sidebar footer. Note: FT-260512-2245-003 body currently
+    documents this footer line; the requirement-side body update should land via a
+    separate §5.2.4 CR (flagged in BUG body fix outline step 6).
+
+
+    ## Test Instructions
+
+
+    1. Open the app. Inspect the sidebar bottom.
+
+    2. Confirm the footer no longer contains an ''Updated N min ago'' line (and no
+    ''Updated never'' literal anywhere).
+
+    3. Confirm the only last-sync surface rendered anywhere on the page is the header
+    bar''s ''last sync · N min ago'' indicator.
+
+    4. Refresh manually. Confirm only the header indicator updates; no sidebar footer
+    text re-appears.
+
+    '
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: BUG-260521-2051-001
+  - type: FULFILLS
+    target_id: US-260513-0010-001

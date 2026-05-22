@@ -2,7 +2,7 @@ file: project-active.yaml
 status_filter:
 - OPEN
 - SOLVED
-exported_at: '2026-05-17T12:03:07.509651+00:00'
+exported_at: '2026-05-22T23:14:07.064090+00:00'
 project_charters:
 - id: PC-260512-2041-001
   project_id: PR-260512-2041-001
@@ -390,28 +390,40 @@ project_charters:
     - FT-260512-2245-002
     - FT-260512-2245-003
     - FT-260512-2245-004
-    updated_at: '2026-05-16T06:24:26.565382'
-    updated_by: HUMAN
+    - FT-260522-2115-001
+    updated_at: '2026-05-22T21:31:54.065108'
+    updated_by: CLAUDE_CODE
     approved_by_human: true
     cancellation_reason: null
     tags: []
     body: "# EP01 — Source Management\n\n## Feature Navigation Flows\n\n(Features\
       \ pending — next §5.1.1 round.)\n\n---\n\n## Body\n\nSource CRUD + the discovery\
-      \ waterfall that resolves a homepage URL to a\nusable feed. Sidebar ⋮ menu drives\
-      \ rename / mute / remove; rename changes\ndisplay label only, canonical URL\
-      \ is immutable; mute hides from feed and\nkeeps polling.\n\n**Key functional\
-      \ areas:**\n\n- Source-add form (URL paste → discovery waterfall → save).\n\
-      - Discovery waterfall: RSS/Atom alternate-link → /feed | /rss | /atom.xml\n\
-      \  → sitemap.xml | news-sitemap.xml fallback.\n- Sidebar source-row rendering\
-      \ (active, muted, unread-count pill).\n- ⋮ action menu (rename, mute / unmute,\
-      \ remove).\n- Auto colour assignment from the curated palette.\n\n**Out of scope:**\n\
-      \n- Manual feed-URL paste (auto-discovery is the only entry path).\n- AI-assisted\
-      \ discovery (Phase 4+).\n- Per-source polling interval (single global; see EP03).\n\
-      - Article parsing / storage (see EP02).\n\n**Reference documents:**\n\n- DATA_MODEL.md\
-      \ §Source (to be authored).\n- UI_SPEC.md §Sidebar, §SourceAddForm (to be authored).\n\
-      - 04_content/html/mockup.html (sidebar + source rows).\n\n---\n"
+      \ waterfall that resolves a homepage URL\nto a usable feed. Sidebar ⋮ menu drives\
+      \ rename / mute / remove;\nrename changes display label only, canonical URL\
+      \ is immutable;\nmute hides from feed and keeps polling. Sources can additionally\n\
+      be organised into a 2-level Group → Subgroup tree (FT05, added by\nCR-260522-2101-001)\
+      \ with drag-and-drop reassignment, inline\nrename of group / subgroup titles,\
+      \ and an Ungrouped overflow zone.\n\n**Key functional areas:**\n\n- Source-add\
+      \ form (URL paste → discovery waterfall → save).\n- Discovery waterfall: RSS/Atom\
+      \ alternate-link → /feed | /rss\n  | /atom.xml → sitemap.xml | news-sitemap.xml\
+      \ fallback.\n- Sidebar source-row rendering (active, muted, unread-count pill).\n\
+      - ⋮ action menu (rename, mute / unmute, remove).\n- Auto colour assignment from\
+      \ the curated palette.\n- Source grouping & organisation: Group / Subgroup CRUD,\
+      \ tree\n  rendering, drag-and-drop, inline rename, onboarding banner\n  (FT05).\n\
+      \n**Out of scope:**\n\n- Manual feed-URL paste (auto-discovery is the only entry\
+      \ path).\n- AI-assisted discovery (Phase 4+).\n- Per-source polling interval\
+      \ (single global; see EP03).\n- Article parsing / storage (see EP02).\n- Tree\
+      \ depth beyond 2 levels (Group → Subgroup is the maximum\n  in FT05).\n- Per-group\
+      \ / per-subgroup colour assignment (Source.colour\n  still rules).\n\n**Reference\
+      \ documents:**\n\n- DATA_MODEL.md §1.1 Source, §1.4 Group, §1.5 Subgroup (FT05),\n\
+      \  §3 (indexes incl. new group / subgroup keys), §6 (settings\n  incl. `grouping_banner_dismissed`).\n\
+      - UI_SPEC.md §Sidebar, §SourceAddForm (to be authored).\n- 04_content/html/mockup.html\
+      \ (sidebar + source rows — original\n  flat-list contract).\n- 03_design/01_wireframes/feature\
+      \ level/FT05_source_grouping.html\n  (grouping feature board).\n\n---\n"
     acceptance_criteria: null
-    relations: []
+    relations:
+    - type: CONFIRMED_BY
+      target_id: CR-260522-2101-001
     features:
     - id: FT-260512-2245-001
       project_id: PR-260512-2041-001
@@ -915,44 +927,53 @@ project_charters:
       cancelled_at: null
       locked: false
       title: Source List & Sidebar Rendering
-      status: SOLVED
+      status: OPEN
       parent_id: EP-260512-2230-001
       children_ids:
       - US-260513-0010-001
       - US-260513-0010-002
       - US-260513-0010-003
-      updated_at: '2026-05-12T22:59:32.913301'
-      updated_by: HUMAN
+      updated_at: '2026-05-22T21:31:54.080641'
+      updated_by: CLAUDE_CODE
       approved_by_human: true
       cancellation_reason: null
       tags: []
       body: "# FT03 — Source List & Sidebar Rendering\n\n## Wireframes\n\nSee 04_content/html/mockup.html\
-        \ lines 343–403 (sidebar). §5.1.2 design\nwill expand to include the muted\
+        \ lines 343–403 (sidebar). §5.1.2\ndesign will expand to include the muted\
         \ state explicitly.\n\n---\n\n## Body\n\nThe left pane. Width 260 px, background\
         \ `--bg-secondary`. Header\nsection with \"SOURCES\" label and the `+` add\
-        \ button (which triggers\nFT01).\n\nSource rows (top to bottom):\n\n- \"All\
-        \ sources\" virtual entry at the very top: stack icon + label\n  \"All sources\"\
-        \ + unread-count pill showing the SUM of every source's\n  unread count. Always\
-        \ rendered, regardless of how many sources\n  exist. Clicking it sets the\
-        \ feed filter to \"combined\" (default).\n- 8 px gap below the virtual entry.\n\
-        - Each real Source as a row: colour dot (the source's assigned\n  palette\
-        \ colour) + display name (with text-ellipsis for overflow) +\n  unread-count\
-        \ pill (right-aligned).\n- Active state (one source clicked / selected): white\
+        \ button (which\ntriggers FT01).\n\nSource rows (top to bottom) when no Groups\
+        \ exist (flat-list\nmode, this FT's contract):\n\n- \"All sources\" virtual\
+        \ entry at the very top: stack icon + label\n  \"All sources\" + unread-count\
+        \ pill showing the SUM of every\n  source's unread count. Always rendered,\
+        \ regardless of how many\n  sources exist. Clicking it sets the feed filter\
+        \ to \"combined\"\n  (default).\n- 8 px gap below the virtual entry.\n- Each\
+        \ real Source as a row: colour dot (the source's assigned\n  palette colour)\
+        \ + display name (with text-ellipsis for overflow)\n  + unread-count pill\
+        \ (right-aligned).\n- Active state (one source clicked / selected): white\
         \ background,\n  left border in `--text-info` colour. Filter the feed pane\
-        \ to that\n  source.\n- Muted state (per FT04's mute toggle): opacity ~0.5,\
+        \ to\n  that source.\n- Muted state (per FT04's mute toggle): opacity ~0.5,\
         \ name with\n  strikethrough, eye-off icon in place of the unread-count pill.\n\
-        \  Clicking a muted row is allowed but does nothing (only FT04's ⋮\n  menu\
-        \ can unmute).\n\nFooter: thin separator + \"Updated N min ago\" indicator\
-        \ (sourced from\nEP04's header-bar last-sync timestamp).\n\nServer-rendered\
-        \ on every page load. HTMX-style partial refresh on\nsource add / remove /\
-        \ mute / rename (FT01 and FT04 dispatch a sidebar\nrefresh, no full page reload).\n\
-        \n**Out of scope:**\n\n- Drag-to-reorder source rows (not in MVP).\n- Source\
-        \ grouping / folders (not in MVP).\n- Search-within-sidebar (not in MVP).\n\
-        - The ⋮ action menu itself (see FT04).\n- Feed pane rendering (see EP04).\n\
+        \  Clicking a muted row is allowed but does nothing (only FT04's\n  ⋮ menu\
+        \ can unmute).\n\nWhen at least one Group exists, the tree layout from FT05\
+        \ takes\nover the source-list block (see FT-260522-2115-001 body for the\n\
+        full tree contract). This FT remains the owner of the flat\nfallback and of\
+        \ the \"All sources\" virtual entry; FT05 layers on\ntop via US-260522-2116-003.\n\
+        \nFooter: thin separator + \"Updated N min ago\" indicator (sourced\nfrom\
+        \ EP04's header-bar last-sync timestamp).\n\nServer-rendered on every page\
+        \ load. HTMX-style partial refresh\non source add / remove / mute / rename\
+        \ (FT01 and FT04 dispatch\na sidebar refresh, no full page reload). FT05 additionally\n\
+        triggers refresh on every Group / Subgroup CRUD or drag-drop\nwrite.\n\n**Out\
+        \ of scope:**\n\n- Drag-to-reorder source rows (not in MVP).\n- Search-within-sidebar\
+        \ (not in MVP).\n- The ⋮ action menu itself (see FT04).\n- Feed pane rendering\
+        \ (see EP04).\n- Group / Subgroup tree rendering — owned by FT05\n  (FT-260522-2115-001).\n\
         \n**Reference documents:**\n\n- UI_SPEC.md §Sidebar (to be authored).\n- 04_content/html/mockup.html\
-        \ (lines 343–403).\n\n---\n"
+        \ (lines 343–403 — flat-list).\n- FT-260522-2115-001 (grouping tree layout\
+        \ that wraps this FT).\n\n---\n"
       acceptance_criteria: null
       relations:
+      - type: CONFIRMED_BY
+        target_id: CR-260522-2101-001
       - type: FULFILLED_BY
         target_id: AC-260512-2245-005
       - type: FULFILLED_BY
@@ -966,10 +987,10 @@ project_charters:
         cancelled_at: null
         locked: false
         title: Sidebar Rendering
-        status: SOLVED
+        status: OPEN
         parent_id: FT-260512-2245-003
         children_ids: []
-        updated_at: '2026-05-12T22:59:09.826716'
+        updated_at: '2026-05-22T05:18:18.761786'
         updated_by: CLAUDE_CODE
         approved_by_human: true
         cancellation_reason: null
@@ -999,10 +1020,14 @@ project_charters:
           \ partial index).\n"
         acceptance_criteria: null
         relations:
+        - type: CONFIRMED_BY
+          target_id: BUG-260521-2051-001
         - type: FULFILLED_BY
           target_id: AC-260513-0010-001
         - type: FULFILLED_BY
           target_id: AC-260513-0010-002
+        - type: FULFILLED_BY
+          target_id: AC-260522-2030-010
       - id: US-260513-0010-002
         project_id: PR-260512-2041-001
         type: USER_STORY
@@ -1011,10 +1036,10 @@ project_charters:
         cancelled_at: null
         locked: false
         title: Source-Row State Variants
-        status: SOLVED
+        status: OPEN
         parent_id: FT-260512-2245-003
         children_ids: []
-        updated_at: '2026-05-12T22:59:09.858419'
+        updated_at: '2026-05-22T05:18:18.779726'
         updated_by: CLAUDE_CODE
         approved_by_human: true
         cancellation_reason: null
@@ -1042,10 +1067,14 @@ project_charters:
           \ muted\nstates — to be authored); DATA_MODEL.md §1.1 Source (`muted`).\n"
         acceptance_criteria: null
         relations:
+        - type: CONFIRMED_BY
+          target_id: BUG-260521-2047-001
         - type: FULFILLED_BY
           target_id: AC-260513-0010-003
         - type: FULFILLED_BY
           target_id: AC-260513-0010-004
+        - type: FULFILLED_BY
+          target_id: AC-260522-2030-003
       - id: US-260513-0010-003
         project_id: PR-260512-2041-001
         type: USER_STORY
@@ -1102,7 +1131,7 @@ project_charters:
       - US-260513-0020-002
       - US-260513-0020-003
       - US-260513-0020-004
-      updated_at: '2026-05-12T22:59:30.467730'
+      updated_at: '2026-05-22T06:41:16.798717'
       updated_by: HUMAN
       approved_by_human: true
       cancellation_reason: null
@@ -1146,11 +1175,11 @@ project_charters:
         cancelled_at: null
         locked: false
         title: Action Menu Reveal
-        status: SOLVED
+        status: OPEN
         parent_id: FT-260512-2245-004
         children_ids: []
-        updated_at: '2026-05-12T22:59:23.505069'
-        updated_by: HUMAN
+        updated_at: '2026-05-22T05:18:18.788100'
+        updated_by: CLAUDE_CODE
         approved_by_human: true
         cancellation_reason: null
         story_statement: As a user, I want a ⋮ icon to appear on each source row when
@@ -1172,10 +1201,14 @@ project_charters:
           \ menu label state).\n"
         acceptance_criteria: null
         relations:
+        - type: CONFIRMED_BY
+          target_id: BUG-260521-2047-001
         - type: FULFILLED_BY
           target_id: AC-260513-0020-001
         - type: FULFILLED_BY
           target_id: AC-260513-0020-002
+        - type: FULFILLED_BY
+          target_id: AC-260522-2030-001
       - id: US-260513-0020-002
         project_id: PR-260512-2041-001
         type: USER_STORY
@@ -1223,10 +1256,10 @@ project_charters:
         cancelled_at: null
         locked: false
         title: Mute / Unmute Action
-        status: SOLVED
+        status: OPEN
         parent_id: FT-260512-2245-004
         children_ids: []
-        updated_at: '2026-05-12T22:59:09.889973'
+        updated_at: '2026-05-22T05:18:18.797738'
         updated_by: CLAUDE_CODE
         approved_by_human: true
         cancellation_reason: null
@@ -1276,10 +1309,16 @@ project_charters:
           '
         acceptance_criteria: null
         relations:
+        - type: CONFIRMED_BY
+          target_id: BUG-260521-2047-001
         - type: FULFILLED_BY
           target_id: AC-260513-0020-005
         - type: FULFILLED_BY
           target_id: AC-260513-0020-006
+        - type: FULFILLED_BY
+          target_id: AC-260522-2030-003
+        - type: FULFILLED_BY
+          target_id: AC-260522-2030-004
       - id: US-260513-0020-004
         project_id: PR-260512-2041-001
         type: USER_STORY
@@ -1288,10 +1327,10 @@ project_charters:
         cancelled_at: null
         locked: false
         title: Remove Action
-        status: SOLVED
+        status: OPEN
         parent_id: FT-260512-2245-004
         children_ids: []
-        updated_at: '2026-05-12T22:59:09.896825'
+        updated_at: '2026-05-22T05:18:18.805013'
         updated_by: CLAUDE_CODE
         approved_by_human: true
         cancellation_reason: null
@@ -1318,10 +1357,786 @@ project_charters:
           \ → Article\n(ON DELETE CASCADE).\n"
         acceptance_criteria: null
         relations:
+        - type: CONFIRMED_BY
+          target_id: BUG-260521-2047-001
         - type: FULFILLED_BY
           target_id: AC-260513-0020-007
         - type: FULFILLED_BY
           target_id: AC-260513-0020-008
+        - type: FULFILLED_BY
+          target_id: AC-260522-2030-002
+    - id: FT-260522-2115-001
+      project_id: PR-260512-2041-001
+      type: FEATURE
+      created_at: '2026-05-22T21:15:00'
+      created_by: CLAUDE_CODE
+      cancelled_at: null
+      locked: false
+      title: Source Grouping & Organisation
+      status: OPEN
+      parent_id: EP-260512-2230-001
+      children_ids:
+      - US-260522-2116-001
+      - US-260522-2116-002
+      - US-260522-2116-003
+      - US-260522-2116-004
+      - US-260522-2116-005
+      - US-260522-2116-006
+      - US-260522-2116-007
+      - US-260522-2116-008
+      - US-260522-2116-009
+      - US-260522-2230-001
+      - US-260522-2230-002
+      updated_at: '2026-05-22T21:31:54.102379'
+      updated_by: CLAUDE_CODE
+      approved_by_human: true
+      cancellation_reason: null
+      tags: []
+      body: "# FT05 — Source Grouping & Organisation\n\n## Wireframes\n\n- 01_Docs/03_design/01_wireframes/feature\
+        \ level/FT05_source_grouping.html\n- 01_Docs/04_content/html/Almanach _standalone_.html\
+        \ (human-supplied reference)\n- 01_Docs/04_content/images/screenshot.png (target\
+        \ state)\n\n---\n\n## Body\n\nAdds a 2-level organisation tree on top of FT03's\
+        \ flat source list:\nGroup → Subgroup → Source. Sources may sit at three positions\
+        \ in the\ntree: under a subgroup, directly under a group, or in the Ungrouped\n\
+        overflow zone at the bottom (NULL group_id and NULL subgroup_id).\nSubgroups\
+        \ always belong to exactly one group.\n\nAffordances (all live in the sidebar\
+        \ — no separate settings surface):\n\n- `+` button next to the SOURCES header\
+        \ → create-group inline input\n  (US-260522-2116-005).\n- On-hover `+` on\
+        \ a group row → create-subgroup inline input\n  (US-260522-2116-006).\n- Double-click\
+        \ a group or subgroup title → inline rename\n  (US-260522-2116-007). Enter\
+        \ saves, Esc cancels, blur saves.\n- Chevron on every group / subgroup row\
+        \ → collapse / expand;\n  collapsed state persists in the DB (US-260522-2116-004).\n\
+        - Drag a source row onto a group, subgroup, or the Ungrouped zone\n  → reassigns\
+        \ `Source.group_id` / `Source.subgroup_id`\n  (US-260522-2116-008).\n- Drag\
+        \ a subgroup row onto another group → reassigns\n  `Subgroup.group_id` (US-260522-2116-008).\n\
+        - First-run onboarding banner above the feed pane, dismissible (`×`),\n  auto-dismisses\
+        \ after the first group is created (US-260522-2116-009).\n\nTree rendering\
+        \ rules (US-260522-2116-003):\n\n- Every group, when expanded, lists subgroups\
+        \ (in `position` order)\n  followed by sources directly attached to the group\
+        \ (in `position`\n  order).\n- Every subgroup, when expanded, lists its sources\
+        \ (in `position`\n  order).\n- Ungrouped zone always rendered (even when empty)\
+        \ at the bottom\n  with the fixed label \"Ungrouped\"; counts only its direct\
+        \ sources.\n- Unread-count pills aggregate up the tree: a group pill = sum\
+        \ of\n  its direct sources + sum of each subgroup's direct sources.\n- \"\
+        All sources\" virtual entry remains at the top with the global\n  unread sum\
+        \ (unchanged from FT03).\n\nBackend contract: every CRUD action on Group /\
+        \ Subgroup or every\nwrite to `Source.group_id` / `Source.subgroup_id` returns\
+        \ the\nrefreshed sidebar tree partial (US-260513-0010-003, re-opened by\n\
+        this CR to return the tree-aware payload).\n\n**Out of scope:**\n\n- Three-or-more\
+        \ level nesting (Group → Subgroup is the maximum depth).\n- Per-group / per-subgroup\
+        \ colour assignment (`Source.colour` still\n  rules at row level).\n- Smart\
+        \ auto-grouping (no AI / clustering — manual organisation only).\n- Sharing\
+        \ / exporting group structure between users (single-user MVP).\n- Search-within-sidebar.\n\
+        - Reordering siblings inside a group / subgroup beyond the natural\n  drag-out\
+        \ / drag-in pattern (no explicit \"move up / move down\"\n  affordance in\
+        \ MVP).\n\n**Reference documents:**\n\n- DATA_MODEL.md §1.4 Group, §1.5 Subgroup,\
+        \ §1.1 Source (`group_id`,\n  `subgroup_id` FKs + invariant), §3 (new indexes),\
+        \ §6\n  (`grouping_banner_dismissed` setting key).\n- 01_Docs/03_design/01_wireframes/feature\
+        \ level/FT05_source_grouping.html\n  (assembled feature board).\n- 01_Docs/03_design/01_wireframes/feature\
+        \ level/journey level/\n  (per-story journey boards).\n- CR-260522-2101-001\
+        \ (driver — full change context).\n\n---\n"
+      acceptance_criteria: null
+      relations:
+      - type: CONFIRMED_BY
+        target_id: CR-260522-2101-001
+      - type: FULFILLED_BY
+        target_id: AC-260522-2117-001
+      - type: FULFILLED_BY
+        target_id: AC-260522-2117-002
+      - type: FULFILLED_BY
+        target_id: AC-260522-2117-003
+      - type: FULFILLED_BY
+        target_id: AC-260522-2117-004
+      - type: FULFILLED_BY
+        target_id: AC-260522-2117-005
+      - type: FULFILLED_BY
+        target_id: AC-260522-2117-006
+      - type: FULFILLED_BY
+        target_id: AC-260522-2117-007
+      stories:
+      - id: US-260522-2116-001
+        project_id: PR-260512-2041-001
+        type: USER_STORY
+        created_at: '2026-05-22T21:16:00'
+        created_by: CLAUDE_CODE
+        cancelled_at: null
+        locked: false
+        title: Folder Data Model & Storage
+        status: OPEN
+        parent_id: FT-260522-2115-001
+        children_ids: []
+        updated_at: '2026-05-22T23:12:16.198938'
+        updated_by: CLAUDE_CODE
+        approved_by_human: true
+        cancellation_reason: null
+        story_statement: I want a single recursive `folder` table (self-referential
+          via `parent_id`) capped at 5 levels of nesting, so that the sidebar tree
+          can grow to arbitrary subtitle depth without piling up parallel tables for
+          each level.
+        tags: []
+        body: "Recursive folder model (CR-260522-2101-001 iteration 3,\nreplaces the\
+          \ iteration-1 Group + Subgroup two-table schema).\n\n**Schema — single self-referential\
+          \ `folder` table:**\n\n- `folder.id` TEXT PK (UUID v4).\n- `folder.parent_id`\
+          \ TEXT FK → `folder.id` ON DELETE CASCADE,\n  nullable. NULL = root folder.\n\
+          - `folder.name` TEXT NOT NULL. 1-60 chars after trim\n  (validation owned\
+          \ by US-260522-2116-002).\n- `folder.position` REAL NOT NULL DEFAULT 0.\
+          \ Sort order among\n  siblings sharing the same `parent_id`. REAL so the\n\
+          \  Notion-style D&D midpoint math (US-260522-2116-008) doesn't\n  need renormalisation\
+          \ on every drop.\n- `folder.collapsed` INTEGER NOT NULL DEFAULT 0.\n- `folder.muted`\
+          \ INTEGER NOT NULL DEFAULT 0. Cascade per\n  DATA_MODEL.md §2.3 — a muted\
+          \ folder hides every descendant\n  source's articles from the combined feed.\n\
+          - `folder.depth` INTEGER NOT NULL DEFAULT 1. Cached depth\n  (root = 1).\
+          \ Used for cheap depth-cap enforcement.\n- `folder.created_at` TEXT (ISO8601)\
+          \ NOT NULL.\n\n**Depth cap = 5** (root folder = depth 1, deepest leaf folder\n\
+          = depth 5). Inserts and parent-change moves that would push\nany descendant's\
+          \ depth above 5 are rejected at the API layer\nwith 422 `error: depth_limit`\
+          \ (AC-260522-2400-001).\n\n**Source attachment:**\n\n- `source.folder_id`\
+          \ TEXT FK → `folder.id` ON DELETE SET NULL,\n  nullable. NULL = Ungrouped\
+          \ zone.\n- Replaces the iteration-1 pair `source.group_id` +\n  `source.subgroup_id`\
+          \ (those columns are dropped after the\n  iteration-3 backfill — AC-260522-2400-002).\n\
+          \n**Iteration-3 migration (idempotent — applies once on the\nfirst iteration-3\
+          \ boot of a DB that still carries iteration-1\nschema):**\n\n1. CREATE TABLE\
+          \ folder if missing.\n2. ALTER TABLE source ADD COLUMN folder_id if missing.\n\
+          3. INSERT INTO folder one row per existing `group` row,\n   setting `depth=1,\
+          \ parent_id=NULL`. Preserve `id`, `name`,\n   `position`, `collapsed`, `muted`,\
+          \ `created_at`.\n4. INSERT INTO folder one row per existing `subgroup` row,\n\
+          \   setting `depth=2, parent_id=<the matched group folder id>`.\n   Preserve\
+          \ fields likewise.\n5. UPDATE source SET folder_id = (COALESCE matched subgroup\n\
+          \   folder id, matched group folder id). Subgroup wins when\n   both were\
+          \ set (mirrors the iteration-1 invariant — sources\n   always rendered at\
+          \ their deepest attachment).\n6. DROP TABLE subgroup; DROP TABLE `group`.\n\
+          7. ALTER TABLE source DROP COLUMN subgroup_id; DROP COLUMN\n   group_id.\n\
+          \nNo article row is rewritten or deleted. Counts preserved\nexactly per\
+          \ AC-260522-2117-007 / AC-260522-2400-002.\n\n**Indexes:**\n\n- `idx_folder_parent_id\
+          \ ON folder(parent_id)` — tree walk.\n- `idx_source_folder_id ON source(folder_id)`\
+          \ — tree\n  rendering pull-by-parent.\n\n**Data model fields touched:**\n\
+          \n- `Folder.*` (write — DDL + migration).\n- `Source.folder_id` (write —\
+          \ DDL + backfill).\n- `Source.group_id`, `Source.subgroup_id` (dropped after\n\
+          \  backfill — destructive, but preceded by INSERT-SELECT into\n  folder\
+          \ so no data lost).\n\n**Spec reference:** DATA_MODEL.md §1.4 Folder (rewritten),\n\
+          §1.1 Source (`folder_id` field), §2 (cascades), §3 (indexes),\n§7 (iteration-3\
+          \ migration).\n"
+        acceptance_criteria: null
+        relations:
+        - type: CONFIRMED_BY
+          target_id: CR-260522-2101-001
+        - type: FULFILLED_BY
+          target_id: AC-260522-2118-001
+        - type: FULFILLED_BY
+          target_id: AC-260522-2118-002
+        - type: FULFILLED_BY
+          target_id: AC-260522-2118-003
+      - id: US-260522-2116-002
+        project_id: PR-260512-2041-001
+        type: USER_STORY
+        created_at: '2026-05-22T21:16:00'
+        created_by: CLAUDE_CODE
+        cancelled_at: null
+        locked: false
+        title: Folder CRUD Endpoints
+        status: OPEN
+        parent_id: FT-260522-2115-001
+        children_ids: []
+        updated_at: '2026-05-22T23:12:16.207884'
+        updated_by: CLAUDE_CODE
+        approved_by_human: true
+        cancellation_reason: null
+        story_statement: As a user, I want the sidebar to call a single `/folders`
+          API to create / rename / move / delete folders at any depth (and a single
+          /sources/{id}/parent endpoint to attach a source under any folder), so that
+          my organisation changes persist and the sidebar re-renders consistently.
+        tags: []
+        body: "Net-new HTTP endpoints (CR-260522-2101-001 iteration 3 — replaces\n\
+          the iteration-1 `/groups` + `/subgroups` endpoints). All endpoints\nreturn\
+          \ JSON; the client re-fetches `/sidebar-partial` after each\nsuccessful\
+          \ write.\n\n**Folder endpoints:**\n\n- `POST /folders` body `{ name, parent_id?\
+          \ }` — 201 with the\n  new folder id. Validation:\n  - `name` 1-60 chars\
+          \ after trim (422 `error: invalid_name`).\n  - `parent_id`, when set, must\
+          \ reference an existing folder\n    (422 `error: parent_not_found`).\n \
+          \ - Resulting `depth = parent.depth + 1` must be ≤ 5 (422\n    `error: depth_limit`).\n\
+          - `PATCH /folders/{id}` body `{ name? collapsed? muted?\n  position? parent_id?\
+          \ }`:\n  - Same name validation when supplied.\n  - When `parent_id` is\
+          \ supplied, the move must:\n    - Not create a cycle (target cannot be a\
+          \ descendant of\n      the source folder).\n    - Not push any descendant\
+          \ past depth 5\n      (`new_depth_of_root + max_subtree_depth ≤ 5`).\n \
+          \   Either violation returns 422 with `error: depth_limit` or\n    `error:\
+          \ cycle`.\n  - On successful parent change, every descendant's cached\n\
+          \    `depth` is recomputed in the same transaction.\n- `DELETE /folders/{id}`\
+          \ — 204. Cascade deletes descendants\n  (`folder.parent_id` FK CASCADE).\
+          \ Member sources at any\n  depth detach to Ungrouped (`source.folder_id`\
+          \ SET NULL\n  via FK).\n\n**Source reassign endpoint** (updated):\n\n- `PATCH\
+          \ /sources/{id}/parent` body\n  `{ folder_id?, position? }`. `folder_id\
+          \ = null` means\n  Ungrouped. Validation:\n  - `folder_id`, when set, must\
+          \ reference an existing folder\n    (422 `error: parent_not_found`).\n-\
+          \ `position` is REAL — average of adjacent siblings'\n  positions (computed\
+          \ client-side by US-260522-2116-008).\n\n**Retired endpoints:** `/groups`\
+          \ (POST/PATCH/DELETE) and\n`/subgroups` (POST/PATCH/DELETE) are removed\
+          \ entirely.\nIteration-2 callers are rewired to `/folders` in the same\n\
+          dev cycle.\n\n**Banner-coupled folder creation:** the first successful\n\
+          POST /folders sets `grouping_banner_dismissed = 1` in the\nsame transaction\
+          \ (iteration-1 AC-260522-2118-030 contract,\nretargeted to the folder endpoint).\n\
+          \n**Data model fields touched:**\n\n- `Folder.*` (write).\n- `Source.folder_id`\
+          \ (write).\n- `Settings.grouping_banner_dismissed` (write — banner\n  auto-dismiss\
+          \ on first folder create).\n\n**Spec reference:** DATA_MODEL.md §1.4, §1.1\
+          \ Source.folder_id;\n§2 cascades.\n"
+        acceptance_criteria: null
+        relations:
+        - type: CONFIRMED_BY
+          target_id: CR-260522-2101-001
+        - type: FULFILLED_BY
+          target_id: AC-260522-2118-004
+        - type: FULFILLED_BY
+          target_id: AC-260522-2118-005
+        - type: FULFILLED_BY
+          target_id: AC-260522-2118-006
+        - type: FULFILLED_BY
+          target_id: AC-260522-2118-007
+      - id: US-260522-2116-003
+        project_id: PR-260512-2041-001
+        type: USER_STORY
+        created_at: '2026-05-22T21:16:00'
+        created_by: CLAUDE_CODE
+        cancelled_at: null
+        locked: false
+        title: Sidebar Tree Rendering
+        status: OPEN
+        parent_id: FT-260522-2115-001
+        children_ids: []
+        updated_at: '2026-05-22T23:12:16.215387'
+        updated_by: CLAUDE_CODE
+        approved_by_human: true
+        cancellation_reason: null
+        story_statement: As a user, I want the sidebar to render my folders as a recursive
+          tree of arbitrary depth up to 5 levels — with aggregated unread counts walking
+          the subtree — so that I can organise sources however deeply I want and still
+          see meaningful counts at every level.
+        tags: []
+        body: "Recursive sidebar tree (CR-260522-2101-001 iteration 3). Extends\n\
+          US-260513-0010-001's flat-list rendering: when at least one\nFolder exists,\
+          \ the source-list block switches to a recursive\ntree layout; when no Folder\
+          \ exists, it falls back to the flat\nlayout unchanged (regression guard\
+          \ — AC-260522-2117-006 still\napplies).\n\nTree structure top-to-bottom:\n\
+          \n1. \"All sources\" virtual entry (unchanged — global unread sum,\n   cascade-mute-aware\
+          \ per AC-260522-2117-002 / -2234-001).\n2. Each root folder (`parent_id\
+          \ IS NULL`) in `Folder.position`\n   order. Row = chevron + folder name\
+          \ + aggregated unread pill.\n   Expanded by default unless `Folder.collapsed\
+          \ = 1`.\n3. Recursively, under each expanded folder, in order:\n   a. Each\
+          \ child folder (sub-folders in `Folder.position`\n      order). Same row\
+          \ shape; the rendering function is the\n      same Jinja macro called recursively.\n\
+          \   b. Each Source attached directly to this folder\n      (`Source.folder_id\
+          \ = this.id`) in `Source.position`\n      order.\n4. \"Ungrouped\" zone\
+          \ at the bottom (label always rendered, even\n   when empty): every Source\
+          \ with `folder_id IS NULL`.\n\nDepth cap = 5: the recursion stops at depth\
+          \ 5 by construction\n(no folder can exist with depth > 5 — enforced by\n\
+          US-260522-2116-002 / AC-260522-2400-001). The renderer trusts\nthe cached\
+          \ `folder.depth` value and styles indentation\naccordingly.\n\nIndentation\
+          \ is computed from each folder's depth: each level\nadds a fixed visual\
+          \ indent unit (CSS-driven). Sources under\na folder are indented one unit\
+          \ beyond their parent folder.\n\nUnread-count aggregation (recursive):\n\
+          \n- Source row pill: count of articles with `read_at IS NULL`\n  for that\
+          \ source (unchanged from FT03).\n- Folder pill: sum of direct-source unread\
+          \ counts + sum of\n  child-folder pills (recursive walk over `folder.parent_id`).\n\
+          - When `Folder.muted = 1`, the pill is hidden (eye-off icon\n  shown instead)\
+          \ and the folder contributes 0 to its parent's\n  pill (cascade — DATA_MODEL.md\
+          \ §2.3).\n- \"All sources\" pill: cascade-mute-aware global sum (unchanged\n\
+          \  contract).\n\nBackend computes the tree on each `GET /sidebar-partial`\
+          \ call\n(US-260513-0010-003 endpoint). No client-side tree state — the\n\
+          full tree is server-rendered, HTMX-swapped on changes.\n\n**Data model fields\
+          \ touched:**\n\n- `Folder.id`, `Folder.parent_id`, `Folder.name`,\n  `Folder.position`,\
+          \ `Folder.collapsed`, `Folder.muted`,\n  `Folder.depth` (read).\n- `Source.id`,\
+          \ `Source.colour`, `Source.display_name`,\n  `Source.muted`, `Source.folder_id`\
+          \ (read).\n- `Article.source_id`, `Article.read_at` (read — unread\n  aggregation;\
+          \ `idx_article_read_at_null`).\n\n**Spec reference:** DATA_MODEL.md §1.4\
+          \ Folder, §1.1\nSource.folder_id, §3 (`idx_folder_parent_id`,\n`idx_source_folder_id`),\
+          \ §2.3 cascade-mute predicate.\n"
+        acceptance_criteria: null
+        relations:
+        - type: CONFIRMED_BY
+          target_id: CR-260522-2101-001
+        - type: FULFILLED_BY
+          target_id: AC-260522-2118-008
+        - type: FULFILLED_BY
+          target_id: AC-260522-2118-009
+        - type: FULFILLED_BY
+          target_id: AC-260522-2118-010
+        - type: FULFILLED_BY
+          target_id: AC-260522-2118-011
+      - id: US-260522-2116-004
+        project_id: PR-260512-2041-001
+        type: USER_STORY
+        created_at: '2026-05-22T21:16:00'
+        created_by: CLAUDE_CODE
+        cancelled_at: null
+        locked: false
+        title: Collapsible Group & Subgroup Rows
+        status: OPEN
+        parent_id: FT-260522-2115-001
+        children_ids: []
+        updated_at: '2026-05-22T21:31:54.154998'
+        updated_by: CLAUDE_CODE
+        approved_by_human: true
+        cancellation_reason: null
+        story_statement: As a user, I want to collapse and expand groups and subgroups
+          via the chevron on each row, so that I can focus on the part of my tree
+          I care about right now and have the collapse state persist across reloads.
+        tags: []
+        body: "Chevron icon (right or left of the row — design surface) on every\n\
+          group and subgroup row. Click toggles `collapsed` via\nPATCH /groups/{id}\
+          \ or /subgroups/{id} with `{collapsed: bool}`.\n\nWhen `collapsed = 1`:\n\
+          - Group's subgroups + direct sources are not rendered\n  (server-side decision;\
+          \ tree partial omits them).\n- Subgroup's sources are not rendered.\n- Chevron\
+          \ rotates 90° (CSS only).\n- Aggregated unread pill still shows on the collapsed\
+          \ row\n  (the count is computed regardless of collapse state).\n\nState\
+          \ persists in the DB — reload restores the same collapse\nconfiguration.\n\
+          \nClick on the chevron only — clicking elsewhere on the row does\nNOT toggle\
+          \ collapse (avoids accidental collapse on rename\ndouble-click intent).\
+          \ Click on group name area is reserved for\nrename (US-260522-2116-007)\
+          \ and selection.\n\n**Data model fields touched:**\n\n- `Group.collapsed`,\
+          \ `Subgroup.collapsed` (read + write).\n\n**Spec reference:** DATA_MODEL.md\
+          \ §1.4, §1.5.\n"
+        acceptance_criteria: null
+        relations:
+        - type: CONFIRMED_BY
+          target_id: CR-260522-2101-001
+        - type: FULFILLED_BY
+          target_id: AC-260522-2118-012
+        - type: FULFILLED_BY
+          target_id: AC-260522-2118-013
+      - id: US-260522-2116-005
+        project_id: PR-260512-2041-001
+        type: USER_STORY
+        created_at: '2026-05-22T21:16:00'
+        created_by: CLAUDE_CODE
+        cancelled_at: null
+        locked: false
+        title: Create-Group Affordance
+        status: OPEN
+        parent_id: FT-260522-2115-001
+        children_ids: []
+        updated_at: '2026-05-22T21:31:54.168552'
+        updated_by: CLAUDE_CODE
+        approved_by_human: true
+        cancellation_reason: null
+        story_statement: As a user, I want a `+` button next to the SOURCES header
+          that opens an inline name input, so that I can quickly create a new group
+          without leaving the sidebar.
+        tags: []
+        body: "New `+` icon button in the sidebar header, sibling to (and visually\n\
+          distinguishable from) the existing add-source `+`. Tooltip:\n\"New group\"\
+          .\n\nClick → reveals an inline text input below the SOURCES header\n(above\
+          \ the All-sources row). Input has placeholder \"Group name\".\n\nUser types\
+          \ and presses Enter → POST /groups with `{ name }`.\nOn 201:\n- The new\
+          \ group appears at the bottom of the tree (highest\n  `position`) and is\
+          \ expanded by default.\n- Inline input clears and closes.\n- Sidebar partial\
+          \ re-renders with the new group in place.\n\nOn 422 (`error: invalid_name`):\
+          \ inline error shown below input\n(\"Group name must be 1-60 characters\"\
+          ) — input stays open\nwith the user's text.\n\nEsc → closes the input without\
+          \ saving.\n\n**Data model fields touched:**\n\n- `Group.name`, `Group.position`\
+          \ (write via POST /groups).\n\n**Spec reference:** DATA_MODEL.md §1.4.\n"
+        acceptance_criteria: null
+        relations:
+        - type: CONFIRMED_BY
+          target_id: CR-260522-2101-001
+        - type: FULFILLED_BY
+          target_id: AC-260522-2118-014
+        - type: FULFILLED_BY
+          target_id: AC-260522-2118-015
+        - type: FULFILLED_BY
+          target_id: AC-260522-2118-016
+      - id: US-260522-2116-006
+        project_id: PR-260512-2041-001
+        type: USER_STORY
+        created_at: '2026-05-22T21:16:00'
+        created_by: CLAUDE_CODE
+        cancelled_at: null
+        locked: false
+        title: Create-Subgroup Affordance
+        status: OPEN
+        parent_id: FT-260522-2115-001
+        children_ids: []
+        updated_at: '2026-05-22T21:31:54.180078'
+        updated_by: CLAUDE_CODE
+        approved_by_human: true
+        cancellation_reason: null
+        story_statement: As a user, I want a `+` button to appear when I hover a group
+          row that opens an inline name input, so that I can add a subgroup under
+          that group without leaving the sidebar.
+        tags: []
+        body: "On-hover `+` icon on the right side of every Group row. Hidden\nby\
+          \ default; revealed via CSS `:hover` on the row.\n\nClick → reveals an inline\
+          \ text input under the group title.\nInput placeholder: \"Subgroup name\"\
+          .\n\nUser types and presses Enter → POST /subgroups with\n`{ group_id, name\
+          \ }`. On 201:\n- Parent group auto-expands if it was collapsed\n  (PATCH\
+          \ /groups/{id} {collapsed: false} also issued).\n- Subgroup appears at the\
+          \ bottom of the group's subgroup list\n  (highest `position`) and is expanded\
+          \ by default.\n- Inline input clears and closes.\n\nOn 422 (`error: invalid_name`):\
+          \ inline error shown below input\n— input stays open with the user's text.\n\
+          \nEsc → closes the input without saving.\n\n**Data model fields touched:**\n\
+          \n- `Subgroup.name`, `Subgroup.position`, `Subgroup.group_id`\n  (write\
+          \ via POST /subgroups).\n- `Group.collapsed` (conditional write to auto-expand).\n\
+          \n**Spec reference:** DATA_MODEL.md §1.5.\n"
+        acceptance_criteria: null
+        relations:
+        - type: CONFIRMED_BY
+          target_id: CR-260522-2101-001
+        - type: FULFILLED_BY
+          target_id: AC-260522-2118-017
+        - type: FULFILLED_BY
+          target_id: AC-260522-2118-018
+        - type: FULFILLED_BY
+          target_id: AC-260522-2118-019
+      - id: US-260522-2116-007
+        project_id: PR-260512-2041-001
+        type: USER_STORY
+        created_at: '2026-05-22T21:16:00'
+        created_by: CLAUDE_CODE
+        cancelled_at: null
+        locked: false
+        title: Inline Rename via Double-Click
+        status: OPEN
+        parent_id: FT-260522-2115-001
+        children_ids: []
+        updated_at: '2026-05-22T21:31:54.192734'
+        updated_by: CLAUDE_CODE
+        approved_by_human: true
+        cancellation_reason: null
+        story_statement: As a user, I want to double-click a group or subgroup title
+          to rename it inline, so that I can adjust my organisation labels as my interests
+          evolve without leaving the sidebar.
+        tags: []
+        body: 'Double-click on a group title OR a subgroup title swaps the
+
+          static label for an inline text input pre-filled with the
+
+          current name. Cursor placed at end; full selection optional
+
+          (design surface).
+
+
+          Save triggers (each issues PATCH /groups/{id} or
+
+          /subgroups/{id} with `{ name }`):
+
+          - Enter key.
+
+          - Blur (input loses focus).
+
+
+          Cancel triggers (input reverts to static label, no PATCH):
+
+          - Esc key.
+
+
+          On 422 (`error: invalid_name`): inline error shown below input
+
+          — input stays open with the user''s text. Repeated invalid save
+
+          attempts keep the editor open until Esc or a valid name.
+
+
+          Source rows are NOT renameable here — FT04 owns Source rename
+
+          via the ⋮ menu. Only Group + Subgroup titles participate.
+
+
+          **Data model fields touched:**
+
+
+          - `Group.name`, `Subgroup.name` (write).
+
+
+          **Spec reference:** DATA_MODEL.md §1.4, §1.5.
+
+          '
+        acceptance_criteria: null
+        relations:
+        - type: CONFIRMED_BY
+          target_id: CR-260522-2101-001
+        - type: FULFILLED_BY
+          target_id: AC-260522-2118-020
+        - type: FULFILLED_BY
+          target_id: AC-260522-2118-021
+        - type: FULFILLED_BY
+          target_id: AC-260522-2118-022
+      - id: US-260522-2116-008
+        project_id: PR-260512-2041-001
+        type: USER_STORY
+        created_at: '2026-05-22T21:16:00'
+        created_by: CLAUDE_CODE
+        cancelled_at: null
+        locked: false
+        title: Drag-and-Drop Reassignment
+        status: OPEN
+        parent_id: FT-260522-2115-001
+        children_ids: []
+        updated_at: '2026-05-22T23:12:16.220483'
+        updated_by: CLAUDE_CODE
+        approved_by_human: true
+        cancellation_reason: null
+        story_statement: As a user, I want to drag any folder or source anywhere in
+          the sidebar tree — reorder siblings via above/below
+        tags: []
+        body: "Notion / Logseq outliner drag-and-drop, applied uniformly across\n\
+          the recursive folder tree (CR-260522-2101-001 iteration 3 —\nreplaces the\
+          \ iteration-2 Group + Subgroup type discrimination\nwith a single Folder\
+          \ type).\n\n**Two draggable types:** Folder row and Source row. The same\n\
+          drop logic applies at every depth from 1 to 5.\n\n**Drop intent computation**\
+          \ (unchanged from iteration 2):\n\n- **Y-axis (above / below):** cursor\
+          \ Y relative to the row's\n  mid-line picks sibling-above (top half) or\
+          \ sibling-below\n  (bottom half).\n- **X-axis (indent / outdent):** cursor\
+          \ X relative to the\n  row's content-start picks the nesting depth.\n  -\
+          \ At the row's content X → sibling at the same level.\n  - Right of the\
+          \ row's content X → become a child of that\n    target row.\n  - Left of\
+          \ the row's content X → outdent (become a sibling\n    of the target's parent).\n\
+          \n**Per dragged-type validity:**\n\n- **Folder row** drag-and-drop options:\n\
+          \  - Sibling-reorder among same-parent folders at the SAME\n    depth →\
+          \ adjusts `Folder.position` only (PATCH\n    /folders/{id} `{ position }`).\n\
+          \  - Cross-parent move (drop-as-child on another folder, OR\n    drop next\
+          \ to a folder under a different parent) →\n    PATCH /folders/{id} `{ parent_id,\
+          \ position }`.\n  - Depth-cap guard: moves that would push any descendant\n\
+          \    past depth 5 are rejected at the API with 422\n    `error: depth_limit`\
+          \ (US-260522-2116-002 enforcement).\n    The client also pre-checks the\
+          \ implied new depth and\n    cancels the drop with a quiet revert when violated.\n\
+          \  - Cycle guard: moving a folder under one of its own\n    descendants\
+          \ is rejected (422 `error: cycle`); client\n    pre-checks the drop target's\
+          \ ancestry and reverts.\n  - Outdent (drop-as-sibling-of-parent via left\
+          \ X-offset):\n    promotes the folder one level up — `parent_id` becomes\n\
+          \    the current parent's `parent_id`, `position` placed near\n    the parent.\n\
+          - **Source row** drag-and-drop options:\n  - Drop on any folder (at any\
+          \ depth 1..5), in any drop\n    intent → `Source.folder_id` becomes that\
+          \ folder's id.\n    Drop-as-child of a folder → attach directly to that\n\
+          \    folder; drop-as-sibling-of-folder → attach to the\n    folder's parent\
+          \ (or Ungrouped if root).\n  - Drop on another source → attach to that source's\n\
+          \    `folder_id` (its parent folder, or Ungrouped if NULL).\n  - Drop on\
+          \ the Ungrouped zone → `folder_id = NULL`.\n  - Sibling-reorder among same-parent\
+          \ sources → adjusts\n    `Source.position` via PATCH /sources/{id}/parent.\n\
+          \n**During drag** (unchanged visual contract):\n\n- Cursor changes to \"\
+          grabbing\"; origin row dims to ~45%.\n- Horizontal drop indicator (2 px\
+          \ indigo bar) renders at the\n  implied insertion line for sibling drops;\
+          \ dashed outline\n  around the target row for drop-as-child drops.\n- Invalid\
+          \ drops (dropping a folder onto its own row, onto a\n  descendant, cycle,\
+          \ depth-cap violation, etc.) → no\n  indicator, no PATCH on release, silent\
+          \ revert.\n\n**Drop payloads (single-endpoint surface after iteration 3):**\n\
+          \n- Source moves: `PATCH /sources/{id}/parent`\n  `{ folder_id?, position?\
+          \ }`.\n- Folder moves: `PATCH /folders/{id}`\n  `{ parent_id?, position?\
+          \ }`.\n\nThe server stores explicit `position` (REAL) values; the\nclient\
+          \ computes the target position as the midpoint between\nadjacent siblings\
+          \ (or `prev - 1` / `next + 1` at the edges).\nRenormalisation, if ever needed,\
+          \ is server-side and\nopportunistic.\n\n**Data model fields touched:**\n\
+          \n- `Source.folder_id`, `Source.position` (write).\n- `Folder.parent_id`,\
+          \ `Folder.position`, `Folder.depth`\n  (write — depth recomputed on parent\
+          \ change).\n\n**Spec reference:** DATA_MODEL.md §1.1 Source.folder_id, §1.4\n\
+          Folder; the human-supplied screenshot at\n01_Docs/04_content/images/screenshot.png\
+          \ shows a depth-2 tree\nfor illustration — the contract here generalises\
+          \ that pattern\nto depth ≤ 5.\n"
+        acceptance_criteria: null
+        relations:
+        - type: CONFIRMED_BY
+          target_id: CR-260522-2101-001
+        - type: FULFILLED_BY
+          target_id: AC-260522-2118-023
+        - type: FULFILLED_BY
+          target_id: AC-260522-2118-024
+        - type: FULFILLED_BY
+          target_id: AC-260522-2118-025
+        - type: FULFILLED_BY
+          target_id: AC-260522-2118-026
+        - type: FULFILLED_BY
+          target_id: AC-260522-2118-027
+        - type: FULFILLED_BY
+          target_id: AC-260522-2232-001
+        - type: FULFILLED_BY
+          target_id: AC-260522-2232-002
+      - id: US-260522-2116-009
+        project_id: PR-260512-2041-001
+        type: USER_STORY
+        created_at: '2026-05-22T21:16:00'
+        created_by: CLAUDE_CODE
+        cancelled_at: null
+        locked: false
+        title: First-Run Onboarding Banner
+        status: OPEN
+        parent_id: FT-260522-2115-001
+        children_ids: []
+        updated_at: '2026-05-22T21:31:54.209732'
+        updated_by: CLAUDE_CODE
+        approved_by_human: true
+        cancellation_reason: null
+        story_statement: As a new user, I want a one-time banner above the feed pane
+          explaining how to create groups and drag sources, so that I discover the
+          grouping affordance without reading docs.
+        tags: []
+        body: 'Banner rendered above the feed pane header ("Latest news"),
+
+          shown when `settings.grouping_banner_dismissed = 0` AND no
+
+          Group rows exist in the DB. Banner content (per the
+
+          human-supplied screenshot at 04_content/images/screenshot.png):
+
+
+          > New: group your sources. Click + in the sidebar to create
+
+          > a group (e.g. AI), then drag any source onto it. Hover a
+
+          > group and click + to add a subgroup. Double-click any
+
+          > title to rename.
+
+
+          `×` button on the right side. Click → PATCH /settings
+
+          `{ grouping_banner_dismissed: true }`. Banner disappears.
+
+
+          Auto-dismissal: when the first Group is created (POST /groups
+
+          success → server sets `grouping_banner_dismissed = 1` in the
+
+          same transaction). The next sidebar/feed render omits the
+
+          banner without user action.
+
+
+          Once dismissed (manually OR auto), the banner never re-appears
+
+          — even if all groups are subsequently deleted.
+
+
+          **Data model fields touched:**
+
+
+          - `Settings.grouping_banner_dismissed` (read + write).
+
+          - `Group` count (read — banner visibility check).
+
+
+          **Spec reference:** DATA_MODEL.md §6 (new setting key
+
+          `grouping_banner_dismissed`); mockup at
+
+          04_content/images/screenshot.png.
+
+          '
+        acceptance_criteria: null
+        relations:
+        - type: CONFIRMED_BY
+          target_id: CR-260522-2101-001
+        - type: FULFILLED_BY
+          target_id: AC-260522-2118-028
+        - type: FULFILLED_BY
+          target_id: AC-260522-2118-029
+        - type: FULFILLED_BY
+          target_id: AC-260522-2118-030
+      - id: US-260522-2230-001
+        project_id: PR-260512-2041-001
+        type: USER_STORY
+        created_at: '2026-05-22T22:30:00'
+        created_by: CLAUDE_CODE
+        cancelled_at: null
+        locked: false
+        title: Title Action Menu
+        status: OPEN
+        parent_id: FT-260522-2115-001
+        children_ids: []
+        updated_at: '2026-05-22T22:37:37.130135'
+        updated_by: CLAUDE_CODE
+        approved_by_human: true
+        cancellation_reason: null
+        story_statement: As a user, I want a ⋮ action menu on every group and subgroup
+          row offering Rename / Mute / Remove, so that I can manage titles with the
+          same affordances I already use for source rows.
+        tags: []
+        body: "Mirror of FT04 ⋮ source-action menu, applied to every Group and\nSubgroup\
+          \ row in the FT05 tree. Hover-reveals a ⋮ button on the\nright side of the\
+          \ row; click opens the existing `_row_menu.html`\npopover with three items:\n\
+          \n- **Rename.** Opens the same inline-rename editor as\n  US-260522-2116-007\
+          \ (double-click is preserved as the second\n  entry path; both reach the\
+          \ same editor).\n- **Mute / Unmute.** Toggles `Group.muted` or `Subgroup.muted`\n\
+          \  via the PATCH endpoints exposed by US-260522-2116-002\n  (extended).\
+          \ Cascade semantics + visual are owned by\n  US-260522-2230-002 — this story\
+          \ is only the affordance.\n- **Remove.** Opens the existing confirmation\
+          \ dialog\n  (`_confirm_dialog.html`); on confirm, DELETE /groups/{id} or\n\
+          \  /subgroups/{id} runs. The dialog message uses the title's\n  display\
+          \ name. Removing a Group cascades subgroups (FK\n  CASCADE) and detaches\
+          \ member sources (FK SET NULL on both\n  FKs); removing a Subgroup detaches\
+          \ its sources\n  (`subgroup_id = NULL`, `group_id` preserved).\n\nSource\
+          \ ⋮ menu (FT04) remains untouched — this story strictly\nadds a parallel\
+          \ affordance for titles. Source rows continue\nto render their own ⋮ menu\
+          \ via the existing path.\n\n**Data model fields touched:**\n\n- `Group.muted`,\
+          \ `Subgroup.muted` (write — via the Mute action).\n- `Group.name`, `Subgroup.name`\
+          \ (write — via the Rename action;\n  shared editor with US-007).\n\n**Spec\
+          \ reference:** DATA_MODEL.md §1.4, §1.5; UI_SPEC.md\n§SourceRowMenu (FT04\
+          \ — pattern reuse).\n"
+        acceptance_criteria: null
+        relations:
+        - type: CONFIRMED_BY
+          target_id: CR-260522-2101-001
+        - type: FULFILLED_BY
+          target_id: AC-260522-2233-001
+        - type: FULFILLED_BY
+          target_id: AC-260522-2233-002
+        - type: FULFILLED_BY
+          target_id: AC-260522-2233-003
+        - type: FULFILLED_BY
+          target_id: AC-260522-2233-004
+        - type: FULFILLED_BY
+          target_id: AC-260522-2233-005
+      - id: US-260522-2230-002
+        project_id: PR-260512-2041-001
+        type: USER_STORY
+        created_at: '2026-05-22T22:30:00'
+        created_by: CLAUDE_CODE
+        cancelled_at: null
+        locked: false
+        title: Group & Subgroup Mute
+        status: OPEN
+        parent_id: FT-260522-2115-001
+        children_ids: []
+        updated_at: '2026-05-22T22:37:37.139284'
+        updated_by: CLAUDE_CODE
+        approved_by_human: true
+        cancellation_reason: null
+        story_statement: As a user, I want to mute a group or subgroup (its sources
+          stop showing in the combined feed but keep polling), so that I can pause
+          a whole subject area without unsubscribing or muting each source one by
+          one.
+        tags: []
+        body: "Adds `muted` (INTEGER 0/1, default 0) to both `group` and\n`subgroup`\
+          \ tables. Cascade-mute predicate per DATA_MODEL.md\n§2.3: a Source's articles\
+          \ are visible in the combined feed iff\n`Source.muted = 0 AND Group.muted\
+          \ = 0 AND Subgroup.muted = 0`\n(treating NULL FKs as if the corresponding\
+          \ parent's muted = 0).\nPolling (EP03) is unaffected — charter §3 source-mute\
+          \ rule\nextends literally to titles.\n\nSource-filtered views (sidebar source-row\
+          \ click) still show\narticles for the explicitly-selected source even when\
+          \ its\nparent group or subgroup is muted — the cascade applies to the\n\
+          combined \"All sources\" view only. (Mirrors FT04 behaviour\nwhere clicking\
+          \ a muted source still navigates to its own\nfiltered feed.)\n\nRender contract:\n\
+          \n- Muted Group row: opacity ~0.5, name with strikethrough,\n  ti-eye-off\
+          \ icon in place of the unread-count pill.\n- Muted Subgroup row: same visual.\n\
+          - Aggregated pill on a muted group / subgroup is hidden (per\n  the rule\
+          \ above — no unread count surfaced).\n- Sources rendered under a muted group\
+          \ or subgroup inherit a\n  dimmed look (opacity ~0.7) so the cascade is\
+          \ observable, but\n  they do NOT individually flip `Source.muted` — that\
+          \ field is\n  preserved as the user set it. Unmuting the title restores\n\
+          \  the per-source state literally.\n\nEndpoints (touch-points on US-260522-2116-002\
+          \ endpoints; this\nstory adds no new endpoints):\n\n- PATCH /groups/{id}\
+          \ accepts `muted: bool`.\n- PATCH /subgroups/{id} accepts `muted: bool`.\n\
+          \n**Data model fields touched:**\n\n- `Group.muted` (write).\n- `Subgroup.muted`\
+          \ (write).\n- `Source.muted` (read — preserved through title mute toggles).\n\
+          - `Article.read_at`, `Article.source_id` (read — feed filter).\n\n**Spec\
+          \ reference:** DATA_MODEL.md §1.4 / §1.5 (new `muted`\ncolumn), §2.3 (cascade\
+          \ predicate); charter §3 source-mute\ndecision.\n"
+        acceptance_criteria: null
+        relations:
+        - type: CONFIRMED_BY
+          target_id: CR-260522-2101-001
+        - type: FULFILLED_BY
+          target_id: AC-260522-2234-001
+        - type: FULFILLED_BY
+          target_id: AC-260522-2234-002
+        - type: FULFILLED_BY
+          target_id: AC-260522-2234-003
   - id: EP-260512-2230-002
     project_id: PR-260512-2041-001
     type: EPIC
@@ -1367,7 +2182,8 @@ project_charters:
     title: Background Polling
     status: OPEN
     parent_id: PC-260512-2041-001
-    children_ids: []
+    children_ids:
+    - FT-260522-2050-001
     updated_at: '2026-05-12T22:19:11.790585'
     updated_by: CLAUDE_CODE
     approved_by_human: true
@@ -1392,7 +2208,84 @@ project_charters:
       \ (to be authored).\n- AUDIT_MODEL.md §PollEvent (to be authored).\n\n---\n"
     acceptance_criteria: null
     relations: []
-    features: []
+    features:
+    - id: FT-260522-2050-001
+      project_id: PR-260512-2041-001
+      type: FEATURE
+      created_at: '2026-05-22T20:50:00'
+      created_by: CLAUDE_CODE
+      cancelled_at: null
+      locked: false
+      title: Scheduler Lifecycle & Cadence
+      status: OPEN
+      parent_id: EP-260512-2230-003
+      children_ids:
+      - US-260522-2050-001
+      - US-260522-2050-002
+      updated_at: '2026-05-22T05:18:18.826676'
+      updated_by: CLAUDE_CODE
+      approved_by_human: true
+      cancellation_reason: null
+      tags: []
+      body: '# FT — Scheduler Lifecycle & Cadence
+
+
+        ## Wireframes
+
+
+        (Backend service — no UI surface. Header refresh button surface lives in FT-260522-2050-002.)
+
+
+        ---
+
+
+        ## Body
+
+
+        Minimum decomposition of EP-260512-2230-003 needed to host the AC fix-verifying
+        BUG-260521-2051-001 defects #1 and #3 (auto-sync-on-open). Two stories: (a)
+        the periodic scheduler that fires every N minutes while the app is up (default
+        10 min per BUG02 reset, range 5–120 min configurable), and (b) the one-shot
+        poll fired at app open so the most recent open is reflected as last-sync.
+
+
+        Does NOT cover poll-state tracking (last_polled_at writes are exercised here
+        but the per-source error / consecutive-failure tracking is deferred), polite-fetcher
+        rules (1 req / 2 s / domain throttle), or robots.txt honouring — those remain
+        in EP-260512-2230-003 body as future-feature scope pending separate §5.1.1
+        rounds.
+
+
+        **Out of scope:**
+
+
+        - Per-source interval override (charter §3 — global only).
+
+        - Polite-fetcher / robots.txt enforcement (separate future feature under EP03).
+
+        - Per-source error tracking and exponential backoff (future feature).
+
+        - Manual refresh wiring from the header button — that lives in FT-260522-2050-002
+        US-260522-2050-004.
+
+
+        **Reference documents:**
+
+
+        - DATA_MODEL.md §Source.last_polled_at (to be authored).
+
+        - Charter §3 (default 20 min, range 5–120 min, configurable; BUG-260521-2051-001
+        reset target value to 10 min).
+
+
+        ---
+
+        '
+      acceptance_criteria: null
+      relations:
+      - type: FULFILLED_BY
+        target_id: AC-260522-2050-001
+      stories: []
   - id: EP-260512-2230-004
     project_id: PR-260512-2041-001
     type: EPIC
@@ -1403,36 +2296,220 @@ project_charters:
     title: Feed Reading Experience
     status: OPEN
     parent_id: PC-260512-2041-001
-    children_ids: []
-    updated_at: '2026-05-12T22:19:11.796092'
+    children_ids:
+    - FT-260522-2050-002
+    - FT-260522-2230-001
+    updated_at: '2026-05-22T22:37:37.116467'
     updated_by: CLAUDE_CODE
     approved_by_human: true
     cancellation_reason: null
     tags: []
     body: "# EP04 — Feed Reading Experience\n\n## Feature Navigation Flows\n\n(Features\
       \ pending — next §5.1.1 round.)\n\n---\n\n## Body\n\nThe reader UI. Two panes:\
-      \ sidebar (sources + \"All sources\" virtual entry +\nunread counts + auto colours)\
-      \ on the left, paginated combined feed on the\nright (50 / page, newest-first,\
-      \ prev / next at bottom). Header bar above\nboth panes shows app title plus\
-      \ \"last sync · N min ago\" and a manual\nrefresh button. Clicking an article\
-      \ opens it in a new browser tab and\nmarks it as read (one-way; charter §3 out-of-scope).\n\
+      \ sidebar (sources + \"All sources\" virtual\nentry + unread counts + auto colours)\
+      \ on the left, combined feed\non the right (newest-first, **continuous scroll**\
+      \ — no page nav).\nHeader bar above both panes shows app title plus\n\"last\
+      \ sync · N min ago\" and a manual refresh button. Clicking an\narticle opens\
+      \ it in a new browser tab and marks it as read\n(one-way; charter §3 out-of-scope).\n\
       \n**Key functional areas:**\n\n- Two-pane layout template + responsive breakpoint\
       \ at 720px.\n- Sidebar rendering: source rows, active state, muted state visual,\n\
-      \  unread-count pills, \"All sources\" virtual entry at top.\n- Feed pagination\
-      \ (50 / page, newest-first, prev / next).\n- Article row layout: full (with\
-      \ summary) above the fold, compact\n  (one-liner) below — exact breakpoint deferred\
-      \ to §5.1.2 design.\n- Click-to-read: open new tab, write read_at on Article.\n\
-      - Header bar: app title + last-sync indicator + manual refresh button\n  (wires\
-      \ to EP03 manual refresh).\n\n**Out of scope:**\n\n- Multi-mode feed sort (charter\
-      \ §3 — newest-first only).\n- Per-article tag pills (charter §3 out-of-scope).\n\
-      - Manual mark-as-unread (charter §3 — read state is one-way).\n- Native mobile\
-      \ apps (responsive web only).\n- Source CRUD (see EP01).\n- Article ingestion\
-      \ / storage (see EP02).\n\n**Reference documents:**\n\n- UI_SPEC.md §TwoPaneLayout,\
-      \ §Sidebar, §Feed, §Header (to be authored).\n- 04_content/html/mockup.html\
-      \ (whole-screen reference).\n\n---\n"
+      \  unread-count pills, \"All sources\" virtual entry at top.\n- Continuous-scroll\
+      \ feed (newest-first, batches of 50, append on\n  scroll-near-bottom — owned\
+      \ by US-260522-2230-003,\n  CR-260522-2101-001 iteration 2).\n- Article row\
+      \ layout: every card uses the same full layout\n  (colour-dot · source · relative-time\
+      \ / bold title / two-line\n  summary) — no compact variant. Per\n  01_Docs/04_content/images/screenshot.png\
+      \ and AC-260522-2231-001\n  (design-fidelity AC under CR-260522-2101-001).\n\
+      - Click-to-read: open new tab, write read_at on Article.\n- Header bar: app\
+      \ title + last-sync indicator + manual refresh\n  button (wires to EP03 manual\
+      \ refresh).\n\n**Out of scope:**\n\n- Multi-mode feed sort (charter §3 — newest-first\
+      \ only).\n- Per-article tag pills (charter §3 out-of-scope).\n- Manual mark-as-unread\
+      \ (charter §3 — read state is one-way).\n- Native mobile apps (responsive web\
+      \ only).\n- Source CRUD (see EP01).\n- Article ingestion / storage (see EP02).\n\
+      - Pagination chrome (prev / next page nav) — removed by\n  CR-260522-2101-001\
+      \ iteration 2 in favour of continuous scroll.\n\n**Reference documents:**\n\n\
+      - UI_SPEC.md §TwoPaneLayout, §Sidebar, §Feed, §Header (to be\n  authored).\n\
+      - 04_content/html/mockup.html (whole-screen reference — pre-CR).\n- 01_Docs/04_content/images/screenshot.png\
+      \ (target design — post-CR\n  iteration 2).\n\n---\n"
     acceptance_criteria: null
-    relations: []
-    features: []
+    relations:
+    - type: CONFIRMED_BY
+      target_id: CR-260522-2101-001
+    features:
+    - id: FT-260522-2050-002
+      project_id: PR-260512-2041-001
+      type: FEATURE
+      created_at: '2026-05-22T20:50:00'
+      created_by: CLAUDE_CODE
+      cancelled_at: null
+      locked: false
+      title: Header Bar Last-Sync Indicator
+      status: OPEN
+      parent_id: EP-260512-2230-004
+      children_ids:
+      - US-260522-2050-003
+      - US-260522-2050-004
+      updated_at: '2026-05-22T05:18:18.837867'
+      updated_by: CLAUDE_CODE
+      approved_by_human: true
+      cancellation_reason: null
+      tags: []
+      body: '# FT — Header Bar Last-Sync Indicator
+
+
+        ## Wireframes
+
+
+        (Mockup at 04_content/html/mockup.html shows the header area with ''last sync''
+        text + refresh button. §5.1.2 design pass will expand to button loading /
+        completion states.)
+
+
+        ---
+
+
+        ## Body
+
+
+        Minimum decomposition of EP-260512-2230-004 needed to host the AC fix-verifying
+        BUG-260521-2051-001 defects #2 (manual refresh completion feedback) and #3-#4
+        (last-sync persistence + post-refresh re-render). Two stories: (a) the last-sync
+        indicator display itself (reads MAX(`Source.last_polled_at`), partial-refreshes
+        on poll completion), and (b) the manual refresh button (click → backend roundtrip
+        → completion signal).
+
+
+        Does NOT cover the rest of EP-260512-2230-004 (two-pane layout, sidebar rendering,
+        feed pagination, article click-to-read, responsive breakpoint) — those remain
+        in EP04 body as future-feature scope pending separate §5.1.1 rounds.
+
+
+        **Out of scope:**
+
+
+        - Two-pane layout / responsive breakpoint (separate future feature under EP04).
+
+        - Feed pagination + article row layout (separate future feature).
+
+        - Click-to-read mechanism (separate future feature).
+
+        - Sidebar footer ''Updated'' line cleanup — that lives in US-260513-0010-001
+        (EP01) and is BUG-CONFIRMS''d directly.
+
+        - Per-source last_polled_at write — happens upstream in FT-260522-2050-001
+        stories.
+
+
+        **Reference documents:**
+
+
+        - DATA_MODEL.md §1.1 Source (`last_polled_at` read for indicator).
+
+        - UI_SPEC.md §Header (to be authored).
+
+        - 04_content/html/mockup.html (header area reference).
+
+
+        ---
+
+        '
+      acceptance_criteria: null
+      relations:
+      - type: FULFILLED_BY
+        target_id: AC-260522-2050-002
+      stories: []
+    - id: FT-260522-2230-001
+      project_id: PR-260512-2041-001
+      type: FEATURE
+      created_at: '2026-05-22T22:30:00'
+      created_by: CLAUDE_CODE
+      cancelled_at: null
+      locked: false
+      title: Continuous-Scroll Feed
+      status: OPEN
+      parent_id: EP-260512-2230-004
+      children_ids:
+      - US-260522-2230-003
+      updated_at: '2026-05-22T22:37:37.147704'
+      updated_by: CLAUDE_CODE
+      approved_by_human: true
+      cancellation_reason: null
+      tags: []
+      body: "# FT — Continuous-Scroll Feed\n\n## Wireframes\n\n- 01_Docs/04_content/images/screenshot.png\
+        \ (target — no\n  pagination chrome anywhere in the feed pane).\n\n---\n\n\
+        ## Body\n\nReplaces the page-based feed (50/page with prev / next nav)\nwith\
+        \ a single continuously-scrolling list. Initial render\nloads the newest 50\
+        \ articles; when the user scrolls within\n~200 px of the bottom, the client\
+        \ requests the next 50 via\n`/feed-partial?after=<published_at>&size=50` and\
+        \ appends.\n\nEnd-state: when an \"after\" fetch returns fewer than `size`\n\
+        articles, the client stops requesting (no more articles).\nThe empty-state\
+        \ message (existing pattern) shows only when\nthe feed is empty on first render.\n\
+        \nActive-source filter (sidebar source-row click) and manual\nrefresh are\
+        \ unchanged — both rebuild the feed from the top\n(page 1 equivalent) and\
+        \ restart the scroll cycle.\n\n**Out of scope:**\n\n- Reverse-scroll (loading\
+        \ newer-than-top articles in-place) —\n  a manual refresh / All-sources click\
+        \ resets to top.\n- Skeleton placeholders — a lightweight inline spinner at\
+        \ the\n  bottom-most edge of the list suffices.\n\n**Reference documents:**\n\
+        \n- 01_Docs/04_content/images/screenshot.png.\n- DATA_MODEL.md §3 (`idx_article_published_at`\
+        \ — already\n  present, supports the cursor-style next-batch query).\n\n---\n"
+      acceptance_criteria: null
+      relations:
+      - type: CONFIRMED_BY
+        target_id: CR-260522-2101-001
+      stories:
+      - id: US-260522-2230-003
+        project_id: PR-260512-2041-001
+        type: USER_STORY
+        created_at: '2026-05-22T22:30:00'
+        created_by: CLAUDE_CODE
+        cancelled_at: null
+        locked: false
+        title: Continuous-Scroll Feed
+        status: OPEN
+        parent_id: FT-260522-2230-001
+        children_ids: []
+        updated_at: '2026-05-22T22:37:37.153253'
+        updated_by: CLAUDE_CODE
+        approved_by_human: true
+        cancellation_reason: null
+        story_statement: As a user, I want the feed to keep loading older articles
+          as I scroll instead of pressing a Next Page button, so that I can read fluidly
+          through the day's news without breaking my reading rhythm.
+        tags: []
+        body: "Replaces the per-page pagination (50/page with prev/next nav,\nlegacy\
+          \ `_feed.html` ≤ Piece-B) with a cursor-style continuous\nscroll.\n\nClient\
+          \ behaviour:\n- Initial render: first 50 articles, newest-first.\n- When\
+          \ the user scrolls within 200 px of the feed-pane\n  bottom AND a fetch\
+          \ is not already in flight AND end-of-feed\n  has not been observed, request\
+          \ the next batch.\n- Append the returned articles below the current list.\n\
+          - A short inline spinner renders at the bottom while the\n  fetch is in\
+          \ flight.\n- When the response holds fewer than `size` articles, mark\n\
+          \  end-of-feed and stop further requests until the cycle is\n  reset (by\
+          \ source filter change or manual refresh).\n\nServer behaviour (extends\
+          \ `/feed-partial`):\n- Existing `source` filter unchanged.\n- New optional\
+          \ query param `after` (an article\n  `published_at` ISO timestamp). When\
+          \ present, the response\n  includes articles strictly older than `after`.\
+          \ When\n  absent, the response starts from the newest article.\n- `size`\
+          \ defaults to 50 (kept as a knob; same as today).\n- The HTML fragment returned\
+          \ is a list of `.article` cards\n  ONLY — no surrounding feed-header, no\
+          \ pagination nav. The\n  client appends them as innerHTML children of the\n\
+          \  `.article-list` container.\n\nRemoved:\n- `.pagination` block in `_feed.html`.\n\
+          - `feed.page` / `feed.pages` / `feed.has_prev` / `feed.has_next`\n  payload\
+          \ fields in `build_feed_view`.\n\nActive-source filter switching and manual\
+          \ refresh both rebuild\nthe feed from the top (cursor reset). All other\
+          \ behaviour\n(article click-to-read, mute filter, banner placement) is\n\
+          unchanged.\n\n**Data model fields touched:**\n\n- `Article.published_at`\
+          \ (read — cursor key).\n- `Article.source_id`, `Source.muted` (read — combined-feed\n\
+          \  filter, unchanged contract; plus the new cascade-mute\n  predicate from\
+          \ US-260522-2230-002).\n\n**Spec reference:** DATA_MODEL.md §3\n(`idx_article_published_at`);\
+          \ screenshot.png (no pagination\nchrome anywhere).\n"
+        acceptance_criteria: null
+        relations:
+        - type: CONFIRMED_BY
+          target_id: CR-260522-2101-001
+        - type: FULFILLED_BY
+          target_id: AC-260522-2235-001
+        - type: FULFILLED_BY
+          target_id: AC-260522-2235-002
   - id: EP-260512-2230-005
     project_id: PR-260512-2041-001
     type: EPIC
@@ -1472,66 +2549,295 @@ project_charters:
 epics: []
 orphans: []
 tests: []
-bugs:
-- id: BUG-260517-1128-001
+bugs: []
+change_requests:
+- id: CR-260522-2101-001
   project_id: PR-260512-2041-001
-  type: BUG
-  created_at: '2026-05-17T11:28:48.517392'
+  type: CR
+  created_at: '2026-05-22T21:01:12.950520'
   created_by: HUMAN
   cancelled_at: null
   locked: false
-  title: US-260512-2300-001 - Bug 1
+  title: Grouping news sources
   status: SOLVED
   priority: CRITICAL
-  updated_at: '2026-05-17T13:15:00'
+  updated_at: '2026-05-22T23:12:16.225738'
   updated_by: CLAUDE_CODE
   approved_by_human: true
   cancellation_reason: null
   tags: []
-  body: AC failed as adding a totally legitimate url is generating erro message, see
-    screenshot part in yello ![error for legitimate url](01_docs/04_content/images/error
-    for legitimate url.png)
+  body: "# CR-260522-2101-001 — Grouping news sources\n\n## Change Summary\n\nHuman-authored\
+    \ request to add a 2-level organisation tree (Group →\nSubgroup → Source) on top\
+    \ of FT03's flat sidebar, plus (iteration 2,\nuser chat 2026-05-22T22:30) a Notion-style\
+    \ drag-anywhere UX, title\naction menus mirroring source rows, group/subgroup\
+    \ mute with cascade,\npagination removal in favour of continuous scroll, and full\
+    \ design\nfidelity to the human-supplied screenshot.\n\nAffordances per the screenshot\
+    \ at 01_Docs/04_content/images/screenshot.png\nand the HTML mockup at 01_Docs/04_content/html/Almanach\
+    \ _standalone_.html:\n\n- `+` button in the sidebar header to create a Group;\
+    \ on-hover `+`\n  on a group row to create a Subgroup.\n- **Drag any title or\
+    \ source anywhere** (iteration 2): Y-position sets\n  sibling above/below; X-offset\
+    \ relative to the target row's\n  content-start sets nesting depth — drag right\
+    \ of a row to become\n  its child, drag left to outdent. Groups reorder among\
+    \ groups;\n  subgroups reorder within their parent group or move to another;\n\
+    \  sources go anywhere (under any group / any subgroup / Ungrouped).\n- **Title\
+    \ action menu** (iteration 2): every group and subgroup row\n  gains a ⋮ menu\
+    \ mirroring FT04 source rows — Rename / Mute / Remove.\n- **Title mute with cascade**\
+    \ (iteration 2): muting a group or\n  subgroup hides every member source from\
+    \ the combined feed; polling\n  continues unchanged (charter §3 source-mute rule\
+    \ extends to title\n  mute).\n- Double-click a group / subgroup title to rename\
+    \ inline.\n- First-run onboarding banner explaining the gestures.\n\nRight-pane\
+    \ (iteration 2):\n\n- **No pagination.** Feed scrolls continuously — scrolling\
+    \ near the\n  bottom fetches and appends the next batch.\n- **Design fidelity**\
+    \ to screenshot.png across the whole UI: every\n  article card uses the same full\
+    \ layout (colour-dot · source · time\n  / bold title / 2-line summary); no compact\
+    \ variant; refresh icon\n  subtle in the top-right of the feed pane.\n\nOriginal\
+    \ human-supplied prose (verbatim, iteration 1):\n\n> I want to group my news into\
+    \ groups like AI and sub groups i can\n> create in it. it should be easy for a\
+    \ user to createa title, then\n> drag and drop a news source under one group title,\
+    \ create a sub\n> title and do the same by draging and droping.. easy peasy\n\
+    >\n> ==> Follow design guidance below from html/screenshot\n>\n> [Almanach _standalone_](01_Docs/04_content/html/Almanach\
+    \ _standalone_.html)\n>\n> ![screenshot](01_Docs/04_content/images/screenshot.png)\n\
+    \nIteration 2 prose (verbatim, 2026-05-22T22:30):\n\n> i want now that you make\
+    \ sure it is possible to drag and drop\n> titles anywhere along with their content.\
+    \ it must be possible to\n> drag and drop news sources under any title whatever\
+    \ the level. any\n> title should be possible to be removed or title change or\
+    \ fully\n> muted in same way as a news source would be. … take the design\n> screenshot\
+    \ and apply it \"à la lettre\" , not only the left pane\n> but also the right\
+    \ one and the whole application as it looks in\n> the design. Stop the pagination,\
+    \ i want to be able to scroll\n> instead of changeing page to render more news.\n\
+    \n---\n\n## Affected Requirement Objects\n\n| ID — Title | Action | Status transition\
+    \ |\n| :--- | :--- | :--- |\n| EP-260512-2230-001 — Source Management | modified\
+    \ (body) | OPEN → OPEN |\n| EP-260512-2230-004 — Feed Reading Experience | modified\
+    \ (body — iteration 2) | OPEN → OPEN |\n| FT-260512-2245-003 — Source List & Sidebar\
+    \ Rendering | modified (body) | SOLVED → OPEN |\n| FT-260522-2115-001 — Source\
+    \ Grouping & Organisation | added (body extended iteration 2) | DRAFT → OPEN |\n\
+    | US-260522-2116-001 — Folder Data Model & Storage | added | DRAFT → OPEN |\n\
+    | US-260522-2116-002 — Folder CRUD Endpoints | added | DRAFT → OPEN |\n| US-260522-2116-003\
+    \ — Sidebar Tree Rendering | added | DRAFT → OPEN |\n| US-260522-2116-004 — Collapsible\
+    \ Group & Subgroup Rows | added | DRAFT → OPEN |\n| US-260522-2116-005 — Create-Group\
+    \ Affordance | added | DRAFT → OPEN |\n| US-260522-2116-006 — Create-Subgroup\
+    \ Affordance | added | DRAFT → OPEN |\n| US-260522-2116-007 — Inline Rename via\
+    \ Double-Click | added | DRAFT → OPEN |\n| US-260522-2116-008 — Drag-and-Drop\
+    \ Reassignment | added (body extended iteration 2 — Notion-style outliner D&D)\
+    \ | DRAFT → OPEN |\n| US-260522-2116-009 — First-Run Onboarding Banner | added\
+    \ | DRAFT → OPEN |\n| US-260522-2230-001 — Title Action Menu | added (iteration\
+    \ 2) | DRAFT → OPEN |\n| US-260522-2230-002 — Group & Subgroup Mute | added (iteration\
+    \ 2) | DRAFT → OPEN |\n| US-260522-2230-003 — Continuous-Scroll Feed | added (iteration\
+    \ 2 — supersedes pagination) | DRAFT → OPEN |\n\n---\n\n## Design Changes\n\n\
+    §5.1.2 design pass run as part of iteration 1. Boards authored:\n\n- 01_Docs/03_design/01_wireframes/feature\
+    \ level/FT05_source_grouping.html\n  (feature-level board — sidebar in tree state).\n\
+    - 01_Docs/03_design/01_wireframes/feature level/journey level/\n  FT05_US3_tree_rendering.html\
+    \ (tree DOM contract).\n- …/journey level/FT05_US5_create_group.html (create-group\
+    \ flow).\n- …/journey level/FT05_US8_drag_drop.html (drag indicator).\n- …/journey\
+    \ level/FT05_US9_onboarding_banner.html (first-run banner).\n\nIteration 2 does\
+    \ not author new wireframes — `01_Docs/04_content/images/screenshot.png`\nis the\
+    \ canonical reference for the whole-app design; the\nimplementation matches it\
+    \ `à la lettre` per AC-260522-2231-001\n(design fidelity AC).\n\n## Data Model\
+    \ Changes\n\nIteration 1 — DATA_MODEL.md additions: §1.4 Group, §1.5 Subgroup,\
+    \ §1.1\nSource FK columns, §2 new cascades, §3 new indexes, §6 new setting\nkey\
+    \ `grouping_banner_dismissed`.\n\nIteration 2 — DATA_MODEL.md additions: §1.4\
+    \ and §1.5 each gain a\n`muted` INTEGER column (0/1, default 0). §2.3 documents\
+    \ the\ncascade-mute predicate: a Source is visible in the combined feed iff\n\
+    `Source.muted=0 AND Group.muted=0 AND Subgroup.muted=0`. Polling\n(EP03) is unaffected\
+    \ — charter §3 source-mute rule extends literally.\n\nSchema is additive — no\
+    \ destructive rewrite. See AC-260522-2117-007\nfor the migration safety contract.\n\
+    \n## Supersede / Versioning\n\n(none — net-new behaviour. No requirement objects\
+    \ superseded. The\nlegacy pagination implementation is replaced in-place by\n\
+    US-260522-2230-003 without a SUPERSEDES relation, since the page\nnav was never\
+    \ modelled as a discrete US.)\n\n## Scope Impact Assessment\n\n- **Features affected\
+    \ (iteration 1):** EP-260512-2230-001 (body);\n  FT-260512-2245-003 (body + status);\
+    \ FT-260522-2115-001 (new).\n- **Features affected (iteration 2):** EP-260512-2230-004\
+    \ (body —\n  pagination removed); FT-260522-2115-001 (body extended +\n  `children_ids`\
+    \ updated for two new US).\n- **Features blocked:** (none).\n- **Regression risk:**\
+    \ (a) FT03 flat-list rendering and FT04 ⋮ menu\n  must keep working with zero\
+    \ Groups (AC-260522-2117-006 guards\n  this); (b) muted source rows + the existing\
+    \ per-source mute path\n  must remain operational after title mute lands; (c)\
+    \ the no-page\n  scroll must not regress the active-source filter, the manual\n\
+    \  refresh, or article click-to-read.\n- **Breaking changes:** SQLite schema migration\
+    \ required (additive\n  DDL only — `muted` columns added on group + subgroup).\
+    \ Existing\n  rows preserved.\n\n---\n\n## Iteration 3 — Recursive folder model\
+    \ (2026-05-23T00:00)\n\nHuman chat directive: \"make sure i can go until five\
+    \ levels of sub\ntitles and keep the same drag and drop logic across all those\n\
+    levels\". Implementation interpretation:\n\n- The two-table `group` + `subgroup`\
+    \ model is collapsed into a\n  single self-referential `folder` table (`folder.parent_id`\
+    \ →\n  `folder.id`, NULL = root folder).\n- Maximum nesting depth = 5 (root folder\
+    \ = depth 1, deepest folder\n  = depth 5). Inserts and parent-change moves that\
+    \ would push a\n  subtree's max-depth above 5 are rejected at the API with 422\n\
+    \  `error: depth_limit`.\n- Sources attach via a single `Source.folder_id` FK\
+    \ (replaces the\n  pair `group_id` + `subgroup_id`). NULL = Ungrouped zone.\n\
+    - Notion-style drag-and-drop UX (Y above/below, X right=child /\n  left=outdent)\
+    \ applies identically at every depth.\n- Cascade-mute walks the folder ancestry\
+    \ chain: a Source's articles\n  are visible in the combined feed iff `Source.muted=0`\
+    \ AND no\n  ancestor folder has `muted=1`.\n\n**Iteration-3 migration** (additive\
+    \ + destructive on the legacy\nfolder tables):\n\n1. CREATE TABLE `folder` (id,\
+    \ parent_id, name, position, collapsed,\n   muted, depth, created_at).\n2. ALTER\
+    \ TABLE source ADD COLUMN folder_id TEXT REFERENCES\n   folder(id) ON DELETE SET\
+    \ NULL.\n3. INSERT INTO folder SELECT … FROM `group` (depth=1, parent_id=NULL).\n\
+    4. INSERT INTO folder SELECT … FROM subgroup (depth=2,\n   parent_id=<corresponding\
+    \ group's folder id>).\n5. UPDATE source SET folder_id = COALESCE(<matched-subgroup-folder>,\n\
+    \   <matched-group-folder>) — subgroup takes precedence over group\n   when both\
+    \ were set, preserving the iteration-1 invariant.\n6. DROP TABLE subgroup; DROP\
+    \ TABLE `group`.\n7. ALTER TABLE source DROP COLUMN group_id; DROP COLUMN subgroup_id.\n\
+    \nNo article row touched. Migration verified by AC-260522-2400-002.\n\n**Affected\
+    \ requirement objects — iteration 3:**\n\n| ID — Title | Action | Status transition\
+    \ |\n| :--- | :--- | :--- |\n| US-260522-2116-001 — Folder Data Model & Storage\
+    \ | body retargeted to recursive Folder + depth cap | OPEN → OPEN |\n| US-260522-2116-002\
+    \ — Folder CRUD Endpoints | body retargeted from `/groups`+`/subgroups` to single\
+    \ `/folders` | OPEN → OPEN |\n| US-260522-2116-003 — Sidebar Tree Rendering |\
+    \ body extended for recursive depth 1..5 | OPEN → OPEN |\n| US-260522-2116-008\
+    \ — Drag-and-Drop Reassignment | body extended: same logic at any depth | OPEN\
+    \ → OPEN |\n\nNo new US authored in this iteration — the existing FT05 stories\n\
+    cover the full recursive model. Four new CR-level AC capture the\nnet-new contract:\n\
+    \n- AC-260522-2400-001 — depth-5 invariant enforced at insert + move.\n- AC-260522-2400-002\
+    \ — migration from group + subgroup → folder\n  preserves every source's parent\
+    \ attachment.\n- AC-260522-2400-003 — tree renders at every depth 1..5 with\n\
+    \  progressive indentation.\n- AC-260522-2400-004 — drag-drop X-axis logic operates\
+    \ at every\n  depth, respecting the 5-level cap.\n\n---\n"
   acceptance_criteria: null
   relations:
-  - type: CONFIRMED_BY
-    target_id: TEST-260517-1200-001
   - type: CONFIRMS
-    target_id: US-260512-2300-001
+    target_id: EP-260512-2230-001
+  - type: CONFIRMS
+    target_id: EP-260512-2230-004
+  - type: CONFIRMS
+    target_id: FT-260512-2245-003
+  - type: CONFIRMS
+    target_id: FT-260522-2115-001
+  - type: CONFIRMS
+    target_id: FT-260522-2230-001
+  - type: CONFIRMS
+    target_id: US-260522-2116-001
+  - type: CONFIRMS
+    target_id: US-260522-2116-002
+  - type: CONFIRMS
+    target_id: US-260522-2116-003
+  - type: CONFIRMS
+    target_id: US-260522-2116-004
+  - type: CONFIRMS
+    target_id: US-260522-2116-005
+  - type: CONFIRMS
+    target_id: US-260522-2116-006
+  - type: CONFIRMS
+    target_id: US-260522-2116-007
+  - type: CONFIRMS
+    target_id: US-260522-2116-008
+  - type: CONFIRMS
+    target_id: US-260522-2116-009
+  - type: CONFIRMS
+    target_id: US-260522-2230-001
+  - type: CONFIRMS
+    target_id: US-260522-2230-002
+  - type: CONFIRMS
+    target_id: US-260522-2230-003
   - type: FULFILLED_BY
-    target_id: AC-260512-2300-002
-change_requests: []
+    target_id: AC-260522-2117-001
+  - type: FULFILLED_BY
+    target_id: AC-260522-2117-002
+  - type: FULFILLED_BY
+    target_id: AC-260522-2117-003
+  - type: FULFILLED_BY
+    target_id: AC-260522-2117-004
+  - type: FULFILLED_BY
+    target_id: AC-260522-2117-005
+  - type: FULFILLED_BY
+    target_id: AC-260522-2117-006
+  - type: FULFILLED_BY
+    target_id: AC-260522-2117-007
+  - type: FULFILLED_BY
+    target_id: AC-260522-2118-001
+  - type: FULFILLED_BY
+    target_id: AC-260522-2118-002
+  - type: FULFILLED_BY
+    target_id: AC-260522-2118-003
+  - type: FULFILLED_BY
+    target_id: AC-260522-2118-004
+  - type: FULFILLED_BY
+    target_id: AC-260522-2118-005
+  - type: FULFILLED_BY
+    target_id: AC-260522-2118-006
+  - type: FULFILLED_BY
+    target_id: AC-260522-2118-007
+  - type: FULFILLED_BY
+    target_id: AC-260522-2118-008
+  - type: FULFILLED_BY
+    target_id: AC-260522-2118-009
+  - type: FULFILLED_BY
+    target_id: AC-260522-2118-010
+  - type: FULFILLED_BY
+    target_id: AC-260522-2118-011
+  - type: FULFILLED_BY
+    target_id: AC-260522-2118-012
+  - type: FULFILLED_BY
+    target_id: AC-260522-2118-013
+  - type: FULFILLED_BY
+    target_id: AC-260522-2118-014
+  - type: FULFILLED_BY
+    target_id: AC-260522-2118-015
+  - type: FULFILLED_BY
+    target_id: AC-260522-2118-016
+  - type: FULFILLED_BY
+    target_id: AC-260522-2118-017
+  - type: FULFILLED_BY
+    target_id: AC-260522-2118-018
+  - type: FULFILLED_BY
+    target_id: AC-260522-2118-019
+  - type: FULFILLED_BY
+    target_id: AC-260522-2118-020
+  - type: FULFILLED_BY
+    target_id: AC-260522-2118-021
+  - type: FULFILLED_BY
+    target_id: AC-260522-2118-022
+  - type: FULFILLED_BY
+    target_id: AC-260522-2118-023
+  - type: FULFILLED_BY
+    target_id: AC-260522-2118-024
+  - type: FULFILLED_BY
+    target_id: AC-260522-2118-025
+  - type: FULFILLED_BY
+    target_id: AC-260522-2118-026
+  - type: FULFILLED_BY
+    target_id: AC-260522-2118-027
+  - type: FULFILLED_BY
+    target_id: AC-260522-2118-028
+  - type: FULFILLED_BY
+    target_id: AC-260522-2118-029
+  - type: FULFILLED_BY
+    target_id: AC-260522-2118-030
+  - type: FULFILLED_BY
+    target_id: AC-260522-2231-001
+  - type: FULFILLED_BY
+    target_id: AC-260522-2232-001
+  - type: FULFILLED_BY
+    target_id: AC-260522-2232-002
+  - type: FULFILLED_BY
+    target_id: AC-260522-2233-001
+  - type: FULFILLED_BY
+    target_id: AC-260522-2233-002
+  - type: FULFILLED_BY
+    target_id: AC-260522-2233-003
+  - type: FULFILLED_BY
+    target_id: AC-260522-2233-004
+  - type: FULFILLED_BY
+    target_id: AC-260522-2233-005
+  - type: FULFILLED_BY
+    target_id: AC-260522-2234-001
+  - type: FULFILLED_BY
+    target_id: AC-260522-2234-002
+  - type: FULFILLED_BY
+    target_id: AC-260522-2234-003
+  - type: FULFILLED_BY
+    target_id: AC-260522-2235-001
+  - type: FULFILLED_BY
+    target_id: AC-260522-2235-002
+  - type: FULFILLED_BY
+    target_id: AC-260522-2400-001
+  - type: FULFILLED_BY
+    target_id: AC-260522-2400-002
+  - type: FULFILLED_BY
+    target_id: AC-260522-2400-003
+  - type: FULFILLED_BY
+    target_id: AC-260522-2400-004
 acceptance_criteria:
-- id: AC-260512-2245-001
-  project_id: PR-260512-2041-001
-  type: AC
-  created_at: '2026-05-12T22:45:00'
-  created_by: CLAUDE_CODE
-  cancelled_at: null
-  locked: false
-  title: Pasting a valid news website URL and submitting the source-add form persists
-    a new Source with an assigned palette colour and a visible sidebar row within
-    1 second.
-  status: OPEN
-  result: null
-  priority: CRITICAL
-  updated_at: '2026-05-12T22:19:11.809372'
-  updated_by: CLAUDE_CODE
-  approved_by_human: true
-  cancellation_reason: null
-  tags: []
-  body: "## Description\n\nHappy-path integration check for FT01. Verifies the chain:\
-    \ form submit →\nvalidation pass → FT02 discovery success → palette colour assignment\
-    \ →\nDB persist → sidebar re-render. The 1 s budget assumes a responsive\ntarget\
-    \ site.\n\n## Test Instructions\n\n1. Open the app at the default route.\n2. Click\
-    \ the `+` icon in the sidebar header. The source-add form opens.\n3. Paste `https://www.theverge.com`\
-    \ (or any site with an RSS feed) and\n   submit.\n4. Confirm a new source row\
-    \ appears in the sidebar within 1 second, with\n   a colour dot distinct from\
-    \ existing rows.\n5. Refresh the page. Confirm the source row is still present\n\
-    \   (persistence).\n"
-  acceptance_criteria: null
-  relations:
-  - type: FULFILLS
-    target_id: FT-260512-2245-001
 - id: AC-260512-2245-003
   project_id: PR-260512-2041-001
   type: AC
@@ -1877,6 +3183,652 @@ acceptance_criteria:
   relations:
   - type: FULFILLS
     target_id: US-260513-0020-004
+- id: AC-260522-2117-001
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-22T21:17:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: When at least one Group exists, the sidebar renders Group → Subgroup → Source
+    as a tree per the screenshot; when no Group exists, the sidebar falls back to
+    FT03's flat-list rendering unchanged.
+  status: OPEN
+  result: null
+  priority: CRITICAL
+  updated_at: '2026-05-22T21:31:54.218240'
+  updated_by: CLAUDE_CODE
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: "## Description\n\nTop-level integration AC for FT05 — the tree layout is\
+    \ conditional on\nthe presence of Groups, and the flat layout (FT03) must keep\
+    \ working\nwhen no Group exists. Cross-story (US-260522-2116-003 + FT03 regression).\n\
+    \n## Test Instructions\n\n1. Open the app against a DB with zero Group rows. Confirm\
+    \ the sidebar\n   renders the flat list exactly as FT03 specifies (All sources\
+    \ + each\n   Source row in insertion order — no tree, no Ungrouped zone).\n2.\
+    \ Create a Group \"AI\" via the `+` button (US-260522-2116-005). Confirm\n   the\
+    \ sidebar switches to tree layout: All sources at top, \"AI\" group\n   row, then\
+    \ \"Ungrouped\" zone at the bottom containing every existing\n   source.\n3. Delete\
+    \ the \"AI\" group via DELETE /groups/{id}. Confirm the sidebar\n   reverts to\
+    \ the flat list (no Ungrouped zone, no tree chrome).\n"
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: CR-260522-2101-001
+  - type: FULFILLS
+    target_id: FT-260522-2115-001
+- id: AC-260522-2117-003
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-22T21:17:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: A single drag gesture covers every valid drop axis — source→group, source→subgroup,
+    source→Ungrouped, subgroup→group — and the sidebar re-renders with the new attachment.
+  status: OPEN
+  result: null
+  priority: CRITICAL
+  updated_at: '2026-05-22T21:31:54.226749'
+  updated_by: CLAUDE_CODE
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: "## Description\n\nIntegration coverage of all four drag axes (US-260522-2116-008).\
+    \ One\nAC walks every axis end-to-end so a regression in any axis fails the\n\
+    CR-level contract.\n\n## Test Instructions\n\n1. Seed: two Groups (A, B), one\
+    \ Subgroup A1 under A, three Sources\n   all in Ungrouped initially.\n2. Drag\
+    \ Source S1 onto Group A. Confirm S1 renders directly under A\n   (no subgroup_id).\
+    \ DB: S1.group_id = A.id, S1.subgroup_id = NULL.\n3. Drag Source S2 onto Subgroup\
+    \ A1. Confirm S2 renders under A1.\n   DB: S2.group_id = A.id, S2.subgroup_id\
+    \ = A1.id.\n4. Drag Source S1 (now under A) back to the Ungrouped zone. Confirm\n\
+    \   S1 renders under \"Ungrouped\". DB: both FKs NULL.\n5. Drag Subgroup A1 onto\
+    \ Group B. Confirm A1 now renders under B,\n   and S2 (still in A1) renders under\
+    \ A1's new location. DB:\n   A1.group_id = B.id, S2.group_id = B.id, S2.subgroup_id\
+    \ = A1.id.\n"
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: CR-260522-2101-001
+  - type: FULFILLS
+    target_id: FT-260522-2115-001
+- id: AC-260522-2117-006
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-22T21:17:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: With zero Groups, FT03 sidebar behaviour (flat list, active state, muted
+    state, ⋮ menu, All sources entry) is identical to its pre-CR contract — no visual
+    or behavioural regression.
+  status: OPEN
+  result: null
+  priority: CRITICAL
+  updated_at: '2026-05-22T21:31:54.242515'
+  updated_by: CLAUDE_CODE
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: "## Description\n\nRegression guard per §3.8.1. Ensures FT03's flat-list contract\
+    \ is\npreserved when the tree layout is not active.\n\n## Test Instructions\n\n\
+    1. Reset DB so it has Sources but zero Groups.\n2. Verify each pre-CR FT03 AC\
+    \ still passes by re-running its\n   Test Instructions: AC-260512-2245-005 (sidebar\
+    \ shape),\n   AC-260513-0010-001, -002 (FT03 rendering), -003, -004\n   (state\
+    \ variants).\n3. Verify FT04 ⋮ menu actions still work end-to-end (rename, mute\
+    \ /\n   unmute, remove) — AC-260513-0020-001..008.\n4. Confirm sidebar partial\
+    \ endpoint (US-260513-0010-003) returns the\n   flat-list fragment when no Group\
+    \ rows exist, byte-identical to\n   its pre-CR output for the same DB state.\n"
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: CR-260522-2101-001
+  - type: FULFILLS
+    target_id: FT-260522-2115-001
+- id: AC-260522-2117-007
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-22T21:17:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: The additive migration creates `group` and `subgroup` tables and adds nullable
+    FK columns on `source` without dropping or rewriting any existing source or article
+    row.
+  status: OPEN
+  result: null
+  priority: CRITICAL
+  updated_at: '2026-05-22T21:31:54.246515'
+  updated_by: CLAUDE_CODE
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: "## Description\n\nSchema migration safety. Ensures the FT05 migration is\
+    \ purely\nadditive — no destructive rewrite of `source` or `article`.\n\n## Test\
+    \ Instructions\n\n1. On a populated DB, snapshot row counts: `source` (Ns rows),\n\
+    \   `article` (Na rows).\n2. Run the FT05 migration.\n3. Re-snapshot row counts.\
+    \ Confirm Ns and Na are unchanged.\n4. SELECT group_id, subgroup_id FROM source.\
+    \ Confirm every existing\n   row has both NULL (additive migration default).\n\
+    5. Confirm new tables exist: `PRAGMA table_info(group)` and\n   `PRAGMA table_info(subgroup)`\
+    \ return the columns specified in\n   DATA_MODEL.md §1.4 / §1.5.\n6. Confirm FK\
+    \ constraints active: `PRAGMA foreign_keys = ON;`\n   still returns 1 (migration\
+    \ must not toggle this off).\n"
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: CR-260522-2101-001
+  - type: FULFILLS
+    target_id: FT-260522-2115-001
+- id: AC-260522-2118-001
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-22T21:18:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: After the FT05 migration, the `group` table exists with columns id (TEXT
+    PK), name (TEXT NOT NULL), position (INTEGER NOT NULL), collapsed (INTEGER NOT
+    NULL DEFAULT 0), created_at (TEXT NOT NULL).
+  status: OPEN
+  result: null
+  priority: CRITICAL
+  updated_at: '2026-05-22T21:31:54.251513'
+  updated_by: CLAUDE_CODE
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: "## Description\n\nSchema assertion for the new `group` table per DATA_MODEL.md\
+    \ §1.4.\n\n## Test Instructions\n\n1. Run the migration on a fresh DB.\n2. Execute\
+    \ `PRAGMA table_info(\"group\");`.\n3. Confirm each column matches: name, type,\
+    \ notnull flag, default,\n   pk flag.\n4. Insert a row with name=\"AI\", position=0,\
+    \ collapsed=0,\n   created_at=now. Confirm 1 row inserted.\n"
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: CR-260522-2101-001
+  - type: FULFILLS
+    target_id: US-260522-2116-001
+- id: AC-260522-2118-004
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-22T21:18:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: POST /groups with a valid name returns 201 with the new group id, and a subsequent
+    GET /sidebar-partial includes a row for that group.
+  status: OPEN
+  result: null
+  priority: CRITICAL
+  updated_at: '2026-05-22T21:31:54.268381'
+  updated_by: CLAUDE_CODE
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: "## Description\n\nCreate-group endpoint round-trip (US-260522-2116-002 endpoint\
+    \ surface).\n\n## Test Instructions\n\n1. POST /groups with body `{name: \"AI\"\
+    }`. Confirm 201 with JSON\n   containing the new group id.\n2. GET /sidebar-partial.\
+    \ Confirm the response HTML contains a row\n   labelled \"AI\".\n3. Query the\
+    \ DB. Confirm one new row in `group` with name = \"AI\".\n"
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: CR-260522-2101-001
+  - type: FULFILLS
+    target_id: US-260522-2116-002
+- id: AC-260522-2118-008
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-22T21:18:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: An expanded group's DOM order is chevron + group name + pill, followed by
+    its subgroups in position order, followed by its direct-child sources in position
+    order.
+  status: OPEN
+  result: null
+  priority: CRITICAL
+  updated_at: '2026-05-22T21:31:54.286213'
+  updated_by: CLAUDE_CODE
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: "## Description\n\nTree DOM ordering contract for the expanded-group case.\n\
+    \n## Test Instructions\n\n1. Create group G containing: subgroup S1 (position\
+    \ 0), subgroup S2\n   (position 1), direct source D1 (position 0 among direct\
+    \ sources).\n2. GET /sidebar-partial.\n3. Inspect the DOM children of G's row\
+    \ in render order. Confirm:\n   chevron + group name + pill, then S1, then S2,\
+    \ then D1.\n4. Re-position: PATCH /subgroups/S2 {position: 0}, PATCH\n   /subgroups/S1\
+    \ {position: 1}. Re-render. Confirm new order:\n   S2, S1, D1.\n"
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: CR-260522-2101-001
+  - type: FULFILLS
+    target_id: US-260522-2116-003
+- id: AC-260522-2118-012
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-22T21:18:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: Clicking a Group's chevron PATCH /groups/{id} `{collapsed=true}` hides every
+    subgroup + direct source under the group in the next sidebar partial; a second
+    click expands it back.
+  status: OPEN
+  result: null
+  priority: CRITICAL
+  updated_at: '2026-05-22T21:31:54.306736'
+  updated_by: CLAUDE_CODE
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: "## Description\n\nCollapse toggle behaviour (US-260522-2116-004) + PATCH\
+    \ wiring.\n\n## Test Instructions\n\n1. Group G expanded; contains subgroup +\
+    \ direct source.\n2. Click G's chevron. Confirm PATCH /groups/G.id with\n   `{collapsed:\
+    \ true}` is issued.\n3. Confirm the sidebar's next render hides G's children (subgroup\n\
+    \   + direct source rows). Chevron rotates.\n4. Click chevron again. Confirm PATCH\
+    \ `{collapsed: false}`. Children\n   reappear.\n"
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: CR-260522-2101-001
+  - type: FULFILLS
+    target_id: US-260522-2116-004
+- id: AC-260522-2118-014
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-22T21:18:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: A "New group" `+` button next to the SOURCES header reveals an inline name
+    input on click, with placeholder "Group name".
+  status: OPEN
+  result: null
+  priority: CRITICAL
+  updated_at: '2026-05-22T21:31:54.316269'
+  updated_by: CLAUDE_CODE
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: "## Description\n\nCreate-group affordance reveal (US-260522-2116-005).\n\n\
+    ## Test Instructions\n\n1. Open the sidebar. Confirm a `+` button is rendered\
+    \ next to\n   the SOURCES header, distinct from the existing add-source `+`.\n\
+    \   Tooltip on hover: \"New group\".\n2. Click the `+`. Confirm an inline text\
+    \ input appears below the\n   SOURCES header with placeholder \"Group name\" and\
+    \ focus.\n"
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: CR-260522-2101-001
+  - type: FULFILLS
+    target_id: US-260522-2116-005
+- id: AC-260522-2118-015
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-22T21:18:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: Typing a valid name and pressing Enter creates the Group via POST /groups,
+    and the new Group renders at the bottom of the sidebar tree (highest `position`).
+  status: OPEN
+  result: null
+  priority: CRITICAL
+  updated_at: '2026-05-22T21:31:54.322374'
+  updated_by: CLAUDE_CODE
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: "## Description\n\nCreate-group submission flow.\n\n## Test Instructions\n\
+    \n1. Open the inline input via `+`.\n2. Type \"AI\" and press Enter.\n3. Confirm\
+    \ POST /groups fires; 201 returned.\n4. Inline input clears and closes.\n5. Sidebar\
+    \ re-renders; \"AI\" appears at the bottom of the tree\n   (above the Ungrouped\
+    \ zone), with the highest `position` value.\n"
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: CR-260522-2101-001
+  - type: FULFILLS
+    target_id: US-260522-2116-005
+- id: AC-260522-2118-018
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-22T21:18:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: Clicking the on-hover `+` opens an inline input under the Group title; pressing
+    Enter creates the Subgroup via POST /subgroups, and the parent Group auto-expands
+    if it was collapsed.
+  status: OPEN
+  result: null
+  priority: CRITICAL
+  updated_at: '2026-05-22T21:31:54.336889'
+  updated_by: CLAUDE_CODE
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: "## Description\n\nCreate-subgroup submission flow + auto-expand on collapsed\
+    \ parent.\n\n## Test Instructions\n\n1. Collapse Group G via chevron.\n2. Hover\
+    \ G. Click `+`. Confirm inline input appears under G's title\n   (G auto-expands\
+    \ implicitly to make room for the input).\n3. Type \"Newsletters\" + Enter.\n\
+    4. Confirm POST /subgroups fires; 201.\n5. Confirm G is expanded post-create (PATCH\
+    \ /groups/G.id\n   {collapsed: false} was issued or the create endpoint set it\n\
+    \   server-side). DB: `group.collapsed` = 0.\n6. Subgroup \"Newsletters\" appears\
+    \ under G.\n"
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: CR-260522-2101-001
+  - type: FULFILLS
+    target_id: US-260522-2116-006
+- id: AC-260522-2118-020
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-22T21:18:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: Double-clicking a Group or Subgroup title replaces the static label with
+    an inline text input pre-filled with the current name and focused.
+  status: OPEN
+  result: null
+  priority: CRITICAL
+  updated_at: '2026-05-22T21:31:54.346394'
+  updated_by: CLAUDE_CODE
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: "## Description\n\nRename activation (US-260522-2116-007). Source row titles\
+    \ do not\nparticipate — only Group + Subgroup titles.\n\n## Test Instructions\n\
+    \n1. Double-click a Group title (e.g. \"AI\"). Confirm the label swaps\n   for\
+    \ an inline text input pre-filled with \"AI\"; input receives\n   focus.\n2. Double-click\
+    \ a Subgroup title. Same behaviour.\n3. Double-click a Source title. Confirm NO\
+    \ inline input appears\n   (rename via ⋮ menu only, per FT04).\n"
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: CR-260522-2101-001
+  - type: FULFILLS
+    target_id: US-260522-2116-007
+- id: AC-260522-2118-023
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-22T21:18:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: Dragging a Source row and dropping onto a Group row PATCHes /sources/{id}/parent
+    with `group_id` set and `subgroup_id=null`; the source renders directly under
+    that Group.
+  status: OPEN
+  result: null
+  priority: CRITICAL
+  updated_at: '2026-05-22T21:31:54.364435'
+  updated_by: CLAUDE_CODE
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: "## Description\n\nDrag axis 1 — source onto a group (no subgroup).\n\n##\
+    \ Test Instructions\n\n1. Seed: group G with no subgroups; one ungrouped source\
+    \ S.\n2. Drag S onto G's row. Drop.\n3. Confirm PATCH /sources/S.id/parent fires\
+    \ with `{group_id: G.id,\n   subgroup_id: null}`.\n4. Sidebar re-renders. S now\
+    \ appears as a direct child of G.\n5. DB: source.group_id = G.id, source.subgroup_id\
+    \ = NULL.\n"
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: CR-260522-2101-001
+  - type: FULFILLS
+    target_id: US-260522-2116-008
+- id: AC-260522-2118-024
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-22T21:18:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: Dragging a Source row onto a Subgroup row PATCHes with both `group_id` (the
+    subgroup's parent group) and `subgroup_id` set, preserving the parent-group invariant.
+  status: OPEN
+  result: null
+  priority: CRITICAL
+  updated_at: '2026-05-22T21:31:54.372943'
+  updated_by: CLAUDE_CODE
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: "## Description\n\nDrag axis 2 — source onto a subgroup. Backend / client\
+    \ coherence on\nthe (group_id, subgroup_id) pair.\n\n## Test Instructions\n\n\
+    1. Seed: group G with subgroup S1; one ungrouped source X.\n2. Drag X onto S1's\
+    \ row.\n3. Confirm PATCH /sources/X.id/parent fires with both\n   `group_id: G.id`\
+    \ AND `subgroup_id: S1.id`.\n4. Confirm 200 (not 422 — invariant satisfied).\n\
+    5. Sidebar re-renders X under S1.\n6. DB: source.group_id = G.id, source.subgroup_id\
+    \ = S1.id.\n"
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: CR-260522-2101-001
+  - type: FULFILLS
+    target_id: US-260522-2116-008
+- id: AC-260522-2231-001
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-22T22:31:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: The whole app — sidebar tree, feed pane, header chrome, banner — visually
+    matches 01_Docs/04_content/images/screenshot.png; no compact-row variant, no pagination
+    chrome, refresh icon subtle in top-right of feed.
+  status: OPEN
+  result: null
+  priority: CRITICAL
+  updated_at: '2026-05-22T22:37:37.160761'
+  updated_by: CLAUDE_CODE
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: "## Description\n\nCR-level design-fidelity AC. The rendered app must match\
+    \ the\nhuman-supplied screenshot side-by-side: cream background, sidebar\ntree\
+    \ shape (Group → Subgroup → Source with collapsible chevrons),\n\"Latest news\"\
+    \ feed header with article count + active source count,\neach article rendered\
+    \ as a full card (colour-dot · source · relative\ntime / bold title / two-line\
+    \ summary), refresh icon as a small\nsubtle button in the top-right.\n\n## Test\
+    \ Instructions\n\n1. Open the app side-by-side with\n   `01_Docs/04_content/images/screenshot.png`.\n\
+    2. Sidebar: confirm SOURCES header, `+` source button + `+` new-group\n   button,\
+    \ All sources virtual entry at top, group rows with chevrons,\n   subgroups indented\
+    \ under groups, sources indented under subgroups\n   (or one level under groups),\
+    \ \"UNGROUPED\" zone at the bottom,\n   and the `+ New group` CTA at the very\
+    \ bottom.\n3. Feed pane: confirm \"Latest news\" title, \"{N} articles · {M} active\n\
+    \   sources\" subtitle, refresh icon top-right of the pane (small).\n4. Every\
+    \ article card renders the full layout (no compact variant\n   below the fold).\
+    \ Each card shows colour-dot + source name +\n   relative time / bold title /\
+    \ summary text (when present).\n5. Confirm NO \"Prev / Next\" pagination buttons\
+    \ anywhere in the feed.\n   Scrolling near the bottom triggers a fetch + append.\n\
+    6. Confirm the onboarding banner appears between feed header and\n   first article\
+    \ when no Group exists and the user has not dismissed\n   it.\n"
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: CR-260522-2101-001
+  - type: FULFILLS
+    target_id: FT-260522-2115-001
+- id: AC-260522-2233-005
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-22T22:33:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: Source ⋮ menu (FT04 Rename / Mute / Remove) keeps working unchanged after
+    the title menu lands — regression guard.
+  status: OPEN
+  result: null
+  priority: CRITICAL
+  updated_at: '2026-05-22T22:37:37.188224'
+  updated_by: CLAUDE_CODE
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: "## Description\n\nRegression guard: FT04 source ⋮ menu remains operational.\n\
+    \n## Test Instructions\n\n1. Re-run every AC under FT04 (AC-260513-0020-001..008):\
+    \ hover\n   reveal, rename, mute/unmute, remove + confirm.\n2. Confirm each passes\
+    \ byte-identically to its pre-CR test\n   outcome.\n"
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: CR-260522-2101-001
+  - type: FULFILLS
+    target_id: US-260522-2230-001
+- id: AC-260522-2234-001
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-22T22:34:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: Muting a Group or Subgroup hides every article from its member sources in
+    the combined "All sources" feed (cascade), while polling continues and per-source
+    filtered views still show those sources' articles.
+  status: OPEN
+  result: null
+  priority: CRITICAL
+  updated_at: '2026-05-22T22:37:37.192732'
+  updated_by: CLAUDE_CODE
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: "## Description\n\nCascade-mute predicate per DATA_MODEL.md §2.3.\n\n## Test\
+    \ Instructions\n\n1. Seed Group A with Subgroup A1, 2 sources S1, S2 under A1,\
+    \ plus\n   1 direct source D under A. All have recent articles.\n2. Open \"All\
+    \ sources\" view. Confirm articles from S1, S2, D appear.\n3. Mute Group A. Confirm\
+    \ \"All sources\" no longer shows articles\n   from S1, S2, D.\n4. Click S1 in\
+    \ the sidebar (per-source filtered view). Confirm S1's\n   articles DO appear\
+    \ (cascade does not apply to explicit\n   source-filter views, mirroring FT04\
+    \ source mute behaviour).\n5. Unmute A. Confirm articles return to \"All sources\"\
+    .\n6. Mute Subgroup A1 (with A unmuted). Confirm S1, S2 articles hide\n   in \"\
+    All sources\" but D still shows.\n7. Confirm EP03 poll cycles continue while a\
+    \ Group/Subgroup is\n   muted (articles continue to be ingested).\n"
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: CR-260522-2101-001
+  - type: FULFILLS
+    target_id: US-260522-2230-002
+- id: AC-260522-2235-001
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-22T22:35:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: The initial feed render loads the newest 50 articles with no pagination chrome
+    (no prev / next buttons, no page indicator) anywhere on the page.
+  status: OPEN
+  result: null
+  priority: CRITICAL
+  updated_at: '2026-05-22T22:37:37.214817'
+  updated_by: CLAUDE_CODE
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: "## Description\n\nPagination removed from initial render. Verifies the design-fidelity\n\
+    side of US-260522-2230-003.\n\n## Test Instructions\n\n1. Open the app with at\
+    \ least 100 articles in the DB.\n2. Confirm the feed renders the newest 50 articles.\n\
+    3. Confirm NO \"Prev\" / \"Next\" button anywhere in the feed pane.\n4. Confirm\
+    \ NO \"Page X of Y\" indicator.\n5. Confirm the bottom of the visible list is\
+    \ the 50th article (no\n   trailing nav).\n"
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: CR-260522-2101-001
+  - type: FULFILLS
+    target_id: US-260522-2230-003
+- id: AC-260522-2400-001
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-23T00:00:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: A folder cannot be created or moved such that its depth (or the depth of
+    any of its descendants) exceeds 5 — the API rejects with 422 `error depth_limit`
+    and the DB row is not written.
+  status: OPEN
+  result: null
+  priority: CRITICAL
+  updated_at: '2026-05-22T23:12:16.233775'
+  updated_by: CLAUDE_CODE
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: "## Description\n\nDepth-cap invariant for the recursive folder model\n(CR-260522-2101-001\
+    \ iteration 3). Enforced server-side on every\nPOST /folders and PATCH /folders/{id}\
+    \ where `parent_id` changes.\n\n## Test Instructions\n\n1. Build a chain: root\
+    \ F1 (depth 1) → F2 (depth 2) → F3 (depth 3)\n   → F4 (depth 4) → F5 (depth 5).\n\
+    2. POST /folders `{ parent_id: F5.id, name: \"F6\" }`. Confirm 422\n   with body\
+    \ containing `error: depth_limit`. Confirm no row in\n   `folder` named F6.\n\
+    3. Create a sibling chain Sa (depth 1) → Sb (depth 2). PATCH\n   /folders/{Sa.id}\
+    \ `{ parent_id: F4.id }` — this would make Sa\n   depth 5 AND Sb depth 6. Confirm\
+    \ 422 `error: depth_limit`.\n   Confirm Sa's parent_id is still NULL.\n4. PATCH\
+    \ /folders/{Sa.id} `{ parent_id: F3.id }` — Sa would be\n   depth 4, Sb depth\
+    \ 5. Confirm 200 and the move succeeds.\n"
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: CR-260522-2101-001
+  - type: FULFILLS
+    target_id: FT-260522-2115-001
+- id: AC-260522-2400-002
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-23T00:00:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: The iteration-3 migration converts every existing Group + Subgroup row into
+    a Folder (depths 1 and 2 respectively) and rewires every Source's parent to its
+    matched folder, with no source / article row dropped or rewritten.
+  status: OPEN
+  result: null
+  priority: CRITICAL
+  updated_at: '2026-05-22T23:12:16.237194'
+  updated_by: CLAUDE_CODE
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: "## Description\n\nIteration-3 migration safety. Walks the iteration-1 → iteration-3\n\
+    schema transition: every Group becomes a depth-1 Folder, every\nSubgroup becomes\
+    \ a depth-2 Folder under its parent group's folder,\nevery Source's `folder_id`\
+    \ is set to the deepest matched ancestor\n(subgroup wins over group).\n\n## Test\
+    \ Instructions\n\n1. On a pre-iteration-3 DB with N groups, M subgroups, K sources,\n\
+    \   L articles: snapshot N, M, K, L.\n2. Run the iteration-3 migration (boot the\
+    \ app — or call\n   `db.initialise()` explicitly).\n3. After migration, verify:\n\
+    \   - `SELECT COUNT(*) FROM folder` returns N + M.\n   - Every former group row\
+    \ now lives as a folder with\n     `parent_id IS NULL`, `depth = 1`, same `name`/`position`/\n\
+    \     `collapsed`/`muted`/`created_at`.\n   - Every former subgroup row now lives\
+    \ as a folder with\n     `parent_id = <its old group's new folder id>`, `depth\
+    \ = 2`,\n     preserved fields.\n   - `SELECT COUNT(*) FROM source` returns K\
+    \ (preserved).\n   - `SELECT COUNT(*) FROM article` returns L (preserved).\n \
+    \  - Every source that previously had `subgroup_id` set has\n     `folder_id =\
+    \ <that subgroup's new folder id>`.\n   - Every source that had only `group_id`\
+    \ set has\n     `folder_id = <that group's new folder id>`.\n   - Every source\
+    \ that had both FKs NULL has `folder_id IS NULL`\n     (Ungrouped — preserved).\n\
+    4. Verify `subgroup` and `group` tables have been dropped\n   (`SELECT name FROM\
+    \ sqlite_master WHERE type='table'` no longer\n   lists them).\n5. Verify `source.group_id`\
+    \ and `source.subgroup_id` columns no\n   longer exist (`PRAGMA table_info(source)`).\n"
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: CR-260522-2101-001
+  - type: FULFILLS
+    target_id: FT-260522-2115-001
 - id: AC-260512-2245-002
   project_id: PR-260512-2041-001
   type: AC
@@ -2479,6 +4431,891 @@ acceptance_criteria:
   relations:
   - type: FULFILLS
     target_id: US-260513-0020-004
+- id: AC-260522-2050-001
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-22T20:50:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: The scheduler runs continuously for the lifetime of the app process — it
+    starts on app boot, polls on the configured cadence until shutdown, and stops
+    cleanly on process termination with no orphan threads surviving.
+  status: OPEN
+  result: null
+  priority: HIGH
+  updated_at: '2026-05-22T05:18:18.922885'
+  updated_by: CLAUDE_CODE
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: '## Description
+
+
+    Feature-level AC for FT-260522-2050-001 — asserts the cross-story integration
+    between US-260522-2050-001 (Periodic Poll Scheduler) and US-260522-2050-002 (App-Open
+    Initial Poll). The two stories together must produce a coherent scheduler lifecycle,
+    not two independent jobs that compete or leak threads. Reference: FT-260522-2050-001
+    body (lifecycle paragraph).
+
+
+    ## Test Instructions
+
+
+    1. Start the app. Confirm the scheduler thread / job-store is registered in process
+    inspection (or via logs).
+
+    2. Confirm a boot-time one-shot poll fires (US-260522-2050-002 AC), then the periodic
+    10-min cycle takes over (US-260522-2050-001 AC) for the rest of the process lifetime.
+
+    3. Stop the app cleanly (SIGINT / shutdown hook). Confirm via process listing
+    that no scheduler thread / APScheduler executor survives termination.
+
+    4. Restart the app. Confirm only one scheduler runs (no duplicate registrations
+    from stale state).
+
+    '
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: FT-260522-2050-001
+- id: AC-260522-2050-002
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-22T20:50:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: The header bar's last-sync state stays coherent across every poll-completion
+    path — app-open boot poll, manual refresh, and scheduled cycles all surface the
+    same timestamp value in the header within seconds of completion.
+  status: OPEN
+  result: null
+  priority: HIGH
+  updated_at: '2026-05-22T05:18:18.926296'
+  updated_by: CLAUDE_CODE
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: '## Description
+
+
+    Feature-level AC for FT-260522-2050-002 — asserts the cross-story integration
+    between US-260522-2050-003 (Last-Sync Indicator Display) and US-260522-2050-004
+    (Manual Refresh Button). The indicator value must be a single source of truth
+    regardless of which upstream path (boot / manual / scheduled) wrote to `Source.last_polled_at`.
+    Reference: FT-260522-2050-002 body.
+
+
+    ## Test Instructions
+
+
+    1. Start the app. Confirm the header last-sync indicator reflects the boot-time
+    poll within seconds of app open (per AC-260522-2030-007 + AC-260522-2030-008).
+
+    2. Click the manual refresh button. Confirm the header re-renders to the new timestamp
+    on completion (per AC-260522-2030-006 + AC-260522-2030-009).
+
+    3. Wait for the next scheduled cycle. Confirm the header re-renders on cycle completion
+    with the same partial-refresh path used by manual refresh (per AC-260522-2030-005
+    + AC-260522-2030-009).
+
+    4. At each step, query the DB: header text matches MAX(`Source.last_polled_at`)
+    — no drift between display and persisted value.
+
+    '
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: FT-260522-2050-002
+- id: AC-260522-2117-002
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-22T21:17:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: Unread-count pills aggregate up the tree — Group pill equals the sum of its
+    direct sources plus the sum of its subgroup pills; "All sources" remains the global
+    unread sum.
+  status: OPEN
+  result: null
+  priority: HIGH
+  updated_at: '2026-05-22T21:31:54.223749'
+  updated_by: CLAUDE_CODE
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: "## Description\n\nNumerical contract for tree counts. Aggregation rule defined\
+    \ in\nUS-260522-2116-003 body. Cross-story integration AC.\n\n## Test Instructions\n\
+    \n1. Seed: Group A with one direct source (5 unread) + Subgroup A1\n   containing\
+    \ two sources (3 and 7 unread). Group B with one direct\n   source (4 unread).\
+    \ Ungrouped: one source (2 unread).\n2. Render the sidebar. Confirm pill counts:\n\
+    \   - Group A pill = 15 (5 + 3 + 7).\n   - Subgroup A1 pill = 10 (3 + 7).\n  \
+    \ - Group B pill = 4.\n   - Ungrouped zone: implicit count per its source row\
+    \ only.\n   - All sources pill = 21 (5 + 3 + 7 + 4 + 2).\n3. Mark one of A1's\
+    \ sources fully read (all articles read_at set).\n   Re-render. Confirm Group\
+    \ A pill drops by exactly that source's\n   previous unread count.\n"
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: CR-260522-2101-001
+  - type: FULFILLS
+    target_id: FT-260522-2115-001
+- id: AC-260522-2117-004
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-22T21:17:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: Double-clicking a group or subgroup title, editing, and pressing Enter persists
+    the new name to the DB and re-renders the sidebar with the updated label.
+  status: OPEN
+  result: null
+  priority: HIGH
+  updated_at: '2026-05-22T21:31:54.232287'
+  updated_by: CLAUDE_CODE
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: '## Description
+
+
+    Integration AC for rename round-trip (US-260522-2116-007 + backend
+
+    PATCH endpoint US-260522-2116-002).
+
+
+    ## Test Instructions
+
+
+    1. Create group "AI". Double-click its title.
+
+    2. Change to "AI Research". Press Enter.
+
+    3. Confirm label in sidebar updates to "AI Research" within 500 ms.
+
+    4. Reload the page. Confirm "AI Research" still present.
+
+    5. Repeat with a subgroup under it. Same flow, same persistence.
+
+    '
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: CR-260522-2101-001
+  - type: FULFILLS
+    target_id: FT-260522-2115-001
+- id: AC-260522-2118-002
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-22T21:18:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: After the migration the `subgroup` table exists with `group_id` FK to `group.id`
+    ON DELETE CASCADE — deleting a Group also deletes every Subgroup that referenced
+    it.
+  status: OPEN
+  result: null
+  priority: HIGH
+  updated_at: '2026-05-22T21:31:54.257866'
+  updated_by: CLAUDE_CODE
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: "## Description\n\nSubgroup table + cascade contract per DATA_MODEL.md §1.5\
+    \ / §2.\n\n## Test Instructions\n\n1. `PRAGMA foreign_key_list(subgroup);` — confirm\
+    \ one FK row with\n   table=group, on_delete=CASCADE.\n2. Insert a group G; insert\
+    \ two subgroups under G.\n3. DELETE FROM \"group\" WHERE id = G.id.\n4. SELECT\
+    \ * FROM subgroup. Confirm zero rows reference G.\n"
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: CR-260522-2101-001
+  - type: FULFILLS
+    target_id: US-260522-2116-001
+- id: AC-260522-2118-003
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-22T21:18:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: After the migration `source.group_id` and `source.subgroup_id` exist as nullable
+    FKs with ON DELETE SET NULL, and application code rejects a PATCH whose `subgroup_id`
+    parent group differs from the supplied `group_id` — 422 with body `error invariant_violation`.
+  status: OPEN
+  result: null
+  priority: HIGH
+  updated_at: '2026-05-22T21:31:54.262376'
+  updated_by: CLAUDE_CODE
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: "## Description\n\nSource parent FK columns + the app-level invariant rejecting\n\
+    incoherent (group_id, subgroup_id) pairs.\n\n## Test Instructions\n\n1. `PRAGMA\
+    \ foreign_key_list(source);` — confirm two new FK rows\n   (group_id → group.id\
+    \ ON DELETE SET NULL; subgroup_id → subgroup.id\n   ON DELETE SET NULL).\n2. Insert\
+    \ two groups G1, G2; insert subgroup S1 under G1.\n3. PATCH /sources/{id}/parent\
+    \ with `{group_id: G2.id, subgroup_id:\n   S1.id}` (mismatched pair). Confirm\
+    \ 422 with body containing\n   `error: invariant_violation`.\n4. Confirm the source\
+    \ row's group_id / subgroup_id are unchanged\n   in the DB.\n5. Delete G1. Confirm\
+    \ S1 is cascade-deleted AND any source pointing\n   at S1 now has subgroup_id\
+    \ = NULL (FK SET NULL).\n"
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: CR-260522-2101-001
+  - type: FULFILLS
+    target_id: US-260522-2116-001
+- id: AC-260522-2118-005
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-22T21:18:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: PATCH /groups/{id} updates name / position / collapsed; DELETE /groups/{id}
+    cascades subgroups and SET NULL on the group_id / subgroup_id of every member
+    source.
+  status: OPEN
+  result: null
+  priority: HIGH
+  updated_at: '2026-05-22T21:31:54.271381'
+  updated_by: CLAUDE_CODE
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: "## Description\n\nUpdate + delete contract for the group endpoints.\n\n##\
+    \ Test Instructions\n\n1. Create group G with one subgroup S and two member sources\n\
+    \   (one directly under G, one under S).\n2. PATCH /groups/G.id with `{name: \"\
+    Renamed\"}`. Confirm\n   sidebar label updates.\n3. PATCH with `{collapsed: true}`.\
+    \ Confirm row's chevron rotates\n   in the next render; DB collapsed=1.\n4. DELETE\
+    \ /groups/G.id. Confirm:\n   - `subgroup` row for S is gone (FK CASCADE).\n  \
+    \ - Both source rows still exist but with group_id = NULL and\n     subgroup_id\
+    \ = NULL (FK SET NULL).\n   - Sidebar re-renders moving both sources to the Ungrouped\
+    \ zone.\n"
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: CR-260522-2101-001
+  - type: FULFILLS
+    target_id: US-260522-2116-002
+- id: AC-260522-2118-006
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-22T21:18:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: POST /subgroups with a valid `{group_id, name}` returns 201 and the subgroup
+    renders under its parent Group in the next sidebar partial.
+  status: OPEN
+  result: null
+  priority: HIGH
+  updated_at: '2026-05-22T21:31:54.275812'
+  updated_by: CLAUDE_CODE
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: "## Description\n\nSubgroup create endpoint round-trip.\n\n## Test Instructions\n\
+    \n1. Create group G via POST /groups.\n2. POST /subgroups with `{group_id: G.id,\
+    \ name: \"Newsletters\"}`.\n3. Confirm 201 with new subgroup id.\n4. GET /sidebar-partial.\
+    \ Confirm the response renders \"Newsletters\"\n   nested under G's row.\n"
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: CR-260522-2101-001
+  - type: FULFILLS
+    target_id: US-260522-2116-002
+- id: AC-260522-2118-009
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-22T21:18:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: Sources with `subgroup_id` set render under their Subgroup row only — they
+    never appear in the Group's direct-source list.
+  status: OPEN
+  result: null
+  priority: HIGH
+  updated_at: '2026-05-22T21:31:54.291715'
+  updated_by: CLAUDE_CODE
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: "## Description\n\nMutual exclusivity of direct-group vs subgroup placement\
+    \ in the\nrender.\n\n## Test Instructions\n\n1. Create group G with subgroup S1.\
+    \ Create 3 sources, attach each\n   to S1 (PATCH /sources/{id}/parent with both\
+    \ FKs).\n2. GET /sidebar-partial.\n3. Confirm all 3 sources render under S1's\
+    \ row in the DOM.\n4. Confirm none of them appear as direct children of G's row.\n"
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: CR-260522-2101-001
+  - type: FULFILLS
+    target_id: US-260522-2116-003
+- id: AC-260522-2118-010
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-22T21:18:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: The "Ungrouped" zone is always rendered at the bottom of the sidebar (even
+    when empty), labelled "Ungrouped", and lists every Source with `group_id = NULL`
+    AND `subgroup_id = NULL`.
+  status: OPEN
+  result: null
+  priority: HIGH
+  updated_at: '2026-05-22T21:31:54.295722'
+  updated_by: CLAUDE_CODE
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: "## Description\n\nOverflow-zone contract — always-present, holds orphan sources.\n\
+    \n## Test Instructions\n\n1. With at least one Group existing AND every Source\
+    \ attached to\n   some Group/Subgroup, render the sidebar.\n2. Confirm the \"\
+    Ungrouped\" label is present at the bottom of the\n   source-list block. The list\
+    \ under it is empty (no rows).\n3. PATCH one Source to set both FKs NULL.\n4.\
+    \ Re-render. Confirm the source appears under \"Ungrouped\".\n"
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: CR-260522-2101-001
+  - type: FULFILLS
+    target_id: US-260522-2116-003
+- id: AC-260522-2118-013
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-22T21:18:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: After collapsing a Group or Subgroup and reloading the page, the same row
+    remains collapsed (state persists in `Group.collapsed` / `Subgroup.collapsed`).
+  status: OPEN
+  result: null
+  priority: HIGH
+  updated_at: '2026-05-22T21:31:54.312269'
+  updated_by: CLAUDE_CODE
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: '## Description
+
+
+    Collapse persistence across page reloads.
+
+
+    ## Test Instructions
+
+
+    1. Collapse group G via chevron click.
+
+    2. Hard-reload the page.
+
+    3. Confirm G renders collapsed (children not in DOM, chevron rotated).
+
+    4. Repeat with a subgroup.
+
+    '
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: CR-260522-2101-001
+  - type: FULFILLS
+    target_id: US-260522-2116-004
+- id: AC-260522-2118-017
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-22T21:18:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: Hovering a Group row reveals an on-hover `+` icon on its right side; the
+    icon hides on mouse-leave.
+  status: OPEN
+  result: null
+  priority: HIGH
+  updated_at: '2026-05-22T21:31:54.330375'
+  updated_by: CLAUDE_CODE
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: "## Description\n\nHover affordance for create-subgroup (US-260522-2116-006).\n\
+    \n## Test Instructions\n\n1. Hover any Group row. Confirm a `+` icon appears on\
+    \ the right side\n   of the row (CSS `:hover`-driven, no JS reveal needed).\n\
+    2. Move the cursor off the row. Confirm the `+` icon hides.\n"
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: CR-260522-2101-001
+  - type: FULFILLS
+    target_id: US-260522-2116-006
+- id: AC-260522-2118-021
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-22T21:18:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: Pressing Enter OR blurring the rename input issues PATCH /groups/{id} or
+    PATCH /subgroups/{id} with the new name, and the static label updates in the next
+    render.
+  status: OPEN
+  result: null
+  priority: HIGH
+  updated_at: '2026-05-22T21:31:54.354927'
+  updated_by: CLAUDE_CODE
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: "## Description\n\nRename save triggers — Enter + blur.\n\n## Test Instructions\n\
+    \n1. Double-click group title \"AI\". Change to \"AI Research\". Press\n   Enter.\
+    \ Confirm PATCH /groups/{id} fires with `{name: \"AI Research\"}`.\n   Label updates.\n\
+    2. Repeat with blur trigger: open rename, change text, click\n   elsewhere. Confirm\
+    \ PATCH fires identically.\n3. Same flow on a subgroup.\n"
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: CR-260522-2101-001
+  - type: FULFILLS
+    target_id: US-260522-2116-007
+- id: AC-260522-2118-025
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-22T21:18:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: Dragging a Source onto the Ungrouped zone PATCHes both `group_id` and `subgroup_id`
+    to NULL; the source appears under the Ungrouped list.
+  status: OPEN
+  result: null
+  priority: HIGH
+  updated_at: '2026-05-22T21:31:54.376942'
+  updated_by: CLAUDE_CODE
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: "## Description\n\nDrag axis 3 — source returns to Ungrouped overflow.\n\n\
+    ## Test Instructions\n\n1. Seed: source X currently attached to group G + subgroup\
+    \ S1.\n2. Drag X onto the Ungrouped zone (the labelled drop target at\n   sidebar\
+    \ bottom).\n3. Confirm PATCH /sources/X.id/parent fires with\n   `{group_id: null,\
+    \ subgroup_id: null}`.\n4. Sidebar re-renders X under Ungrouped.\n5. DB: both\
+    \ FKs NULL.\n"
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: CR-260522-2101-001
+  - type: FULFILLS
+    target_id: US-260522-2116-008
+- id: AC-260522-2118-026
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-22T21:18:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: Dragging a Subgroup row onto another Group row PATCHes /subgroups/{id} setting
+    `group_id` to the target group, and cascades every member Source's `group_id`
+    to the new parent (preserving `subgroup_id`).
+  status: OPEN
+  result: null
+  priority: HIGH
+  updated_at: '2026-05-22T21:31:54.381447'
+  updated_by: CLAUDE_CODE
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: "## Description\n\nDrag axis 4 — subgroup reparenting. Source `group_id` cascade\
+    \ is\nbackend-side so the invariant is preserved.\n\n## Test Instructions\n\n\
+    1. Seed: group A with subgroup S1 containing 2 sources; group B\n   (empty).\n\
+    2. Drag S1 onto B.\n3. Confirm PATCH /subgroups/S1.id fires with `{group_id: B.id}`.\n\
+    4. Sidebar re-renders S1 under B.\n5. DB: subgroup.group_id = B.id; both member\
+    \ sources have\n   group_id = B.id AND subgroup_id = S1.id (invariant preserved).\n"
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: CR-260522-2101-001
+  - type: FULFILLS
+    target_id: US-260522-2116-008
+- id: AC-260522-2118-028
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-22T21:18:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: On a fresh DB with no Groups and `grouping_banner_dismissed = 0`, the onboarding
+    banner renders above the feed pane with the exact copy from screenshot.png.
+  status: OPEN
+  result: null
+  priority: HIGH
+  updated_at: '2026-05-22T21:31:54.394964'
+  updated_by: CLAUDE_CODE
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: "## Description\n\nFirst-render visibility predicate (US-260522-2116-009).\n\
+    \n## Test Instructions\n\n1. Reset DB: zero Group rows; SET grouping_banner_dismissed\
+    \ = 0\n   in settings.\n2. Open the app.\n3. Confirm a banner appears above the\
+    \ \"Latest news\" header in the\n   feed pane.\n4. Confirm the banner text matches\
+    \ screenshot.png copy verbatim\n   (modulo whitespace): \"New: group your sources.\
+    \ Click + in the\n   sidebar to create a group (e.g. AI), then drag any source\
+    \ onto\n   it. Hover a group and click + to add a subgroup. Double-click\n   any\
+    \ title to rename.\"\n5. Confirm a `×` button is rendered on the right side of\
+    \ the banner.\n"
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: CR-260522-2101-001
+  - type: FULFILLS
+    target_id: US-260522-2116-009
+- id: AC-260522-2232-001
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-22T22:32:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: Dragging a row and dropping above or below a sibling row (same X) reorders
+    the item into that position (above = inserted before; below = inserted after);
+    position persists across reload.
+  status: OPEN
+  result: null
+  priority: HIGH
+  updated_at: '2026-05-22T22:37:37.164174'
+  updated_by: CLAUDE_CODE
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: "## Description\n\nSibling reorder axis (above / below at same X level). Applies\
+    \ to all\nthree draggable types (group, subgroup, source).\n\n## Test Instructions\n\
+    \n1. Seed groups A (position 0), B (position 1), C (position 2). Drag\n   C above\
+    \ A. Drop. Confirm new order A→C, B; DB positions updated.\n   Reload — same order.\n\
+    2. Seed subgroups Sa, Sb under group A. Drag Sb above Sa. Confirm\n   order Sb,\
+    \ Sa under A. Reload — preserved.\n3. Seed 3 sources S1, S2, S3 under subgroup\
+    \ Sa. Drag S3 above S1.\n   Confirm new order S3, S1, S2. Reload — preserved.\n\
+    4. Repeat each above with `below` direction; confirm reversal.\n"
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: CR-260522-2101-001
+  - type: FULFILLS
+    target_id: US-260522-2116-008
+- id: AC-260522-2232-002
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-22T22:32:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: Dropping with right X-offset nests the dragged item into the target (drop-as-child);
+    dropping with left X-offset outdents (drop-as-sibling-of-target-parent), subject
+    to the 2-level tree depth constraint.
+  status: OPEN
+  result: null
+  priority: HIGH
+  updated_at: '2026-05-22T22:37:37.168174'
+  updated_by: CLAUDE_CODE
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: "## Description\n\nIndent / outdent axis via X-offset. Respects type constraints:\n\
+    sources can land anywhere; subgroups can only land under a Group;\ngroups stay\
+    \ at top level.\n\n## Test Instructions\n\n1. Drag a source slightly right of\
+    \ a Group row → confirm it lands\n   as a direct child of that group (`subgroup_id=null`).\n\
+    2. Drag a source slightly right of a Subgroup row → confirm it\n   lands inside\
+    \ the subgroup (`group_id` + `subgroup_id` set).\n3. Drag a source under a Subgroup\
+    \ leftward, dropped left of its\n   subgroup → confirm it outdents to the parent\
+    \ Group's\n   direct-source list.\n4. Drag a source under a Group's direct-list\
+    \ leftward → confirm\n   it outdents to Ungrouped.\n5. Drag a Subgroup slightly\
+    \ right of another Group row → confirm\n   it moves to that Group.\n6. Drag a\
+    \ Group slightly right of another Group row → confirm\n   silent reject (no Group\
+    \ → Subgroup demotion in MVP).\n7. Drag a Subgroup leftward (attempting to become\
+    \ a Group) →\n   confirm silent reject (no Subgroup → Group promotion in MVP).\n"
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: CR-260522-2101-001
+  - type: FULFILLS
+    target_id: US-260522-2116-008
+- id: AC-260522-2233-001
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-22T22:33:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: Every Group row and Subgroup row reveals a ⋮ action button on hover (right
+    side of the row), mirroring the FT04 source-row ⋮ menu.
+  status: OPEN
+  result: null
+  priority: HIGH
+  updated_at: '2026-05-22T22:37:37.171684'
+  updated_by: CLAUDE_CODE
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: "## Description\n\nAffordance reveal — same hover semantics as FT04 source\
+    \ rows. The\ntitle's `+` subgroup-creation button (group row only) coexists with\n\
+    the new ⋮ button.\n\n## Test Instructions\n\n1. Hover a Group row. Confirm a ⋮\
+    \ icon appears on the right side\n   (together with the existing on-hover `+`).\n\
+    2. Hover a Subgroup row. Confirm a ⋮ icon appears on the right.\n3. Move the cursor\
+    \ away. Confirm both icons hide.\n4. Source rows still show their own ⋮ (regression\
+    \ guard).\n"
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: CR-260522-2101-001
+  - type: FULFILLS
+    target_id: US-260522-2230-001
+- id: AC-260522-2233-002
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-22T22:33:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: Clicking the title ⋮ menu's Rename action opens the same inline-rename editor
+    as the double-click path, pre-filled with the current name and focused.
+  status: OPEN
+  result: null
+  priority: HIGH
+  updated_at: '2026-05-22T22:37:37.176683'
+  updated_by: CLAUDE_CODE
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: "## Description\n\nRename via ⋮ reaches the same editor as the existing dblclick\
+    \ path\n(US-260522-2116-007). Both Enter/blur save, Esc cancels, invalid\nname\
+    \ shows inline error.\n\n## Test Instructions\n\n1. Open ⋮ menu on a group row\
+    \ → Rename. Inline input appears\n   pre-filled with the current name and focused.\n\
+    2. Type a new name + Enter. Confirm PATCH; label updates; reload\n   preserves.\n\
+    3. Reopen rename via ⋮, type junk, Esc. Confirm reverted; no PATCH.\n4. Submit\
+    \ empty name. Confirm inline error; input stays open.\n5. Repeat full cycle on\
+    \ a subgroup title.\n"
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: CR-260522-2101-001
+  - type: FULFILLS
+    target_id: US-260522-2230-001
+- id: AC-260522-2233-003
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-22T22:33:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: Clicking the title ⋮ menu's Mute (or Unmute) toggles `Group.muted` / `Subgroup.muted`
+    and the row flips to the muted visual immediately.
+  status: OPEN
+  result: null
+  priority: HIGH
+  updated_at: '2026-05-22T22:37:37.181192'
+  updated_by: CLAUDE_CODE
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: "## Description\n\nMute toggle via ⋮ menu. Visual + cascade contracts owned\
+    \ by\nUS-260522-2230-002; this AC verifies the affordance wiring.\n\n## Test Instructions\n\
+    \n1. Open ⋮ on a Group row → confirm menu shows \"Mute\".\n2. Click Mute. Confirm\
+    \ PATCH /groups/{id} with `muted: true`; row\n   flips to muted visual (opacity,\
+    \ strikethrough, eye-off icon).\n3. Reopen ⋮ → confirm menu now shows \"Unmute\"\
+    .\n4. Click Unmute. Confirm row returns to default; pill returns.\n5. Repeat on\
+    \ a Subgroup row.\n"
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: CR-260522-2101-001
+  - type: FULFILLS
+    target_id: US-260522-2230-001
+- id: AC-260522-2233-004
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-22T22:33:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: Clicking the title ⋮ menu's Remove opens a confirmation dialog naming the
+    title; on confirm, DELETE runs and the row disappears with member sources detached.
+  status: OPEN
+  result: null
+  priority: HIGH
+  updated_at: '2026-05-22T22:37:37.184225'
+  updated_by: CLAUDE_CODE
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: "## Description\n\nRemove via ⋮ menu, with confirmation. Cascade semantics\
+    \ owned by\nDATA_MODEL.md §2.2 / §2.3.\n\n## Test Instructions\n\n1. Seed Group\
+    \ G with Subgroup S, 2 sources under S, 1 direct source\n   under G.\n2. Open\
+    \ ⋮ on G → Remove. Confirmation dialog appears with G's\n   name in the prompt.\n\
+    3. Click Cancel. Dialog closes; G still present in DB and DOM.\n4. Re-open Remove,\
+    \ click Confirm. DELETE /groups/{id} fires; row\n   disappears within 500 ms.\n\
+    5. DB: Subgroup S row gone (FK CASCADE); 3 sources still present\n   with both\
+    \ group_id and subgroup_id NULL (sources in Ungrouped).\n6. Repeat on a Subgroup\
+    \ S2 (with sources). Confirm sources detach\n   to direct-children of parent group;\
+    \ `subgroup_id` NULL,\n   `group_id` preserved.\n"
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: CR-260522-2101-001
+  - type: FULFILLS
+    target_id: US-260522-2230-001
+- id: AC-260522-2234-002
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-22T22:34:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: Toggling a Group / Subgroup's mute state does not modify any member `Source.muted`
+    value — per-source mute state is preserved verbatim through title-mute cycles.
+  status: OPEN
+  result: null
+  priority: HIGH
+  updated_at: '2026-05-22T22:37:37.201338'
+  updated_by: CLAUDE_CODE
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: "## Description\n\nTitle mute is a separate flag layered on top of per-source\
+    \ mute.\nThe two are independent.\n\n## Test Instructions\n\n1. Seed Group A with\
+    \ sources S1 (muted=1) and S2 (muted=0).\n2. Snapshot `Source.muted` for S1, S2.\n\
+    3. Mute Group A.\n4. Confirm `Source.muted` values unchanged for both S1 and S2.\n\
+    5. Unmute Group A.\n6. Confirm S1 still individually muted (per its FT04 visual),\n\
+    \   S2 still not muted. The All-sources feed reflects only\n   per-source mute\
+    \ now (S1 hidden, S2 visible).\n"
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: CR-260522-2101-001
+  - type: FULFILLS
+    target_id: US-260522-2230-002
+- id: AC-260522-2235-002
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-22T22:35:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: Scrolling within 200 px of the feed-pane bottom triggers a fetch of the next
+    batch, appended below the current list; when an empty batch is returned, no further
+    requests fire.
+  status: OPEN
+  result: null
+  priority: HIGH
+  updated_at: '2026-05-22T22:37:37.219092'
+  updated_by: CLAUDE_CODE
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: "## Description\n\nCursor-style scroll loader. Stops when the server returns\
+    \ fewer\narticles than requested.\n\n## Test Instructions\n\n1. Seed 175 articles\
+    \ in DB.\n2. Open app — first 50 render.\n3. Scroll near bottom. Confirm a network\
+    \ request to\n   /feed-partial with `after` + `size=50` fires; 50 more articles\n\
+    \   append below.\n4. Continue scrolling. After the third batch (~25 remaining),\n\
+    \   confirm a final request fires with 25 articles appended.\n5. Confirm no further\
+    \ requests fire after the empty/short batch\n   (end-of-feed state).\n6. Switch\
+    \ active source via sidebar click — confirm the cursor\n   resets; new initial\
+    \ 50 render from top.\n"
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: CR-260522-2101-001
+  - type: FULFILLS
+    target_id: US-260522-2230-003
+- id: AC-260522-2400-003
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-23T00:00:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: The sidebar renders a folder tree at every depth from 1 to 5 with progressive
+    indentation, aggregated unread pills walking the subtree, and the chevron / `+`
+    / ⋮ affordances available at every level.
+  status: OPEN
+  result: null
+  priority: HIGH
+  updated_at: '2026-05-22T23:12:16.243194'
+  updated_by: CLAUDE_CODE
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: "## Description\n\nRecursive tree rendering contract. Verifies that the Jinja\
+    \ macro +\nserver-side tree walk reach every depth and produce the expected\n\
+    indented layout with full affordance parity.\n\n## Test Instructions\n\n1. Build\
+    \ a 5-deep folder chain F1 → F2 → F3 → F4 → F5. Attach 1\n   source to each folder\
+    \ and 1 source to Ungrouped.\n2. Open the app. Confirm each folder row renders\
+    \ at increasing\n   indentation: F1 leftmost, F5 deepest. Sources attached to\
+    \ a\n   folder render one indent unit further right than the folder.\n3. Confirm\
+    \ chevron, on-hover `+`, and ⋮ button are present on\n   every folder row (including\
+    \ F5).\n4. Mark every article from F3's source as read so its source pill\n  \
+    \ drops to 0. Confirm F2's pill = 1 (F4's source unread count\n   cascades up),\
+    \ F1's pill = 1 (recursive sum stops only at\n   muted folders).\n5. Collapse\
+    \ F2. Confirm F3, F4, F5 + their sources hidden in the\n   DOM; F1 row still shown;\
+    \ F2's pill still aggregates the hidden\n   subtree (the pill is the count regardless\
+    \ of collapse state).\n6. Mute F3. Confirm F3 row visual flips (opacity 0.5, eye-off\n\
+    \   icon, strikethrough name); F4 + F5 visually dim (cascade);\n   articles from\
+    \ F3's, F4's, F5's sources hidden from the\n   combined feed; pills above F3 drop\
+    \ by the cascaded amount.\n"
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: CR-260522-2101-001
+  - type: FULFILLS
+    target_id: FT-260522-2115-001
+- id: AC-260522-2400-004
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-23T00:00:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: The Notion-style drag-and-drop logic (Y above/below; X right=child / left=outdent)
+    operates at every depth from 1 to 5; depth-cap violations are silently rejected
+    by the client and 422 by the server.
+  status: OPEN
+  result: null
+  priority: HIGH
+  updated_at: '2026-05-22T23:12:16.247704'
+  updated_by: CLAUDE_CODE
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: "## Description\n\nDrag-drop semantics generalised to arbitrary depth ≤ 5,\
+    \ with the\ndepth-cap interleaved as a silent client validity check + a 422\n\
+    server rejection.\n\n## Test Instructions\n\n1. Build a chain F1 → F2 → F3 → F4\
+    \ → F5 plus a sibling F1' (depth\n   1) at root level.\n2. Drag F4 onto F1' with\
+    \ right X-offset (drop-as-child). Confirm\n   F4's parent becomes F1' (depth 2),\
+    \ F5 follows (depth 3). DB:\n   `folder.depth` updated for both rows.\n3. Drag\
+    \ F4 onto F5 with right X-offset. This would push F5 to\n   depth 4 and make F5's\
+    \ children deeper than 5 — wait, F5 has\n   no children, so this is depth 5 for\
+    \ F4 and depth 6 if F5 had\n   any. With no descendants, the move is depth 5 for\
+    \ F4 (valid).\n   Confirm 200.\n4. Build an Ax → Ay sibling chain at root, deepen\
+    \ Ay to 4 levels\n   (Ay → Ay2 → Ay3 → Ay4). Drag Ax onto Ay4 with right X-offset\n\
+    \   — would push Ax to depth 5 (OK). Confirm 200. Re-drag any\n   further child\
+    \ to push past depth 5 — confirm silent client\n   revert AND 422 if the request\
+    \ is allowed through.\n5. Drag a source under F5 leftward (outdent) — confirm\
+    \ it lands\n   as a sibling of F5 under F4 (same folder, not a child of F4\n \
+    \  through F5).\n6. Drag a source onto the Ungrouped zone — confirm `folder_id`\n\
+    \   becomes NULL.\n7. Drag any folder onto one of its own descendants — confirm\n\
+    \   silent revert (cycle guard) AND 422 `error: cycle` if the\n   request reaches\
+    \ the server.\n"
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: CR-260522-2101-001
+  - type: FULFILLS
+    target_id: FT-260522-2115-001
 - id: AC-260512-2300-002
   project_id: PR-260512-2041-001
   type: AC
@@ -2653,3 +5490,317 @@ acceptance_criteria:
   relations:
   - type: FULFILLS
     target_id: US-260513-0020-003
+- id: AC-260522-2117-005
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-22T21:17:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: The first-run onboarding banner appears above the feed pane when no Group
+    exists and the user has not dismissed it, dismisses on `×`, and auto-dismisses
+    when the first Group is created.
+  status: OPEN
+  result: null
+  priority: MED
+  updated_at: '2026-05-22T21:31:54.238286'
+  updated_by: CLAUDE_CODE
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: "## Description\n\nBanner lifecycle integration — visibility predicate + manual\
+    \ dismissal\n+ auto-dismissal on first group create (US-260522-2116-009 + US-002\n\
+    backend coupling).\n\n## Test Instructions\n\n1. Reset DB (no Groups; `grouping_banner_dismissed`\
+    \ = 0). Open app.\n   Confirm banner visible above \"Latest news\" with the exact\
+    \ copy\n   from screenshot.png.\n2. Click the `×` button. Confirm banner disappears\
+    \ immediately.\n   DB: `grouping_banner_dismissed` = 1.\n3. Reload the app. Confirm\
+    \ banner stays hidden.\n4. Reset only `grouping_banner_dismissed` back to 0 (DB\
+    \ write).\n   Reload. Confirm banner reappears.\n5. With banner visible, create\
+    \ the first Group via the `+` button.\n   Confirm banner auto-disappears on the\
+    \ next sidebar/feed render.\n   DB: `grouping_banner_dismissed` = 1 (server-set\
+    \ in the same\n   POST /groups transaction).\n"
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: CR-260522-2101-001
+  - type: FULFILLS
+    target_id: FT-260522-2115-001
+- id: AC-260522-2118-007
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-22T21:18:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: POST or PATCH with a name that is empty, whitespace-only, or longer than
+    60 characters (after trim) returns 422 with body `error invalid_name`, and no
+    DB write is performed.
+  status: OPEN
+  result: null
+  priority: MED
+  updated_at: '2026-05-22T21:31:54.280683'
+  updated_by: CLAUDE_CODE
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: "## Description\n\nName validation contract for group + subgroup endpoints.\n\
+    \n## Test Instructions\n\n1. POST /groups `{name: \"\"}`. Expect 422, body contains\n\
+    \   `error: invalid_name`.\n2. POST /groups `{name: \"   \"}` (whitespace only).\
+    \ Expect 422.\n3. POST /groups `{name: \"a\" * 61}`. Expect 422.\n4. After each,\
+    \ confirm no new row in `group` (SELECT COUNT(*)\n   unchanged).\n5. Repeat steps\
+    \ 1-4 against POST /subgroups and against PATCH on\n   both endpoints. Each yields\
+    \ 422 with no DB write.\n"
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: CR-260522-2101-001
+  - type: FULFILLS
+    target_id: US-260522-2116-002
+- id: AC-260522-2118-011
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-22T21:18:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: Each tree level's unread-count pill equals the documented sum (subgroup =
+    source sum; group = direct-source sum + subgroup sums; "All sources" = global
+    sum), and refreshes on the next partial render after any read_at write.
+  status: OPEN
+  result: null
+  priority: MED
+  updated_at: '2026-05-22T21:31:54.301731'
+  updated_by: CLAUDE_CODE
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: "## Description\n\nCount formulas for each tree level + freshness after reads.\n\
+    \n## Test Instructions\n\n1. Seed: group G with subgroup S (containing source\
+    \ X = 5 unread,\n   source Y = 3 unread) plus direct source D = 2 unread.\n2.\
+    \ Render sidebar. Confirm: S pill = 8, G pill = 10, All sources\n   pill includes\
+    \ 10.\n3. Click an article from X → its read_at gets set; trigger a sidebar\n\
+    \   partial refresh.\n4. Confirm pills update: S = 7, G = 9, All sources decremented\
+    \ by 1.\n"
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: CR-260522-2101-001
+  - type: FULFILLS
+    target_id: US-260522-2116-003
+- id: AC-260522-2118-016
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-22T21:18:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: Submitting an empty or >60-char Group name shows the inline error "Group
+    name must be 1-60 characters" below the input, and the input stays open with the
+    user's keystrokes preserved.
+  status: OPEN
+  result: null
+  priority: MED
+  updated_at: '2026-05-22T21:31:54.327376'
+  updated_by: CLAUDE_CODE
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: "## Description\n\nError-state AC for the create-group flow (§3.8.2 error\
+    \ pattern).\n\n## Test Instructions\n\n1. Open inline input. Press Enter with\
+    \ empty text. Confirm an inline\n   error message \"Group name must be 1-60 characters\"\
+    \ appears below\n   the input; the input stays focused; no group created.\n2.\
+    \ Open inline input. Paste a 61-character string. Press Enter.\n   Confirm same\
+    \ error; input still open with the 61 chars present.\n3. Press Esc. Confirm the\
+    \ input closes and error clears.\n"
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: CR-260522-2101-001
+  - type: FULFILLS
+    target_id: US-260522-2116-005
+- id: AC-260522-2118-022
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-22T21:18:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: Pressing Esc inside the rename input reverts the label to its original value
+    and issues no PATCH (the change is discarded).
+  status: OPEN
+  result: null
+  priority: MED
+  updated_at: '2026-05-22T21:31:54.359927'
+  updated_by: CLAUDE_CODE
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: '## Description
+
+
+    Rename cancel via Esc.
+
+
+    ## Test Instructions
+
+
+    1. Double-click a Group title. Edit the text. Press Esc.
+
+    2. Confirm the inline input closes; label reverts to original.
+
+    3. Confirm no PATCH was issued (network panel empty for this flow).
+
+    4. DB: group.name unchanged.
+
+    '
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: CR-260522-2101-001
+  - type: FULFILLS
+    target_id: US-260522-2116-007
+- id: AC-260522-2118-029
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-22T21:18:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: Clicking the banner's `×` PATCHes settings to set `grouping_banner_dismissed
+    = 1`; the banner stays hidden across page reloads.
+  status: OPEN
+  result: null
+  priority: MED
+  updated_at: '2026-05-22T21:31:54.401974'
+  updated_by: CLAUDE_CODE
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: "## Description\n\nManual dismissal persistence.\n\n## Test Instructions\n\
+    \n1. With banner visible, click `×`.\n2. Confirm PATCH /settings fires with\n\
+    \   `{grouping_banner_dismissed: true}`.\n3. Banner disappears.\n4. Reload the\
+    \ page. Banner stays hidden.\n5. DB: settings row `grouping_banner_dismissed`\
+    \ = 1.\n"
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: CR-260522-2101-001
+  - type: FULFILLS
+    target_id: US-260522-2116-009
+- id: AC-260522-2118-030
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-22T21:18:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: Creating the first Group (POST /groups success) sets `grouping_banner_dismissed
+    = 1` in the same transaction, so the banner auto-disappears on the next render
+    without explicit `×` click.
+  status: OPEN
+  result: null
+  priority: MED
+  updated_at: '2026-05-22T21:31:54.406978'
+  updated_by: CLAUDE_CODE
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: "## Description\n\nAuto-dismissal coupling — first Group create = implicit\
+    \ banner accept.\n\n## Test Instructions\n\n1. Fresh DB: zero Groups, `grouping_banner_dismissed\
+    \ = 0`. Banner\n   visible.\n2. Create the first Group via the `+` button (POST\
+    \ /groups).\n3. Confirm 201.\n4. Confirm the banner is absent from the next sidebar/feed\
+    \ render\n   (no explicit `×` click required).\n5. DB: settings row `grouping_banner_dismissed`\
+    \ = 1 (set by the\n   POST /groups handler in the same transaction).\n"
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: CR-260522-2101-001
+  - type: FULFILLS
+    target_id: US-260522-2116-009
+- id: AC-260522-2234-003
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-22T22:34:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: A muted Group / Subgroup row renders at opacity ~0.5, with strikethrough
+    on the name and a ti-eye-off icon in place of the aggregated unread pill.
+  status: OPEN
+  result: null
+  priority: MED
+  updated_at: '2026-05-22T22:37:37.207367'
+  updated_by: CLAUDE_CODE
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: "## Description\n\nMuted visual contract for titles, mirroring FT04 source-row\
+    \ muted\nstyling.\n\n## Test Instructions\n\n1. Mute a Group via ⋮ → Mute.\n2.\
+    \ Confirm Group row opacity ~0.5, name strikethrough, ti-eye-off\n   icon visible\
+    \ where the pill used to be (no pill rendered).\n3. Confirm sources rendered under\
+    \ the muted Group are visually\n   dimmed (~0.7 opacity) but not strikethrough\
+    \ (cascade visual,\n   not their own muted state).\n4. Repeat on a Subgroup.\n\
+    5. Unmute via ⋮ → Unmute. Confirm row + children return to default.\n"
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: CR-260522-2101-001
+  - type: FULFILLS
+    target_id: US-260522-2230-002
+- id: AC-260522-2118-019
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-22T21:18:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: Submitting an empty or >60-char Subgroup name shows the inline error "Subgroup
+    name must be 1-60 characters" and the input stays open with the user's keystrokes
+    preserved.
+  status: OPEN
+  result: null
+  priority: LOW
+  updated_at: '2026-05-22T21:31:54.341388'
+  updated_by: CLAUDE_CODE
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: "## Description\n\nError-state AC for create-subgroup (§3.8.2).\n\n## Test\
+    \ Instructions\n\n1. Open subgroup inline input. Enter with empty text. Confirm\
+    \ inline\n   error appears below input.\n2. Try a 61-char name. Confirm same error.\n\
+    3. Input retains user's text; no subgroup created.\n4. Esc closes input.\n"
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: CR-260522-2101-001
+  - type: FULFILLS
+    target_id: US-260522-2116-006
+- id: AC-260522-2118-027
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-22T21:18:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: Dropping a Source onto another Source row, dropping a Subgroup onto itself,
+    or dropping onto empty whitespace leaves the DB unchanged with no error toast.
+  status: OPEN
+  result: null
+  priority: LOW
+  updated_at: '2026-05-22T21:31:54.387464'
+  updated_by: CLAUDE_CODE
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: "## Description\n\nSilent rejection of invalid drops — no PATCH, no toast,\
+    \ no DB write.\n\n## Test Instructions\n\n1. Drag source X onto source Y (Y is\
+    \ just another source row, not\n   a drop target). Release. Confirm no PATCH;\
+    \ DB unchanged; no\n   toast.\n2. Drag subgroup S1 onto its own row. Release.\
+    \ Confirm no PATCH; DB\n   unchanged.\n3. Drag source X onto blank whitespace\
+    \ below \"Ungrouped\" / above\n   \"All sources\". Confirm no PATCH; DB unchanged.\n"
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: CR-260522-2101-001
+  - type: FULFILLS
+    target_id: US-260522-2116-008

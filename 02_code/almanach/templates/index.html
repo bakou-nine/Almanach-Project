@@ -15,18 +15,19 @@
   <aside class="sidebar">
     <div class="sidebar-header">
       <span class="sidebar-title">Sources</span>
-      <button class="icon-btn" id="add-source-btn" title="Add source" aria-label="Add source">
-        <i class="ti ti-plus"></i>
-      </button>
+      <div class="sidebar-header-actions" style="display:flex; gap:2px;">
+        <button class="icon-btn" id="add-source-btn" title="Add source" aria-label="Add source">
+          <i class="ti ti-plus"></i>
+        </button>
+        <button class="icon-btn new-group-btn" id="new-group-btn"
+                title="New group" aria-label="New group">
+          <i class="ti ti-folder-plus"></i>
+        </button>
+      </div>
     </div>
 
     <div id="source-list">
       {% include "_source_list.html" %}
-    </div>
-
-    <div class="sidebar-footer">
-      <i class="ti ti-refresh"></i>
-      <span>Updated {{ sidebar.last_sync }}</span>
     </div>
   </aside>
 

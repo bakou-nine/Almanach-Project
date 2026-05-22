@@ -6,7 +6,8 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Optional
 
-from fastapi import FastAPI, Form, HTTPException, Query, Request
+from fastapi import FastAPI, Form, HTTPException, Query, Request, Response
+from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -45,7 +46,6 @@ app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 async def index(
     request: Request,
     source: Optional[str] = Query(None, description="Active Source.id filter"),
-    page: int = Query(1, ge=1),
     size: int = Query(config.PAGE_SIZE_DEFAULT, ge=1, le=config.PAGE_SIZE_MAX),
 ) -> HTMLResponse:
     if source is not None:
@@ -53,7 +53,7 @@ async def index(
         if src is None or src["muted"]:
             return RedirectResponse(url="/", status_code=303)
     sidebar = views.build_sidebar_view()
-    feed = views.build_feed_view(source_id=source, page=page, page_size=size)
+    feed = views.build_feed_view(source_id=source, page_size=size)
     return templates.TemplateResponse(
         "index.html",
         {
@@ -84,16 +84,28 @@ async def sidebar_partial(
 async def feed_partial(
     request: Request,
     source: Optional[str] = Query(None),
-    page: int = Query(1, ge=1),
     size: int = Query(config.PAGE_SIZE_DEFAULT, ge=1, le=config.PAGE_SIZE_MAX),
+    after: Optional[str] = Query(None, description="Cursor: published_at to fetch articles older than"),
+    rows_only: bool = Query(False, description="If true, return only article rows (no feed header) for scroll-append"),
 ) -> HTMLResponse:
+    """Feed partial endpoint.
+
+    Two modes per CR-260522-2101-001 iteration 2 / US-260522-2230-003:
+    - **Full** (`rows_only=False`, default): returns the full feed pane
+      (header + initial article batch). Used after a source-filter change
+      or manual refresh — the client replaces `#feed-pane` innerHTML.
+    - **Rows-only** (`rows_only=True`): returns just the `.article` rows
+      for the next batch starting after the supplied `after` cursor. The
+      client appends these to the existing `.article-list` container.
+    """
     if source is not None:
         src = models.get_source(source)
         if src is None or src["muted"]:
             source = None
-    feed = views.build_feed_view(source_id=source, page=page, page_size=size)
+    feed = views.build_feed_view(source_id=source, page_size=size, after=after)
+    template = "_feed_rows.html" if rows_only else "_feed.html"
     return templates.TemplateResponse(
-        "_feed.html",
+        template,
         {"request": request, "feed": feed, "active_source_id": source},
     )
 
@@ -221,7 +233,198 @@ async def remove_source(source_id: str):
     if src is None:
         raise HTTPException(status_code=404, detail="source not found")
     models.delete_source(source_id)
-    return
+    return Response(status_code=204)
+
+
+# ---------- folder API (FT05 / CR-260522-2101-001 iteration 3) ----------
+
+
+_NAME_MIN = 1
+_NAME_MAX = 60
+
+
+def _validate_folder_name(raw: Optional[str]) -> str:
+    """Trim + length-check a folder name. Raises 422 on failure."""
+    candidate = (raw or "").strip()
+    if len(candidate) < _NAME_MIN or len(candidate) > _NAME_MAX:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "error": "invalid_name",
+                "details": "folder name must be 1-60 characters after trim.",
+                "message": "Folder name must be 1-60 characters",
+            },
+        )
+    return candidate
+
+
+class FolderCreateIn(BaseModel):
+    name: Optional[str] = None
+    parent_id: Optional[str] = None
+
+
+class FolderPatchIn(BaseModel):
+    name: Optional[str] = None
+    position: Optional[float] = None
+    collapsed: Optional[bool] = None
+    muted: Optional[bool] = None
+    parent_id: Optional[str] = None
+    # When the client wants to make a folder a root (parent_id=NULL), we accept
+    # the explicit literal — see `parent_id_is_set` flag passed via Pydantic
+    # `fields_set`.
+
+    class Config:
+        # We rely on `__pydantic_fields_set__` to differentiate "field omitted"
+        # from "field set to null" — Pydantic v1 / v2 expose this consistently.
+        pass
+
+
+def _folder_payload(f: dict) -> dict:
+    return {
+        "id": f["id"],
+        "parent_id": f["parent_id"],
+        "name": f["name"],
+        "position": f["position"],
+        "collapsed": bool(f["collapsed"]),
+        "muted": bool(f["muted"]),
+        "depth": f["depth"],
+    }
+
+
+@app.post("/folders", status_code=201)
+async def create_folder(payload: FolderCreateIn):
+    name = _validate_folder_name(payload.name)
+    if payload.parent_id is not None and models.get_folder(payload.parent_id) is None:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "error": "parent_not_found",
+                "details": "Supplied parent_id does not match any folder.",
+                "message": "Parent folder not found.",
+            },
+        )
+    try:
+        # First-folder creation also auto-dismisses the onboarding banner per
+        # the iteration-1 AC-260522-2118-030 contract (retargeted to /folders).
+        folder = models.insert_folder_with_banner_dismiss(
+            name, parent_id=payload.parent_id
+        )
+    except models.DepthLimitExceeded as e:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "error": "depth_limit",
+                "details": str(e),
+                "message": "Maximum folder nesting depth is 5.",
+            },
+        )
+    return _folder_payload(folder)
+
+
+@app.patch("/folders/{folder_id}")
+async def patch_folder(folder_id: str, payload: FolderPatchIn):
+    if models.get_folder(folder_id) is None:
+        raise HTTPException(status_code=404, detail="folder not found")
+    name = _validate_folder_name(payload.name) if payload.name is not None else None
+    # Detect explicit parent_id usage — Pydantic exposes `model_fields_set`
+    # (v2) / `__fields_set__` (v1). Use either; default to "unchanged" if
+    # not in the explicit-set list (so a missing field doesn't reparent).
+    fields_set = getattr(payload, "model_fields_set", None) or getattr(payload, "__fields_set__", set())
+    if "parent_id" in fields_set:
+        if payload.parent_id is not None and models.get_folder(payload.parent_id) is None:
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "error": "parent_not_found",
+                    "details": "Supplied parent_id does not match any folder.",
+                    "message": "Target folder not found.",
+                },
+            )
+        try:
+            models.update_folder(
+                folder_id,
+                name=name,
+                position=payload.position,
+                collapsed=payload.collapsed,
+                muted=payload.muted,
+                parent_id=payload.parent_id,
+            )
+        except models.DepthLimitExceeded as e:
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "error": "depth_limit",
+                    "details": str(e),
+                    "message": "Maximum folder nesting depth is 5.",
+                },
+            )
+        except models.CycleViolation as e:
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "error": "cycle",
+                    "details": str(e),
+                    "message": "Cannot move a folder under one of its own descendants.",
+                },
+            )
+    else:
+        models.update_folder(
+            folder_id,
+            name=name,
+            position=payload.position,
+            collapsed=payload.collapsed,
+            muted=payload.muted,
+        )
+    return _folder_payload(models.get_folder(folder_id))
+
+
+@app.delete("/folders/{folder_id}", status_code=204)
+async def delete_folder(folder_id: str):
+    if models.get_folder(folder_id) is None:
+        raise HTTPException(status_code=404, detail="folder not found")
+    models.delete_folder(folder_id)
+    return Response(status_code=204)
+
+
+class SourceParentIn(BaseModel):
+    folder_id: Optional[str] = None
+    position: Optional[float] = None
+
+
+@app.patch("/sources/{source_id}/parent")
+async def patch_source_parent(source_id: str, payload: SourceParentIn):
+    src = models.get_source(source_id)
+    if src is None:
+        raise HTTPException(status_code=404, detail="source not found")
+    try:
+        models.set_source_folder(
+            source_id,
+            folder_id=payload.folder_id,
+            position=payload.position,
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "error": "parent_not_found",
+                "details": str(e),
+                "message": "Folder not found.",
+            },
+        )
+    return {
+        "id": source_id,
+        "folder_id": payload.folder_id,
+    }
+
+
+class BannerDismissIn(BaseModel):
+    dismissed: bool
+
+
+@app.patch("/settings/grouping_banner_dismissed")
+async def patch_grouping_banner(payload: BannerDismissIn):
+    models.set_grouping_banner_dismissed(payload.dismissed)
+    return {"grouping_banner_dismissed": payload.dismissed}
 
 
 # ---------- article API ----------
@@ -241,8 +444,26 @@ async def mark_article_read(article_id: str):
 
 @app.post("/refresh")
 async def manual_refresh():
-    scheduler.trigger_manual_poll()
-    return {"status": "scheduled"}
+    """Run a poll cycle synchronously so the response only returns when done.
+
+    Frontend (US-260522-2050-004) treats this completion as the trigger to
+    end the button loading state and update the header last-sync indicator.
+    """
+    await run_in_threadpool(scheduler.run_manual_poll_blocking)
+    return {
+        "status": "completed",
+        "last_sync": views.humanise_delta(scheduler.last_sync_at()),
+    }
+
+
+@app.get("/last-sync")
+async def last_sync() -> dict:
+    """Return the current humanised last-sync text.
+
+    Used by the frontend to refresh #last-sync-label without a full page reload
+    (US-260522-2050-003 + AC-260522-2030-007/009).
+    """
+    return {"last_sync": views.humanise_delta(scheduler.last_sync_at())}
 
 
 # ---------- helpers ----------

@@ -14,7 +14,8 @@ per SQLite convention.
 ### §1.1 Source
 
 Represents a single news source the user follows. Created via FT01 (Source Add
-Flow). Polled by EP03. Rendered by FT03. Mutated by FT04.
+Flow). Polled by EP03. Rendered by FT03 (flat) or FT05 (in a recursive Folder
+tree, depth ≤ 5). Mutated by FT04.
 
 | Field | Type | Constraints | Notes |
 | :--- | :--- | :--- | :--- |
@@ -25,6 +26,8 @@ Flow). Polled by EP03. Rendered by FT03. Mutated by FT04.
 | `display_name` | TEXT | not null | Sidebar label. Defaults to the feed's `<title>` element on creation; falls back to the URL hostname if absent. Mutated by FT04 rename. |
 | `colour` | TEXT | not null | Hex string from the curated 12-palette (e.g. `#378ADD`). Auto-assigned by FT01 (round-robin through the palette, collisions allowed only after exhaustion). No user override in MVP. |
 | `muted` | INTEGER | not null, default 0 | Boolean. Toggled by FT04 mute / unmute. When 1: source is hidden from the combined feed (EP04 filter), but EP03 polling continues normally. |
+| `folder_id` | TEXT FK | nullable, → `folder.id`, `ON DELETE SET NULL` | FT05 parent folder (recursive — points to a folder at any depth 1..5). NULL = Ungrouped zone. Added by CR-260522-2101-001 iteration 3, replacing the iteration-1 pair `group_id` + `subgroup_id`. |
+| `position` | REAL | not null, default 0 | Sort order among siblings sharing the same `folder_id`. Reassigned by drag-and-drop (US-260522-2116-008). |
 | `created_at` | TEXT (ISO8601) | not null | Set by FT01 on insert. |
 | `last_polled_at` | TEXT (ISO8601) | nullable | Updated by EP03 at the end of every successful poll cycle. NULL on a never-polled source. |
 | `last_error` | TEXT | nullable | Human-readable error message from EP03's most recent failed poll. Cleared (set to NULL) on the next successful poll. |
@@ -56,6 +59,28 @@ A flat key/value store for user-configurable runtime values. Single-row-per-key.
 | `key` | TEXT PK | not null | See §6 for the canonical key list. |
 | `value` | TEXT | not null | Stored as string; the app coerces to int / bool as needed per key. |
 
+### §1.4 Folder (FT05)
+
+A node in the recursive folder tree that organises Sources in the sidebar.
+Owned by FT05 (CR-260522-2101-001 iteration 3 — replaces the iteration-1
+two-table `Group` + `Subgroup` model with a single self-referential table).
+
+| Field | Type | Constraints | Notes |
+| :--- | :--- | :--- | :--- |
+| `id` | TEXT PK | not null | UUID v4. |
+| `parent_id` | TEXT FK | nullable, → `folder.id`, `ON DELETE CASCADE` | Self-referential parent pointer. NULL = root folder. Deleting a folder cascades every descendant folder; descendant sources detach to Ungrouped (FK SET NULL on `Source.folder_id`). |
+| `name` | TEXT | not null | Sidebar label. 1–60 chars after trim (enforced by US-260522-2116-002). Editable via inline rename (US-260522-2116-007) or the ⋮ Rename action (US-260522-2230-001). |
+| `position` | REAL | not null, default 0 | Sort order among siblings sharing the same `parent_id` (ascending). REAL so Notion-style drag-and-drop midpoints (US-260522-2116-008) don't need renormalisation on every drop. |
+| `collapsed` | INTEGER | not null, default 0 | Boolean. 1 = sidebar omits this folder's children (and recursively their subtree) from the render. Toggled via chevron click (US-260522-2116-004). |
+| `muted` | INTEGER | not null, default 0 | Boolean. 1 = hides every descendant source's articles from the combined feed (cascade per §2.3). Polling unaffected. Toggled via the ⋮ Mute / Unmute action (US-260522-2230-001 / US-260522-2230-002). |
+| `depth` | INTEGER | not null, default 1 | Cached depth (root folder = 1, deepest leaf folder = 5). Application-enforced cap of 5 — see §2.4 invariants. |
+| `created_at` | TEXT (ISO8601) | not null | Set on insert. |
+
+§1.5 (Subgroup) is **retired** by CR-260522-2101-001 iteration 3. The
+two-level Group + Subgroup model is collapsed into the recursive Folder
+table above. See §7 for the iteration-3 migration that walks the
+transition.
+
 ---
 
 ## §2. Relationships
@@ -80,6 +105,66 @@ CREATE TABLE article (
 );
 ```
 
+### §2.2 Folder → Folder (recursive 1:N, ON DELETE CASCADE) — FT05
+
+A Folder has zero or more child Folders via `Folder.parent_id`. Deleting a
+Folder cascades every descendant Folder in the same transaction (the entire
+subtree disappears). Member Sources at any depth detach via §2.3 (SET NULL
+on `Source.folder_id`).
+
+Tree depth is application-capped at 5 (root = 1, deepest leaf = 5) — see
+§2.4 invariants.
+
+### §2.3 Folder → Source (N:1, ON DELETE SET NULL) — FT05
+
+`Source.folder_id` references `Folder.id`. When a Folder is deleted, every
+matching Source row is preserved with its FK column set to NULL — those
+sources return to the Ungrouped zone (rendering contract per
+US-260522-2116-003 / AC-260522-2118-010).
+
+A Source attaches to exactly one Folder (its `folder_id`) at any depth from
+1 to 5 — there is no chain of FKs to maintain.
+
+**Cascade-mute predicate (CR-260522-2101-001 iteration 2 + iteration 3,
+US-260522-2230-002):** a Source's articles are visible in the combined
+"All sources" feed iff
+
+```
+Source.muted = 0
+  AND no ancestor folder of Source.folder_id (inclusive: the folder itself,
+      its parent, grandparent, … up to the root) has muted = 1
+```
+
+Equivalently: walk the chain `Source.folder_id → Folder.parent_id → … →
+NULL` and require every Folder in that chain to have `muted = 0`. The walk
+is bounded by depth 5 so it has at most 5 steps.
+
+Explicit per-source filtered views (sidebar source-row click) ignore the
+cascade — they show that source's articles regardless of its ancestors'
+mute state, mirroring FT04 behaviour where clicking a muted source row
+still navigates to its own filtered feed.
+
+Polling (EP03) is unaffected by folder mute — articles for sources under
+muted folders continue to be ingested into the DB, matching the charter
+§3 source-mute rule (mute hides but does not pause).
+
+Folder mute toggles do NOT modify `Source.muted` — that field is preserved
+verbatim through any number of folder-mute cycles.
+
+### §2.4 Tree invariants — FT05
+
+Application-enforced (server-side) on every POST /folders + PATCH
+/folders/{id} that changes `parent_id`:
+
+- **Depth cap:** `Folder.depth ≤ 5` after the write. Violations return
+  422 `error: depth_limit`. Cached `Folder.depth` is recomputed for the
+  moved folder and every descendant in the same transaction.
+- **Acyclic:** moving a folder F under one of F's own descendants is
+  rejected. Violations return 422 `error: cycle`.
+- **Position:** REAL field; client computes midpoints between adjacent
+  siblings. The server accepts any real value; renormalisation is a
+  future, opportunistic concern (not blocking).
+
 ---
 
 ## §3. Indexes
@@ -91,6 +176,8 @@ CREATE TABLE article (
 | `idx_article_published_at` | article | `published_at DESC` | Newest-first sort for the EP04 feed pagination (50 per page). |
 | `idx_article_source_id` | article | `source_id` | Filter the feed pane to one source (FT03 source-row click). |
 | `idx_article_read_at_null` | article | `(read_at) WHERE read_at IS NULL` | Unread-count aggregation for FT03 sidebar counts and the "All sources" sum. Partial index keeps it small even at high article volume. |
+| `idx_source_folder_id` | source | `folder_id` | Recursive tree rendering — fetch sources per folder (FT05 / US-260522-2116-003). |
+| `idx_folder_parent_id` | folder | `parent_id` | Recursive tree walk — fetch children per folder; supports cascade walks for delete + drag + depth recomputation. |
 
 ---
 
@@ -134,6 +221,7 @@ pruned identically once they age out.
 | :--- | :--- | :--- | :--- | :--- |
 | `polling_interval_minutes` | INTEGER | 20 | 5–120 | EP03 |
 | `retention_days` | INTEGER | 30 | 1–365 | EP02 |
+| `grouping_banner_dismissed` | BOOL (0/1) | 0 | 0–1 | FT05 (US-260522-2116-009) — set to 1 by `×` click OR auto-set by the POST /groups handler on the first Group create. Once 1, never resets. |
 
 The app reads these on startup and on Settings-page save. EP03 reloads the
 polling interval at the start of every poll cycle (no app restart needed).
@@ -145,11 +233,64 @@ polling interval at the start of every poll cycle (no app restart needed).
 First-run schema bootstrap is owned by EP05 (Setup & Self-Hosting). The
 bootstrap script:
 
-1. Creates the `source`, `article`, and `settings` tables with the schemas
-   above.
+1. Creates the `source`, `article`, `settings`, `group`, and `subgroup`
+   tables with the schemas above.
 2. Creates the indexes in §3.
-3. Inserts the §6 default settings.
-4. Loads the 10–15 seed sources (EP05 feature).
+3. Inserts the §6 default settings (including `grouping_banner_dismissed`
+   defaulted to 0).
+4. Loads the 10–15 seed sources (EP05 feature). Seed sources land with
+   both `group_id` and `subgroup_id` NULL (Ungrouped zone).
+
+**FT05 additive migration (CR-260522-2101-001, iteration 1):** on databases
+bootstrapped before FT05 landed, the migration step is purely additive:
+
+- `CREATE TABLE "group" (...)` per §1.4.
+- `CREATE TABLE subgroup (...)` per §1.5 with FK to group.id ON DELETE
+  CASCADE.
+- `ALTER TABLE source ADD COLUMN group_id TEXT REFERENCES "group"(id)
+  ON DELETE SET NULL` (nullable, defaults to NULL on existing rows).
+- `ALTER TABLE source ADD COLUMN subgroup_id TEXT REFERENCES subgroup(id)
+  ON DELETE SET NULL`.
+- Create §3 indexes `idx_source_group_id`, `idx_source_subgroup_id`,
+  `idx_subgroup_group_id`.
+- INSERT the `grouping_banner_dismissed = 0` settings row.
+
+**FT05 additive migration (CR-260522-2101-001, iteration 2):** on databases
+that already carry the iteration-1 schema, iteration 2 is purely additive
+on top of it:
+
+- `ALTER TABLE "group" ADD COLUMN muted INTEGER NOT NULL DEFAULT 0`
+  (idempotent — skipped when the column already exists; existing rows
+  backfill with 0).
+- `ALTER TABLE subgroup ADD COLUMN muted INTEGER NOT NULL DEFAULT 0`
+  (same).
+
+**FT05 collapse migration (CR-260522-2101-001, iteration 3):** the two-table
+Group + Subgroup model is collapsed into a single recursive `folder` table.
+Migration is idempotent (skipped when `folder` table already exists with
+the iteration-3 shape):
+
+1. `CREATE TABLE folder (id, parent_id, name, position, collapsed, muted,
+   depth, created_at)` with FK `parent_id → folder(id) ON DELETE CASCADE`.
+2. `ALTER TABLE source ADD COLUMN folder_id TEXT REFERENCES folder(id) ON
+   DELETE SET NULL` if missing.
+3. `INSERT INTO folder` one row per existing `group` row, with `depth=1`,
+   `parent_id=NULL`, copying `id`/`name`/`position`/`collapsed`/`muted`/
+   `created_at`.
+4. `INSERT INTO folder` one row per existing `subgroup` row, with
+   `depth=2`, `parent_id = <the matched group's new folder id>`,
+   copying the rest.
+5. `UPDATE source SET folder_id = COALESCE(<matched subgroup folder>,
+   <matched group folder>)`. Subgroup-attached sources win over
+   group-attached sources, preserving iteration-1 invariants.
+6. `CREATE INDEX idx_folder_parent_id ON folder(parent_id)`;
+   `CREATE INDEX idx_source_folder_id ON source(folder_id)`.
+7. `DROP TABLE subgroup`; `DROP TABLE "group"`.
+8. `ALTER TABLE source DROP COLUMN subgroup_id`; `DROP COLUMN group_id`.
+
+No source or article row is rewritten or deleted. Folder-row count after
+migration equals (group rows + subgroup rows) before migration. Verified
+by AC-260522-2117-007 and AC-260522-2400-002.
 
 Subsequent migrations are versioned (`schema_version` column in `settings` or a
 dedicated `migrations` table — to be specified when EP05 stories are authored).

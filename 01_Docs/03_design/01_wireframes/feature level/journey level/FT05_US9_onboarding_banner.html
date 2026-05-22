@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<title>FT05 · US-260522-2116-009 — First-Run Onboarding Banner</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: #faf7f1; color: #1a1814; margin: 0; padding: 28px; }
+  h1 { font-size: 18px; margin: 0 0 4px; } .subtitle { color: #7a7166; font-size: 12px; margin-bottom: 20px; }
+  .strip { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+  .card { background: #fff; border: 1px solid #e7e1d4; border-radius: 10px; overflow: hidden; }
+  .card-head { padding: 8px 12px; border-bottom: 1px solid #e7e1d4; font-size: 11px; color: #3a352d; display: flex; justify-content: space-between; }
+  .card-head .code { font-family: ui-monospace, monospace; font-size: 10px; color: #1f6feb; }
+  .card-body { padding: 0; background: #faf7f1; display: flex; justify-content: center; }
+  svg { display: block; max-width: 100%; height: auto; }
+  .notes { padding: 10px 14px; border-top: 1px solid #e7e1d4; font-size: 11px; color: #3a352d; line-height: 1.5; background: #fffefb; }
+  .notes b { color: #1a1814; }
+</style>
+</head><body>
+
+<h1>US-260522-2116-009 — First-Run Onboarding Banner</h1>
+<div class="subtitle">Journey: first-render visibility, manual `×` dismissal, auto-dismissal on first group create.</div>
+
+<div class="strip">
+
+  <div class="card">
+    <div class="card-head"><span>State 1 · First render — banner visible</span><span class="code">US9_state_a</span></div>
+    <div class="card-body">
+      <svg viewBox="0 0 460 240" xmlns="http://www.w3.org/2000/svg">
+        <rect width="460" height="240" fill="#faf7f1"/>
+        <text x="20" y="36" fill="#1a1814" font-size="15" font-weight="600">Latest news</text>
+        <text x="20" y="52" fill="#7a7166" font-size="10">1.241 articles · 12 active sources</text>
+        <rect x="20" y="76" width="420" height="54" rx="8" fill="#fffefb" stroke="#e7e1d4"/>
+        <text x="34" y="100" fill="#f59e0b" font-size="14">✦</text>
+        <text x="54" y="100" fill="#1a1814" font-size="11" font-weight="600">New: group your sources.</text>
+        <text x="54" y="116" fill="#3a352d" font-size="11">Click + in the sidebar to create a group (e.g. AI), then drag any source onto it.</text>
+        <text x="54" y="128" fill="#3a352d" font-size="11">Hover a group and click + to add a subgroup. Double-click any title to rename.</text>
+        <text x="424" y="100" fill="#7a7166" font-size="14">×</text>
+        <line x1="20" y1="166" x2="440" y2="166" stroke="#e7e1d4"/>
+        <text x="20" y="186" fill="#1a1814" font-size="11" font-weight="500">Apple readies M5 MacBook Pro</text>
+      </svg>
+    </div>
+    <div class="notes"><b>Predicate.</b> 0 Groups AND `grouping_banner_dismissed = 0`. Banner sits above the "Latest news" header. Exact copy per AC-260522-2118-028.</div>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><span>State 2 · Manual dismissal (× click)</span><span class="code">US9_state_b</span></div>
+    <div class="card-body">
+      <svg viewBox="0 0 460 240" xmlns="http://www.w3.org/2000/svg">
+        <rect width="460" height="240" fill="#faf7f1"/>
+        <text x="20" y="36" fill="#1a1814" font-size="15" font-weight="600">Latest news</text>
+        <text x="20" y="52" fill="#7a7166" font-size="10">1.241 articles · 12 active sources</text>
+        <line x1="20" y1="76" x2="440" y2="76" stroke="#e7e1d4"/>
+        <text x="20" y="98" fill="#1a1814" font-size="11" font-weight="500">Apple readies M5 MacBook Pro</text>
+        <text x="20" y="116" fill="#3a352d" font-size="10">Reports suggest the next-gen MacBook Pro ships with the M5 chip and updated…</text>
+        <line x1="20" y1="146" x2="440" y2="146" stroke="#e7e1d4"/>
+        <text x="20" y="168" fill="#1a1814" font-size="11" font-weight="500">GPT-5 rumors, Gemini Ultra 2 benchmarks</text>
+        <!-- floating ghost banner showing dismiss action -->
+        <g opacity="0.4">
+          <rect x="120" y="200" width="220" height="22" rx="6" fill="#fff" stroke="#7a7166"/>
+          <text x="135" y="215" fill="#7a7166" font-size="10">→ PATCH grouping_banner_dismissed=1</text>
+        </g>
+      </svg>
+    </div>
+    <div class="notes"><b>Click ×.</b> Banner removed from DOM. PATCH /settings sets `grouping_banner_dismissed = 1`. Reload preserves hidden state (AC-260522-2118-029).</div>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><span>State 3 · Auto-dismiss on first group create</span><span class="code">US9_state_c</span></div>
+    <div class="card-body">
+      <svg viewBox="0 0 460 240" xmlns="http://www.w3.org/2000/svg">
+        <rect width="460" height="240" fill="#faf7f1"/>
+        <text x="20" y="36" fill="#1a1814" font-size="15" font-weight="600">Latest news</text>
+        <text x="20" y="52" fill="#7a7166" font-size="10">1.241 articles · 12 active sources</text>
+        <line x1="20" y1="76" x2="440" y2="76" stroke="#e7e1d4"/>
+        <text x="20" y="98" fill="#1a1814" font-size="11" font-weight="500">Apple readies M5 MacBook Pro</text>
+        <!-- side note showing the chain -->
+        <rect x="20" y="142" width="420" height="68" rx="8" fill="#f3ede0" stroke="#e7e1d4"/>
+        <text x="34" y="166" fill="#3a352d" font-size="11" font-style="italic">POST /groups { name: "AI" } → 201</text>
+        <text x="34" y="184" fill="#3a352d" font-size="11" font-style="italic">  └─ same transaction: UPDATE settings SET value='1'</text>
+        <text x="34" y="202" fill="#3a352d" font-size="11" font-style="italic">      WHERE key='grouping_banner_dismissed'</text>
+      </svg>
+    </div>
+    <div class="notes"><b>Auto-dismiss</b> (AC-260522-2118-030). First Group creation server-side bundles the settings update. Banner does not reappear even after a subsequent group deletion.</div>
+  </div>
+
+</div>
+
+</body></html>

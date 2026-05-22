@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<title>FT05 · US-260522-2116-005 — Create-Group Affordance</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: #faf7f1; color: #1a1814; margin: 0; padding: 28px; }
+  h1 { font-size: 18px; margin: 0 0 4px; } .subtitle { color: #7a7166; font-size: 12px; margin-bottom: 20px; }
+  .strip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+  .card { background: #fff; border: 1px solid #e7e1d4; border-radius: 10px; overflow: hidden; }
+  .card-head { padding: 8px 12px; border-bottom: 1px solid #e7e1d4; font-size: 11px; color: #3a352d; }
+  .card-head .code { font-family: ui-monospace, monospace; font-size: 10px; color: #1f6feb; display: block; }
+  .card-body { padding: 0; background: #faf7f1; display: flex; justify-content: center; }
+  svg { display: block; max-width: 100%; height: auto; }
+  .notes { padding: 10px 14px; border-top: 1px solid #e7e1d4; font-size: 11px; color: #3a352d; line-height: 1.5; background: #fffefb; }
+  .notes b { color: #1a1814; }
+</style>
+</head><body>
+
+<h1>US-260522-2116-005 — Create-Group Affordance</h1>
+<div class="subtitle">Journey: from idle sidebar to a new Group row, including the invalid-name error path.</div>
+
+<div class="strip">
+
+  <div class="card">
+    <div class="card-head">State 1 · Idle (hover header)<span class="code">US5_state_a</span></div>
+    <div class="card-body">
+      <svg viewBox="0 0 240 200" xmlns="http://www.w3.org/2000/svg">
+        <rect width="240" height="200" fill="#f6f3eb"/>
+        <text x="14" y="28" fill="#7a7166" font-size="10" letter-spacing="1">SOURCES</text>
+        <circle cx="200" cy="22" r="9" fill="#1a1814"/>
+        <text x="200" y="26" text-anchor="middle" fill="#fff" font-size="13">+</text>
+        <circle cx="222" cy="22" r="9" fill="none" stroke="#1f6feb" stroke-width="1.4"/>
+        <text x="222" y="26" text-anchor="middle" fill="#1f6feb" font-size="13">+</text>
+        <rect x="200" y="36" width="80" height="16" rx="4" fill="#1a1814" opacity="0.92"/>
+        <text x="240" y="48" text-anchor="middle" fill="#fff" font-size="9">New group</text>
+        <rect x="6" y="64" width="228" height="20" rx="5" fill="#e9e3d2"/>
+        <text x="20" y="78" fill="#1a1814" font-size="10">All sources</text>
+      </svg>
+    </div>
+    <div class="notes">Hover the outlined `+` to surface the "New group" tooltip. Tooltip distinguishes it from the existing filled `+` (add source).</div>
+  </div>
+
+  <div class="card">
+    <div class="card-head">State 2 · Inline input revealed<span class="code">US5_state_b</span></div>
+    <div class="card-body">
+      <svg viewBox="0 0 240 200" xmlns="http://www.w3.org/2000/svg">
+        <rect width="240" height="200" fill="#f6f3eb"/>
+        <text x="14" y="28" fill="#7a7166" font-size="10" letter-spacing="1">SOURCES</text>
+        <circle cx="200" cy="22" r="9" fill="#1a1814"/><text x="200" y="26" text-anchor="middle" fill="#fff" font-size="13">+</text>
+        <circle cx="222" cy="22" r="9" fill="#1f6feb"/><text x="222" y="26" text-anchor="middle" fill="#fff" font-size="13">+</text>
+        <rect x="6" y="42" width="228" height="26" rx="5" fill="#fff" stroke="#1f6feb"/>
+        <text x="16" y="59" fill="#7a7166" font-size="11" font-style="italic">Group name</text>
+        <line x1="16" y1="62" x2="22" y2="62" stroke="#1f6feb" stroke-width="2"/>
+        <rect x="6" y="80" width="228" height="20" rx="5" fill="#e9e3d2"/>
+        <text x="20" y="94" fill="#1a1814" font-size="10">All sources</text>
+      </svg>
+    </div>
+    <div class="notes">Clicked `+`. Inline input below the header, focused, placeholder "Group name", caret visible at left. `Enter` submits, `Esc` cancels.</div>
+  </div>
+
+  <div class="card">
+    <div class="card-head">State 3 · Invalid (empty submit)<span class="code">US5_state_c</span></div>
+    <div class="card-body">
+      <svg viewBox="0 0 240 200" xmlns="http://www.w3.org/2000/svg">
+        <rect width="240" height="200" fill="#f6f3eb"/>
+        <text x="14" y="28" fill="#7a7166" font-size="10" letter-spacing="1">SOURCES</text>
+        <rect x="6" y="42" width="228" height="26" rx="5" fill="#fff" stroke="#ef4444"/>
+        <text x="16" y="59" fill="#7a7166" font-size="11" font-style="italic">Group name</text>
+        <text x="16" y="84" fill="#ef4444" font-size="10">Group name must be 1–60 characters</text>
+        <rect x="6" y="100" width="228" height="20" rx="5" fill="#e9e3d2"/>
+        <text x="20" y="114" fill="#1a1814" font-size="10">All sources</text>
+      </svg>
+    </div>
+    <div class="notes"><b>Error path</b> (AC-260522-2118-016). Server returns 422 `error invalid_name`; input border turns red; error text below; input stays focused with user's keystrokes preserved.</div>
+  </div>
+
+  <div class="card">
+    <div class="card-head">State 4 · Success — group appears<span class="code">US5_state_d</span></div>
+    <div class="card-body">
+      <svg viewBox="0 0 240 200" xmlns="http://www.w3.org/2000/svg">
+        <rect width="240" height="200" fill="#f6f3eb"/>
+        <text x="14" y="28" fill="#7a7166" font-size="10" letter-spacing="1">SOURCES</text>
+        <circle cx="200" cy="22" r="9" fill="#1a1814"/><text x="200" y="26" text-anchor="middle" fill="#fff" font-size="13">+</text>
+        <circle cx="222" cy="22" r="9" fill="none" stroke="#1a1814" stroke-width="1.4"/><text x="222" y="26" text-anchor="middle" fill="#1a1814" font-size="13">+</text>
+        <rect x="6" y="42" width="228" height="22" rx="5" fill="#e9e3d2"/>
+        <text x="20" y="58" fill="#1a1814" font-size="11">All sources</text>
+        <text x="14" y="88" fill="#1a1814" font-size="13" font-weight="600">▾  AI</text>
+        <text x="226" y="88" text-anchor="end" fill="#3a352d" font-size="10">0</text>
+        <text x="14" y="172" fill="#7a7166" font-size="9" letter-spacing="1">UNGROUPED</text>
+      </svg>
+    </div>
+    <div class="notes">201 returned. New group renders at the bottom of the tree (highest `position`), expanded by default. Input clears + closes. Pill count = 0 until sources are dragged in.</div>
+  </div>
+
+</div>
+
+</body></html>

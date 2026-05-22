@@ -1,3 +1,6 @@
+{# Full feed pane partial — returned by /feed-partial (rows_only=false).
+   No pagination chrome (CR-260522-2101-001 iteration 2). Every article
+   uses the full card layout (design fidelity to screenshot.png). #}
 <div class="feed-header">
   <div class="feed-title">
     <h2>{{ feed.title }}</h2>
@@ -9,59 +12,42 @@
     </p>
   </div>
   <div class="feed-controls">
-    <button class="icon-btn" id="refresh-btn" title="Refresh" aria-label="Refresh">
+    <button class="icon-btn refresh-icon" id="refresh-btn" title="Refresh" aria-label="Refresh">
       <i class="ti ti-refresh"></i>
     </button>
   </div>
 </div>
 
-<div class="article-list">
+{% if feed.banner_visible %}
+  <div class="grouping-banner" id="grouping-banner">
+    <i class="ti ti-sparkles banner-icon"></i>
+    <div class="grouping-banner-text">
+      <b>New: group your sources.</b>
+      Click <kbd>+</kbd> in the sidebar to create a group (e.g. <i>AI</i>), then drag any source onto it.
+      Hover a group and click <kbd>+</kbd> to add a subgroup. Double-click any title to rename.
+    </div>
+    <button class="grouping-banner-dismiss" id="grouping-banner-dismiss"
+            title="Dismiss" aria-label="Dismiss">
+      <i class="ti ti-x"></i>
+    </button>
+  </div>
+{% endif %}
+
+<div class="article-list"
+     id="article-list"
+     data-next-after="{{ feed.next_after or '' }}"
+     data-has-more="{{ '1' if feed.has_more else '0' }}"
+     data-active-source="{{ feed.active_source_id or '' }}">
   {% if not feed.articles %}
     <div class="empty-state">
       <i class="ti ti-news-off"></i>
       <p>No articles yet. {% if feed.active_source_id %}This source has no articles ingested.{% else %}Add a source from the sidebar to start.{% endif %}</p>
     </div>
   {% endif %}
-  {% for a in feed.articles %}
-    <article class="article {% if loop.index > 4 %}compact{% endif %}"
-             data-article-id="{{ a.id }}"
-             data-url="{{ a.url }}">
-      {% if loop.index <= 4 %}
-        <div class="article-meta">
-          {% if a.is_unread %}<span class="badge-new"></span>{% endif %}
-          <span class="source-dot" style="background:{{ a.source_colour }};"></span>
-          <span class="article-source">{{ a.source_name }}</span>
-          <span class="article-sep">·</span>
-          <span>{{ a.relative_time }}</span>
-        </div>
-        <p class="article-title">{{ a.title }}</p>
-        {% if a.summary %}<p class="article-summary">{{ a.summary }}</p>{% endif %}
-      {% else %}
-        {% if a.is_unread %}<span class="badge-new"></span>{% endif %}
-        <span class="source-dot" style="background:{{ a.source_colour }};"></span>
-        <span class="article-source-inline">{{ a.source_name }} · {{ a.relative_time }}</span>
-        <span class="article-title-inline">{{ a.title }}</span>
-      {% endif %}
-    </article>
-  {% endfor %}
+  {% include "_feed_rows.html" %}
 </div>
 
-{% if feed.pages > 1 %}
-<nav class="pagination">
-  {% if feed.has_prev %}
-    <button class="btn" data-page="{{ feed.page - 1 }}">
-      <i class="ti ti-chevron-left"></i> Prev
-    </button>
-  {% else %}
-    <button class="btn" disabled><i class="ti ti-chevron-left"></i> Prev</button>
-  {% endif %}
-  <span class="page-info">Page {{ feed.page }} of {{ feed.pages }}</span>
-  {% if feed.has_next %}
-    <button class="btn" data-page="{{ feed.page + 1 }}">
-      Next <i class="ti ti-chevron-right"></i>
-    </button>
-  {% else %}
-    <button class="btn" disabled>Next <i class="ti ti-chevron-right"></i></button>
-  {% endif %}
-</nav>
-{% endif %}
+<div class="feed-scroll-spinner" id="feed-spinner" hidden>
+  <i class="ti ti-loader-2"></i>
+</div>
+<div class="feed-end-marker" id="feed-end-marker" hidden></div>

@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<title>FT05 · US-260522-2116-003 — Sidebar Tree Rendering</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: #faf7f1; color: #1a1814; margin: 0; padding: 28px; }
+  h1 { font-size: 18px; margin: 0 0 4px; } .subtitle { color: #7a7166; font-size: 12px; margin-bottom: 20px; }
+  .strip { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+  .card { background: #fff; border: 1px solid #e7e1d4; border-radius: 10px; overflow: hidden; }
+  .card-head { padding: 8px 12px; border-bottom: 1px solid #e7e1d4; font-size: 11px; color: #3a352d; display: flex; justify-content: space-between; }
+  .card-head .code { font-family: ui-monospace, monospace; font-size: 10px; color: #1f6feb; }
+  .card-body { padding: 0; background: #faf7f1; display: flex; justify-content: center; }
+  svg { display: block; max-width: 100%; height: auto; }
+  .notes { padding: 10px 14px; border-top: 1px solid #e7e1d4; font-size: 11px; color: #3a352d; line-height: 1.5; background: #fffefb; }
+  .notes b { color: #1a1814; }
+</style>
+</head><body>
+
+<h1>US-260522-2116-003 — Sidebar Tree Rendering</h1>
+<div class="subtitle">Journey: how the source-list block transitions from one Group through nested Subgroup down to direct Sources, with the Ungrouped overflow always anchoring the bottom.</div>
+
+<div class="strip">
+
+  <div class="card">
+    <div class="card-head"><span>State 1 · Single group, no children</span><span class="code">US3_state_a</span></div>
+    <div class="card-body">
+      <svg viewBox="0 0 280 360" xmlns="http://www.w3.org/2000/svg">
+        <rect width="280" height="360" fill="#f6f3eb"/>
+        <text x="16" y="32" fill="#7a7166" font-size="10" letter-spacing="1">SOURCES</text>
+        <rect x="10" y="48" width="260" height="22" rx="5" fill="#e9e3d2"/>
+        <text x="22" y="63" fill="#1a1814" font-size="11">All sources</text>
+        <text x="258" y="63" text-anchor="end" fill="#3a352d" font-size="10">12</text>
+        <text x="16" y="100" fill="#1a1814" font-size="13" font-weight="600">▾  AI</text>
+        <text x="258" y="100" text-anchor="end" fill="#3a352d" font-size="10">0</text>
+        <text x="32" y="124" fill="#7a7166" font-size="10" font-style="italic">(no subgroups · no direct sources yet)</text>
+        <text x="16" y="296" fill="#7a7166" font-size="9" letter-spacing="1">UNGROUPED</text>
+        <text x="258" y="296" text-anchor="end" fill="#7a7166" font-size="9">12</text>
+        <circle cx="28" cy="318" r="4" fill="#f59e0b"/><text x="40" y="322" fill="#3a352d" font-size="11">tldr.tech</text>
+        <circle cx="28" cy="336" r="4" fill="#10b981"/><text x="40" y="340" fill="#3a352d" font-size="11">deeplearning.ai</text>
+      </svg>
+    </div>
+    <div class="notes"><b>Predicate.</b> 1 Group, 0 Subgroups under it, 0 direct sources. <b>Render.</b> Group row visible. Group body collapses naturally to an empty line. Ungrouped zone holds everything.</div>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><span>State 2 · Group + subgroup + sources</span><span class="code">US3_state_b</span></div>
+    <div class="card-body">
+      <svg viewBox="0 0 280 360" xmlns="http://www.w3.org/2000/svg">
+        <rect width="280" height="360" fill="#f6f3eb"/>
+        <text x="16" y="32" fill="#7a7166" font-size="10" letter-spacing="1">SOURCES</text>
+        <rect x="10" y="48" width="260" height="22" rx="5" fill="#e9e3d2"/>
+        <text x="22" y="63" fill="#1a1814" font-size="11">All sources</text>
+        <text x="258" y="63" text-anchor="end" fill="#3a352d" font-size="10">12</text>
+        <text x="16" y="100" fill="#1a1814" font-size="13" font-weight="600">▾  AI</text>
+        <text x="258" y="100" text-anchor="end" fill="#3a352d" font-size="10">10</text>
+        <text x="32" y="122" fill="#3a352d" font-size="11">▾  Newsletters</text>
+        <text x="258" y="122" text-anchor="end" fill="#7a7166" font-size="10">7</text>
+        <circle cx="52" cy="142" r="4" fill="#f59e0b"/><text x="62" y="146" fill="#3a352d" font-size="11">tldr.tech</text><text x="258" y="146" text-anchor="end" fill="#7a7166" font-size="10">5</text>
+        <circle cx="52" cy="160" r="4" fill="#f97316"/><text x="62" y="164" fill="#3a352d" font-size="11">rundown.ai</text><text x="258" y="164" text-anchor="end" fill="#7a7166" font-size="10">2</text>
+        <text x="32" y="186" fill="#3a352d" font-size="11">▸  Research</text>
+        <text x="258" y="186" text-anchor="end" fill="#7a7166" font-size="10">3</text>
+        <circle cx="34" cy="210" r="4" fill="#a855f7"/><text x="46" y="214" fill="#3a352d" font-size="11">Ahead of AI</text>
+        <text x="258" y="214" text-anchor="end" fill="#7a7166" font-size="10">0</text>
+        <text x="16" y="296" fill="#7a7166" font-size="9" letter-spacing="1">UNGROUPED</text>
+        <text x="258" y="296" text-anchor="end" fill="#7a7166" font-size="9">2</text>
+        <circle cx="28" cy="318" r="4" fill="#10b981"/><text x="40" y="322" fill="#3a352d" font-size="11">deeplearning.ai</text>
+      </svg>
+    </div>
+    <div class="notes"><b>Order.</b> Inside expanded Group "AI": Newsletters (subgroup, expanded, 2 sources) → Research (subgroup, collapsed) → "Ahead of AI" (direct-child source). Pill counts aggregate up the chain.</div>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><span>State 3 · Two collapsed groups</span><span class="code">US3_state_c</span></div>
+    <div class="card-body">
+      <svg viewBox="0 0 280 360" xmlns="http://www.w3.org/2000/svg">
+        <rect width="280" height="360" fill="#f6f3eb"/>
+        <text x="16" y="32" fill="#7a7166" font-size="10" letter-spacing="1">SOURCES</text>
+        <rect x="10" y="48" width="260" height="22" rx="5" fill="#e9e3d2"/>
+        <text x="22" y="63" fill="#1a1814" font-size="11">All sources</text>
+        <text x="258" y="63" text-anchor="end" fill="#3a352d" font-size="10">12</text>
+        <text x="16" y="100" fill="#1a1814" font-size="13" font-weight="600">▸  AI</text>
+        <text x="258" y="100" text-anchor="end" fill="#3a352d" font-size="10">10</text>
+        <text x="16" y="124" fill="#1a1814" font-size="13" font-weight="600">▸  Industry</text>
+        <text x="258" y="124" text-anchor="end" fill="#3a352d" font-size="10">0</text>
+        <text x="16" y="296" fill="#7a7166" font-size="9" letter-spacing="1">UNGROUPED</text>
+        <text x="258" y="296" text-anchor="end" fill="#7a7166" font-size="9">2</text>
+        <circle cx="28" cy="318" r="4" fill="#10b981"/><text x="40" y="322" fill="#3a352d" font-size="11">deeplearning.ai</text>
+      </svg>
+    </div>
+    <div class="notes"><b>Collapsed render.</b> Both groups in `collapsed=1`. Their subgroups + direct sources are not rendered server-side. Pills still aggregate (counts are computed regardless of collapse state).</div>
+  </div>
+
+</div>
+
+</body></html>
