@@ -42,6 +42,14 @@ app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 # ---------- pages ----------
 
 
+def _parse_csv(raw: Optional[str]) -> Optional[list[str]]:
+    """Split a comma-separated query param. Returns None for None / empty."""
+    if raw is None:
+        return None
+    out = [s.strip() for s in raw.split(",") if s.strip()]
+    return out or None
+
+
 @app.get("/", response_class=HTMLResponse)
 async def index(
     request: Request,
@@ -61,6 +69,7 @@ async def index(
             "sidebar": sidebar,
             "feed": feed,
             "active_source_id": source,
+            "active_folder_id": None,
         },
     )
 
@@ -72,11 +81,22 @@ async def index(
 async def sidebar_partial(
     request: Request,
     active: Optional[str] = Query(None),
+    scope: Optional[str] = Query(None, description="Active folder scope (CR-260523-1501-001)"),
+    from_: Optional[str] = Query(None, alias="from", description="Lower bound on published_at (CR-260523-1630-001)"),
+    to: Optional[str] = Query(None, description="Upper bound on published_at (CR-260523-1630-001)"),
 ) -> HTMLResponse:
-    sidebar = views.build_sidebar_view()
+    sidebar = views.build_sidebar_view(
+        from_date=from_ or None,
+        to_date=to or None,
+    )
     return templates.TemplateResponse(
         "_source_list.html",
-        {"request": request, "sidebar": sidebar, "active_source_id": active},
+        {
+            "request": request,
+            "sidebar": sidebar,
+            "active_source_id": active,
+            "active_folder_id": scope,
+        },
     )
 
 
@@ -87,27 +107,58 @@ async def feed_partial(
     size: int = Query(config.PAGE_SIZE_DEFAULT, ge=1, le=config.PAGE_SIZE_MAX),
     after: Optional[str] = Query(None, description="Cursor: published_at to fetch articles older than"),
     rows_only: bool = Query(False, description="If true, return only article rows (no feed header) for scroll-append"),
+    from_: Optional[str] = Query(None, alias="from", description="Lower bound on published_at (ISO)"),
+    to: Optional[str] = Query(None, description="Upper bound on published_at (ISO)"),
+    source_ids: Optional[str] = Query(None, description="Comma-separated source ids (filter bar multi-select)"),
+    folder_ids: Optional[str] = Query(None, description="Comma-separated folder ids (filter bar multi-select)"),
+    scope_folder_id: Optional[str] = Query(None, description="Sidebar Group/Subgroup scope"),
 ) -> HTMLResponse:
     """Feed partial endpoint.
 
     Two modes per CR-260522-2101-001 iteration 2 / US-260522-2230-003:
     - **Full** (`rows_only=False`, default): returns the full feed pane
-      (header + initial article batch). Used after a source-filter change
-      or manual refresh — the client replaces `#feed-pane` innerHTML.
+      (header + filter bar + initial article batch). The client replaces
+      `#feed-pane` innerHTML on source-filter / scope / filter change.
     - **Rows-only** (`rows_only=True`): returns just the `.article` rows
-      for the next batch starting after the supplied `after` cursor. The
-      client appends these to the existing `.article-list` container.
+      for the next batch starting after the supplied `after` cursor.
+
+    Filter parameters (CR-260523-1500-001 / CR-260523-1501-001):
+      `from`, `to`, `source_ids`, `folder_ids`, `scope_folder_id`.
     """
     if source is not None:
         src = models.get_source(source)
         if src is None or src["muted"]:
             source = None
-    feed = views.build_feed_view(source_id=source, page_size=size, after=after)
+    if scope_folder_id is not None and models.get_folder(scope_folder_id) is None:
+        scope_folder_id = None
+    feed = views.build_feed_view(
+        source_id=source,
+        page_size=size,
+        after=after,
+        from_date=from_ or None,
+        to_date=to or None,
+        source_ids=_parse_csv(source_ids),
+        folder_ids=_parse_csv(folder_ids),
+        scope_folder_id=scope_folder_id,
+    )
     template = "_feed_rows.html" if rows_only else "_feed.html"
     return templates.TemplateResponse(
         template,
-        {"request": request, "feed": feed, "active_source_id": source},
+        {
+            "request": request,
+            "feed": feed,
+            "active_source_id": source,
+            "active_folder_id": scope_folder_id,
+        },
     )
+
+
+@app.get("/filter-tree")
+async def filter_tree() -> dict:
+    """Return the flattened source tree for the filter-bar content dropdown
+    (CR-260523-1500-001). Mirrors sidebar order but is a JSON list, not HTML.
+    """
+    return {"tree": views.list_filter_tree()}
 
 
 # ---------- source API ----------
@@ -427,6 +478,17 @@ async def patch_grouping_banner(payload: BannerDismissIn):
     return {"grouping_banner_dismissed": payload.dismissed}
 
 
+class SidebarWidthIn(BaseModel):
+    width_px: int = Field(ge=0, le=10000)
+
+
+@app.patch("/settings/sidebar_width_px")
+async def patch_sidebar_width(payload: SidebarWidthIn):
+    """Persist user-chosen sidebar width (CR-260523-0900-004)."""
+    clamped = models.set_sidebar_width_px(payload.width_px)
+    return {"sidebar_width_px": clamped}
+
+
 # ---------- article API ----------
 
 
@@ -437,6 +499,97 @@ async def mark_article_read(article_id: str):
         raise HTTPException(status_code=404, detail="article not found")
     models.mark_read(article_id)
     return {"id": article_id, "read": True}
+
+
+class ArticleParentIn(BaseModel):
+    folder_id: Optional[str] = None
+    position: Optional[float] = None
+
+
+@app.patch("/articles/{article_id}/parent")
+async def patch_article_parent(article_id: str, payload: ArticleParentIn):
+    """Reassign an article to a folder (CR-260523-0900-001 AC-260523-0900-022).
+
+    NULL `folder_id` returns the article to inheriting from its Source.
+    """
+    art = models.get_article(article_id)
+    if art is None:
+        raise HTTPException(status_code=404, detail="article not found")
+    try:
+        models.set_article_folder(
+            article_id,
+            folder_id=payload.folder_id,
+            position=payload.position,
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "error": "parent_not_found",
+                "details": str(e),
+                "message": "Folder not found.",
+            },
+        )
+    return {"id": article_id, "folder_id": payload.folder_id}
+
+
+# ---------- promote / demote (CR-260523-0900-001) ----------
+
+
+class PromoteDemoteIn(BaseModel):
+    # For demote, the frontend identifies the preceding sibling whose group/
+    # folder the row should inherit. Omitted on promote.
+    preceding_id: Optional[str] = None
+
+
+@app.patch("/sources/{source_id}/promote")
+async def promote_source_endpoint(source_id: str):
+    if models.get_source(source_id) is None:
+        raise HTTPException(status_code=404, detail="source not found")
+    return models.promote_source(source_id)
+
+
+@app.patch("/sources/{source_id}/demote")
+async def demote_source_endpoint(source_id: str, payload: PromoteDemoteIn):
+    if models.get_source(source_id) is None:
+        raise HTTPException(status_code=404, detail="source not found")
+    return models.demote_source(source_id, payload.preceding_id)
+
+
+@app.patch("/folders/{folder_id}/promote")
+async def promote_folder_endpoint(folder_id: str):
+    if models.get_folder(folder_id) is None:
+        raise HTTPException(status_code=404, detail="folder not found")
+    try:
+        return models.promote_folder(folder_id)
+    except (models.DepthLimitExceeded, models.CycleViolation) as e:
+        raise HTTPException(status_code=422, detail={"error": "invalid_move", "message": str(e)})
+
+
+@app.patch("/folders/{folder_id}/demote")
+async def demote_folder_endpoint(folder_id: str, payload: PromoteDemoteIn):
+    if models.get_folder(folder_id) is None:
+        raise HTTPException(status_code=404, detail="folder not found")
+    try:
+        return models.demote_folder(folder_id, payload.preceding_id)
+    except models.DepthLimitExceeded as e:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "error": "depth_limit",
+                "details": str(e),
+                "message": "Maximum folder nesting depth is 5.",
+            },
+        )
+    except models.CycleViolation as e:
+        raise HTTPException(status_code=422, detail={"error": "cycle", "message": str(e)})
+
+
+@app.patch("/articles/{article_id}/promote")
+async def promote_article_endpoint(article_id: str):
+    if models.get_article(article_id) is None:
+        raise HTTPException(status_code=404, detail="article not found")
+    return models.promote_article(article_id)
 
 
 # ---------- header / system ----------

@@ -28,7 +28,11 @@ def humanise_delta(then: Optional[datetime]) -> str:
 _humanise_delta = humanise_delta
 
 
-def build_sidebar_view() -> dict:
+def build_sidebar_view(
+    *,
+    from_date: Optional[str] = None,
+    to_date: Optional[str] = None,
+) -> dict:
     """Build the sidebar render payload.
 
     Two render modes (FT05 / CR-260522-2101-001 iteration 3):
@@ -43,10 +47,19 @@ def build_sidebar_view() -> dict:
     cascade_muted (true if folder is muted OR any ancestor is muted),
     position, unread (recursive sum), `children` (child folders), `sources`
     (direct-attached sources).
+
+    Optional `from_date` / `to_date` (CR-260523-1630-001) narrow every unread
+    pill — per-source, recursive folder sums, and the All-sources total — to
+    articles whose `published_at` falls within the inclusive window. Muted
+    cascade semantics are preserved regardless of the predicate.
     """
     sources = models.list_sources()
-    unread_map = models.unread_counts_per_source()
-    total_unread = models.total_unread_excluding_muted()
+    unread_map = models.unread_counts_per_source(
+        from_date=from_date, to_date=to_date
+    )
+    total_unread = models.total_unread_excluding_muted(
+        from_date=from_date, to_date=to_date
+    )
 
     rows: list[dict] = []
     for s in sources:
@@ -133,6 +146,7 @@ def build_sidebar_view() -> dict:
         and (not models.get_grouping_banner_dismissed()),
         "total_unread": total_unread,
         "last_sync": humanise_delta(scheduler.last_sync_at()),
+        "sidebar_width_px": models.get_sidebar_width_px(),
     }
 
 
@@ -141,6 +155,11 @@ def build_feed_view(
     source_id: Optional[str],
     page_size: int,
     after: Optional[str] = None,
+    from_date: Optional[str] = None,
+    to_date: Optional[str] = None,
+    source_ids: Optional[list[str]] = None,
+    folder_ids: Optional[list[str]] = None,
+    scope_folder_id: Optional[str] = None,
 ) -> dict:
     """Build the feed payload.
 
@@ -152,21 +171,57 @@ def build_feed_view(
     filters out articles whose Source's parent Group or Subgroup is muted.
     Explicit source-filtered views ignore the cascade (mirror of FT04 mute
     behaviour).
+
+    Filter parameters (CR-260523-1500-001 / CR-260523-1501-001):
+      - `from_date` / `to_date`: ISO bounds on `Article.published_at`.
+      - `source_ids` / `folder_ids`: filter-bar content multi-select.
+      - `scope_folder_id`: sidebar Group/Subgroup scope.
     """
     articles = models.list_articles(
-        source_id=source_id, limit=page_size, after=after
+        source_id=source_id,
+        limit=page_size,
+        after=after,
+        from_date=from_date,
+        to_date=to_date,
+        source_ids=source_ids,
+        folder_ids=folder_ids,
+        scope_folder_id=scope_folder_id,
     )
-    total = models.count_articles(source_id=source_id)
+    total = models.count_articles(
+        source_id=source_id,
+        from_date=from_date,
+        to_date=to_date,
+        source_ids=source_ids,
+        folder_ids=folder_ids,
+        scope_folder_id=scope_folder_id,
+    )
     next_after = articles[-1]["published_at"] if articles else None
     has_more = len(articles) >= page_size
+
+    scope_folder = (
+        models.get_folder(scope_folder_id) if scope_folder_id else None
+    )
+    scope_folder_name = scope_folder["name"] if scope_folder else None
 
     active_source = models.get_source(source_id) if source_id else None
     if active_source is not None:
         title = active_source["display_name"]
         active_count = 1
+    elif scope_folder_name:
+        title = scope_folder_name
+        active_count = None
     else:
         title = "Latest news"
         active_count = sum(1 for s in models.list_sources() if not s["muted"])
+
+    has_filters = any(
+        [
+            from_date,
+            to_date,
+            source_ids,
+            folder_ids,
+        ]
+    )
 
     items: list[dict] = []
     for a in articles:
@@ -181,6 +236,7 @@ def build_feed_view(
                 "published_at": a["published_at"],
                 "relative_time": _humanise_delta(_parse_iso(a["published_at"])),
                 "is_unread": a["read_at"] is None,
+                "folder_id": a.get("folder_id"),
             }
         )
     # Banner visibility — first-run only, mirrors sidebar.banner_visible logic
@@ -194,12 +250,100 @@ def build_feed_view(
         "total_articles": total,
         "active_sources": active_count,
         "active_source_id": source_id,
+        "scope_folder_id": scope_folder_id,
+        "scope_folder_name": scope_folder_name,
+        "has_filters": has_filters,
+        "has_scope": scope_folder_id is not None,
+        "filter_from": from_date,
+        "filter_to": to_date,
+        "filter_source_ids": source_ids or [],
+        "filter_folder_ids": folder_ids or [],
         "page_size": page_size,
         "after": after,
         "next_after": next_after,
         "has_more": has_more,
         "banner_visible": banner_visible,
     }
+
+
+def list_filter_tree() -> list[dict]:
+    """Return the sidebar tree shape collapsed to a flat list, used to render
+    the filter-bar content-selection dropdown.
+
+    Each entry: {kind: "folder"|"source", id, name, depth, parent_id, colour?}
+    Folders precede their contents; ungrouped sources appear at the end under
+    a synthetic header. Muted sources are included (the filter dropdown lets
+    the user opt in to muted sources explicitly).
+    """
+    folders = models.list_folders()
+    sources = models.list_sources()
+    sources_by_folder: dict[Optional[str], list[dict]] = {}
+    for s in sources:
+        sources_by_folder.setdefault(s.get("folder_id"), []).append(s)
+
+    children_of: dict[Optional[str], list[dict]] = {None: []}
+    by_id: dict[str, dict] = {}
+    for f in folders:
+        node = dict(f)
+        by_id[f["id"]] = node
+        children_of.setdefault(f["parent_id"], []).append(node)
+
+    out: list[dict] = []
+
+    def emit_folder(node: dict) -> None:
+        out.append(
+            {
+                "kind": "folder",
+                "id": node["id"],
+                "name": node["name"],
+                "depth": int(node["depth"]),
+                "parent_id": node["parent_id"],
+            }
+        )
+        # Recurse into child folders first (mirrors sidebar render order).
+        for child in children_of.get(node["id"], []):
+            emit_folder(child)
+        # Then attached sources at depth+1.
+        for s in sources_by_folder.get(node["id"], []):
+            out.append(
+                {
+                    "kind": "source",
+                    "id": s["id"],
+                    "name": s["display_name"],
+                    "depth": int(node["depth"]) + 1,
+                    "parent_id": node["id"],
+                    "colour": s["colour"],
+                    "muted": bool(s["muted"]),
+                }
+            )
+
+    for root in children_of.get(None, []):
+        emit_folder(root)
+
+    ungrouped = sources_by_folder.get(None, [])
+    if ungrouped:
+        out.append(
+            {
+                "kind": "ungrouped_header",
+                "id": "__ungrouped__",
+                "name": "Ungrouped",
+                "depth": 0,
+                "parent_id": None,
+            }
+        )
+        for s in ungrouped:
+            out.append(
+                {
+                    "kind": "source",
+                    "id": s["id"],
+                    "name": s["display_name"],
+                    "depth": 1,
+                    "parent_id": None,
+                    "colour": s["colour"],
+                    "muted": bool(s["muted"]),
+                }
+            )
+    return out
 
 
 def _parse_iso(s: Optional[str]) -> Optional[datetime]:

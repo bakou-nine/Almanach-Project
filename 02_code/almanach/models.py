@@ -173,6 +173,109 @@ def get_article(article_id: str) -> Optional[dict]:
     return dict(row) if row else None
 
 
+def _build_article_query(
+    *,
+    select_clause: str,
+    source_id: Optional[str],
+    include_muted: bool,
+    after: Optional[str],
+    from_date: Optional[str],
+    to_date: Optional[str],
+    source_ids: Optional[list[str]],
+    folder_ids: Optional[list[str]],
+    scope_folder_id: Optional[str],
+    trailing: str,
+) -> tuple[str, list]:
+    """Compose the article SELECT used by list_articles / count_articles.
+
+    Filter parameters (CR-260523-1500-001 / CR-260523-1501-001):
+      - `from_date` / `to_date`: ISO string bounds on `Article.published_at`.
+      - `source_ids`: explicit list of source ids to include (content multi-select).
+      - `folder_ids`: list of folder ids; each is expanded to its subtree and
+        a source qualifies if its `folder_id` falls in any subtree. Composes
+        with `source_ids` via OR (union of explicit sources + folder subtrees).
+      - `scope_folder_id`: single folder for sidebar scope; the source's
+        `folder_id` must fall in this folder's subtree. Composes with the
+        content multi-select via AND.
+
+    Cascade mute (CR-260522-2101-001 iteration 2, DATA_MODEL.md §2.3) still
+    applies when `source_id` is None.
+    """
+    cte_parts: list[str] = [
+        "muted_subtree(id) AS ("
+        "  SELECT id FROM folder WHERE muted = 1"
+        "  UNION"
+        "  SELECT f.id FROM folder f JOIN muted_subtree m ON f.parent_id = m.id"
+        ")"
+    ]
+    cte_params: list = []
+    where: list[str] = []
+    where_params: list = []
+
+    if source_id is not None:
+        where.append("a.source_id = ?")
+        where_params.append(source_id)
+    else:
+        if not include_muted:
+            where.append("s.muted = 0")
+            where.append(
+                "(s.folder_id IS NULL OR s.folder_id NOT IN "
+                "(SELECT id FROM muted_subtree))"
+            )
+
+        if scope_folder_id is not None:
+            cte_parts.append(
+                "scope_subtree(id) AS ("
+                "  SELECT id FROM folder WHERE id = ?"
+                "  UNION"
+                "  SELECT f.id FROM folder f JOIN scope_subtree ss "
+                "       ON f.parent_id = ss.id"
+                ")"
+            )
+            cte_params.append(scope_folder_id)
+            where.append("s.folder_id IN (SELECT id FROM scope_subtree)")
+
+        if source_ids or folder_ids:
+            clauses: list[str] = []
+            if source_ids:
+                placeholders = ",".join("?" * len(source_ids))
+                clauses.append(f"s.id IN ({placeholders})")
+                where_params.extend(source_ids)
+            if folder_ids:
+                placeholders = ",".join("?" * len(folder_ids))
+                cte_parts.append(
+                    "content_subtree(id) AS ("
+                    f"  SELECT id FROM folder WHERE id IN ({placeholders})"
+                    "  UNION"
+                    "  SELECT f.id FROM folder f JOIN content_subtree cs "
+                    "       ON f.parent_id = cs.id"
+                    ")"
+                )
+                cte_params.extend(folder_ids)
+                clauses.append("s.folder_id IN (SELECT id FROM content_subtree)")
+            where.append("(" + " OR ".join(clauses) + ")")
+
+    if from_date is not None:
+        where.append("a.published_at >= ?")
+        where_params.append(from_date)
+    if to_date is not None:
+        where.append("a.published_at <= ?")
+        where_params.append(to_date)
+    if after is not None:
+        where.append("a.published_at < ?")
+        where_params.append(after)
+
+    sql = (
+        "WITH RECURSIVE " + ", ".join(cte_parts) + " "
+        + select_clause
+        + " FROM article a JOIN source s ON s.id = a.source_id "
+    )
+    if where:
+        sql += "WHERE " + " AND ".join(where) + " "
+    sql += trailing
+    return sql, cte_params + where_params
+
+
 def list_articles(
     *,
     source_id: Optional[str] = None,
@@ -180,91 +283,112 @@ def list_articles(
     offset: int = 0,
     include_muted: bool = False,
     after: Optional[str] = None,
+    from_date: Optional[str] = None,
+    to_date: Optional[str] = None,
+    source_ids: Optional[list[str]] = None,
+    folder_ids: Optional[list[str]] = None,
+    scope_folder_id: Optional[str] = None,
 ) -> list[dict]:
-    """List articles newest-first, optionally filtered by source / cursor.
-
-    Cascade mute (CR-260522-2101-001 iteration 2, DATA_MODEL.md §2.3):
-    when `source_id` is None (combined "All sources" view), filter out
-    articles whose Source.muted=1 OR parent Group.muted=1 OR parent
-    Subgroup.muted=1. When `source_id` is set (explicit per-source view),
-    the cascade is ignored and the source's own muted flag is also ignored.
-
-    `after` is a cursor — when present, only articles with
-    `published_at < after` are returned (descending order).
-    """
-    sql = (
-        "WITH RECURSIVE muted_subtree(id) AS ("
-        "  SELECT id FROM folder WHERE muted = 1"
-        "  UNION"
-        "  SELECT f.id FROM folder f JOIN muted_subtree m ON f.parent_id = m.id"
-        ") "
-        "SELECT a.*, s.display_name AS source_name, s.colour AS source_colour, "
-        "s.muted AS source_muted "
-        "FROM article a JOIN source s ON s.id = a.source_id "
+    """List articles newest-first, optionally filtered by source / cursor / filters."""
+    sql, params = _build_article_query(
+        select_clause=(
+            "SELECT a.*, s.display_name AS source_name, "
+            "s.colour AS source_colour, s.muted AS source_muted"
+        ),
+        source_id=source_id,
+        include_muted=include_muted,
+        after=after,
+        from_date=from_date,
+        to_date=to_date,
+        source_ids=source_ids,
+        folder_ids=folder_ids,
+        scope_folder_id=scope_folder_id,
+        trailing="ORDER BY a.published_at DESC LIMIT ? OFFSET ?",
     )
-    where: list[str] = []
-    params: list = []
-    if source_id is not None:
-        where.append("a.source_id = ?")
-        params.append(source_id)
-    elif not include_muted:
-        where.append("s.muted = 0")
-        where.append(
-            "(s.folder_id IS NULL OR s.folder_id NOT IN (SELECT id FROM muted_subtree))"
-        )
-    if after is not None:
-        where.append("a.published_at < ?")
-        params.append(after)
-    if where:
-        sql += "WHERE " + " AND ".join(where) + " "
-    sql += "ORDER BY a.published_at DESC LIMIT ? OFFSET ?"
-    params.extend([limit, offset])
+    params = params + [limit, offset]
     cur = get_connection().cursor()
     cur.execute(sql, params)
     return [dict(r) for r in cur.fetchall()]
 
 
-def count_articles(*, source_id: Optional[str] = None, include_muted: bool = False) -> int:
-    sql = (
-        "WITH RECURSIVE muted_subtree(id) AS ("
-        "  SELECT id FROM folder WHERE muted = 1"
-        "  UNION"
-        "  SELECT f.id FROM folder f JOIN muted_subtree m ON f.parent_id = m.id"
-        ") "
-        "SELECT COUNT(*) AS n FROM article a JOIN source s ON s.id = a.source_id "
+def count_articles(
+    *,
+    source_id: Optional[str] = None,
+    include_muted: bool = False,
+    from_date: Optional[str] = None,
+    to_date: Optional[str] = None,
+    source_ids: Optional[list[str]] = None,
+    folder_ids: Optional[list[str]] = None,
+    scope_folder_id: Optional[str] = None,
+) -> int:
+    sql, params = _build_article_query(
+        select_clause="SELECT COUNT(*) AS n",
+        source_id=source_id,
+        include_muted=include_muted,
+        after=None,
+        from_date=from_date,
+        to_date=to_date,
+        source_ids=source_ids,
+        folder_ids=folder_ids,
+        scope_folder_id=scope_folder_id,
+        trailing="",
     )
-    where: list[str] = []
-    params: list = []
-    if source_id is not None:
-        where.append("a.source_id = ?")
-        params.append(source_id)
-    elif not include_muted:
-        where.append("s.muted = 0")
-        where.append(
-            "(s.folder_id IS NULL OR s.folder_id NOT IN (SELECT id FROM muted_subtree))"
-        )
-    if where:
-        sql += "WHERE " + " AND ".join(where)
     cur = get_connection().cursor()
     cur.execute(sql, params)
     return int(cur.fetchone()["n"])
 
 
-def unread_counts_per_source() -> dict[str, int]:
-    """Returns {source_id: unread_count} for all sources (muted included with 0)."""
-    cur = get_connection().cursor()
-    cur.execute(
-        "SELECT source_id, COUNT(*) AS n FROM article WHERE read_at IS NULL "
-        "GROUP BY source_id"
+def unread_counts_per_source(
+    *,
+    from_date: Optional[str] = None,
+    to_date: Optional[str] = None,
+) -> dict[str, int]:
+    """Returns {source_id: unread_count} for all sources (muted included with 0).
+
+    Optional `from_date` / `to_date` (CR-260523-1630-001) narrow the count to
+    unread articles whose `published_at` falls within the inclusive window.
+    """
+    where = ["read_at IS NULL"]
+    params: list = []
+    if from_date is not None:
+        where.append("published_at >= ?")
+        params.append(from_date)
+    if to_date is not None:
+        where.append("published_at <= ?")
+        params.append(to_date)
+    sql = (
+        "SELECT source_id, COUNT(*) AS n FROM article "
+        "WHERE " + " AND ".join(where) + " GROUP BY source_id"
     )
+    cur = get_connection().cursor()
+    cur.execute(sql, params)
     return {row["source_id"]: int(row["n"]) for row in cur.fetchall()}
 
 
-def total_unread_excluding_muted() -> int:
+def total_unread_excluding_muted(
+    *,
+    from_date: Optional[str] = None,
+    to_date: Optional[str] = None,
+) -> int:
     """All-sources unread sum, excluding sources that are muted directly OR via
-    any muted ancestor Folder (cascade per DATA_MODEL.md §2.3)."""
-    cur = get_connection().cursor()
-    cur.execute(
+    any muted ancestor Folder (cascade per DATA_MODEL.md §2.3).
+
+    Optional `from_date` / `to_date` (CR-260523-1630-001) narrow the count to
+    unread articles whose `published_at` falls within the inclusive window.
+    """
+    where = [
+        "a.read_at IS NULL",
+        "s.muted = 0",
+        "(s.folder_id IS NULL OR s.folder_id NOT IN (SELECT id FROM muted_subtree))",
+    ]
+    params: list = []
+    if from_date is not None:
+        where.append("a.published_at >= ?")
+        params.append(from_date)
+    if to_date is not None:
+        where.append("a.published_at <= ?")
+        params.append(to_date)
+    sql = (
         "WITH RECURSIVE muted_subtree(id) AS ("
         "  SELECT id FROM folder WHERE muted = 1"
         "  UNION"
@@ -272,9 +396,10 @@ def total_unread_excluding_muted() -> int:
         ") "
         "SELECT COUNT(*) AS n FROM article a "
         "JOIN source s ON s.id = a.source_id "
-        "WHERE a.read_at IS NULL AND s.muted = 0 "
-        "AND (s.folder_id IS NULL OR s.folder_id NOT IN (SELECT id FROM muted_subtree))"
+        "WHERE " + " AND ".join(where)
     )
+    cur = get_connection().cursor()
+    cur.execute(sql, params)
     return int(cur.fetchone()["n"])
 
 
@@ -595,6 +720,121 @@ def set_source_folder(
     return cur.rowcount > 0
 
 
+def set_article_folder(
+    article_id: str,
+    *,
+    folder_id: Optional[str],
+    position: Optional[float] = None,
+) -> bool:
+    """Reassign an Article's `folder_id` (CR-260523-0900-001).
+
+    NULL means inherit grouping from the Article's Source.
+    """
+    if folder_id is not None and get_folder(folder_id) is None:
+        raise ValueError("folder not found")
+    sets = ["folder_id = ?"]
+    params: list = [folder_id]
+    if position is not None:
+        sets.append("position = ?")
+        params.append(float(position))
+    params.append(article_id)
+    with transaction() as conn:
+        cur = conn.execute(
+            f"UPDATE article SET {', '.join(sets)} WHERE id = ?",
+            params,
+        )
+    return cur.rowcount > 0
+
+
+# ---------- Promote / Demote (CR-260523-0900-001) ----------
+#
+# Promote/Demote semantics:
+#   - SOURCE.promote: detach from its current folder (folder_id → parent of
+#     current folder, or NULL when current folder is root).
+#   - SOURCE.demote: nest under the preceding sibling source's folder if one
+#     exists at the same level. No-op when no preceding sibling.
+#   - FOLDER.promote: reparent the folder to its grandparent (parent's parent),
+#     or NULL when current parent is root. Depth recompute on the subtree.
+#   - FOLDER.demote: reparent under the preceding sibling folder at the same
+#     parent level. Subject to depth cap.
+#   - ARTICLE.promote: detach (folder_id → NULL, inherit from Source).
+#   - ARTICLE.demote: no-op in MVP (article hierarchy stops at folder level).
+
+
+def promote_source(source_id: str) -> dict:
+    src = get_source(source_id)
+    if src is None:
+        raise ValueError("source not found")
+    current_folder_id = src.get("folder_id")
+    if not current_folder_id:
+        return {"id": source_id, "folder_id": None, "noop": True}
+    folder = get_folder(current_folder_id)
+    new_parent = folder["parent_id"] if folder else None
+    set_source_folder(source_id, folder_id=new_parent)
+    return {"id": source_id, "folder_id": new_parent}
+
+
+def demote_source(source_id: str, preceding_source_id: Optional[str]) -> dict:
+    """Nest source under the same folder as the preceding sibling.
+
+    The frontend passes its computed `preceding_source_id` (the visually
+    adjacent source row above this one in the same parent container). When
+    None, demote is a no-op.
+    """
+    src = get_source(source_id)
+    if src is None:
+        raise ValueError("source not found")
+    if not preceding_source_id:
+        return {"id": source_id, "folder_id": src.get("folder_id"), "noop": True}
+    sibling = get_source(preceding_source_id)
+    if sibling is None:
+        return {"id": source_id, "folder_id": src.get("folder_id"), "noop": True}
+    target = sibling.get("folder_id")
+    set_source_folder(source_id, folder_id=target)
+    return {"id": source_id, "folder_id": target}
+
+
+def promote_folder(folder_id: str) -> dict:
+    folder = get_folder(folder_id)
+    if folder is None:
+        raise ValueError("folder not found")
+    parent_id = folder["parent_id"]
+    if not parent_id:
+        return {"id": folder_id, "parent_id": None, "noop": True}
+    parent = get_folder(parent_id)
+    new_parent = parent["parent_id"] if parent else None
+    update_folder(folder_id, parent_id=new_parent)
+    return {"id": folder_id, "parent_id": new_parent}
+
+
+def demote_folder(folder_id: str, preceding_folder_id: Optional[str]) -> dict:
+    """Nest folder under the preceding sibling folder at the same level."""
+    folder = get_folder(folder_id)
+    if folder is None:
+        raise ValueError("folder not found")
+    if not preceding_folder_id:
+        return {"id": folder_id, "parent_id": folder["parent_id"], "noop": True}
+    sibling = get_folder(preceding_folder_id)
+    if sibling is None or sibling["parent_id"] != folder["parent_id"]:
+        return {"id": folder_id, "parent_id": folder["parent_id"], "noop": True}
+    # Reparent under the sibling. update_folder enforces depth + cycle.
+    update_folder(folder_id, parent_id=preceding_folder_id)
+    return {"id": folder_id, "parent_id": preceding_folder_id}
+
+
+def promote_article(article_id: str) -> dict:
+    art = get_article(article_id)
+    if art is None:
+        raise ValueError("article not found")
+    current = art.get("folder_id")
+    if not current:
+        return {"id": article_id, "folder_id": None, "noop": True}
+    folder = get_folder(current)
+    new_parent = folder["parent_id"] if folder else None
+    set_article_folder(article_id, folder_id=new_parent)
+    return {"id": article_id, "folder_id": new_parent}
+
+
 def muted_folder_subtree_ids() -> set[str]:
     """Return the set of folder ids whose subtree should be considered muted.
 
@@ -633,6 +873,35 @@ def set_grouping_banner_dismissed(value: bool) -> None:
             "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
             ("1" if value else "0",),
         )
+
+
+SIDEBAR_WIDTH_MIN = 200
+SIDEBAR_WIDTH_MAX = 480
+SIDEBAR_WIDTH_DEFAULT = 260
+
+
+def get_sidebar_width_px() -> int:
+    cur = get_connection().cursor()
+    cur.execute("SELECT value FROM settings WHERE key = 'sidebar_width_px'")
+    row = cur.fetchone()
+    if row is None:
+        return SIDEBAR_WIDTH_DEFAULT
+    try:
+        return int(row["value"])
+    except (TypeError, ValueError):
+        return SIDEBAR_WIDTH_DEFAULT
+
+
+def set_sidebar_width_px(value: int) -> int:
+    """Clamp + persist the sidebar width (CR-260523-0900-004)."""
+    clamped = max(SIDEBAR_WIDTH_MIN, min(SIDEBAR_WIDTH_MAX, int(value)))
+    with transaction() as conn:
+        conn.execute(
+            "INSERT INTO settings(key, value) VALUES ('sidebar_width_px', ?) "
+            "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+            (str(clamped),),
+        )
+    return clamped
 
 
 def latest_poll_at() -> Optional[datetime]:

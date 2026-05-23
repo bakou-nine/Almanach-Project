@@ -27,7 +27,7 @@
 {% endmacro %}
 
 {% macro folder_node(f) %}
-  <div class="folder-row{% if f.collapsed %} collapsed{% endif %}{% if f.muted or f.cascade_muted %} muted{% endif %}"
+  <div class="folder-row{% if f.collapsed %} collapsed{% endif %}{% if f.muted or f.cascade_muted %} muted{% endif %}{% if active_folder_id == f.id %} active{% endif %}"
        data-folder-id="{{ f.id }}"
        data-folder-name="{{ f.name|e }}"
        data-parent-id="{{ f.parent_id or '' }}"
@@ -40,7 +40,8 @@
             type="button" aria-label="Toggle folder">
       <i class="ti ti-chevron-{{ 'right' if f.collapsed else 'down' }}"></i>
     </button>
-    <span class="folder-name" data-folder-id="{{ f.id }}">{{ f.name }}</span>
+    <span class="folder-name" data-folder-id="{{ f.id }}"
+          title="Click to scope feed to {{ f.name }}">{{ f.name }}</span>
     {% if f.muted or f.cascade_muted %}
       <i class="ti ti-eye-off folder-muted-icon" aria-label="muted"></i>
     {% else %}
@@ -72,7 +73,7 @@
   {% endif %}
 {% endmacro %}
 
-<div class="source-item all-sources {% if not active_source_id %}active{% endif %}"
+<div class="source-item all-sources {% if not active_source_id and not active_folder_id %}active{% endif %}"
      data-source-id="">
   <i class="ti ti-stack-2" style="font-size:14px; color:var(--text-info);"></i>
   <span class="source-name">All sources</span>

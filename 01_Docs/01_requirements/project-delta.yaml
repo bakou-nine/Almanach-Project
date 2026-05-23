@@ -1,14 +1,26 @@
 file: project-delta.yaml
-generated_at: '2026-05-22T23:14:07.064090+00:00'
-delta_since: '2026-05-22T23:11:34.814007'
+generated_at: '2026-05-23T17:44:13.215681+00:00'
+delta_since: '2026-05-23T16:48:33.289538'
 delta_since_event: YAML_IMPORT
 changes:
   created: []
   edited: []
   status_changed: []
-  cancelled: []
+  cancelled:
+  - id: US-260523-1619-001
+    type: USER_STORY
+    title: Feed Filter Bar
+    cancellation_reason: null
+  - id: US-260523-1619-002
+    type: USER_STORY
+    title: Sidebar Title-Click Feed Scope
+    cancellation_reason: null
   reinstated: []
   links_changed:
     created: []
-    removed: []
+    removed:
+    - parent_id: FT-260522-2230-001
+      child_id: US-260523-1619-001
+    - parent_id: FT-260522-2230-001
+      child_id: US-260523-1619-002
   relations_created: []

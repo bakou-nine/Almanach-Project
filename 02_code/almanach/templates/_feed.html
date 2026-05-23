@@ -1,12 +1,13 @@
 {# Full feed pane partial — returned by /feed-partial (rows_only=false).
    No pagination chrome (CR-260522-2101-001 iteration 2). Every article
-   uses the full card layout (design fidelity to screenshot.png). #}
+   uses the full card layout (design fidelity to screenshot.png).
+   Filter bar (CR-260523-1500-001) + sidebar scope chip (CR-260523-1501-001). #}
 <div class="feed-header">
   <div class="feed-title">
     <h2>{{ feed.title }}</h2>
     <p class="feed-meta">
       {{ feed.total_articles }} article{{ '' if feed.total_articles == 1 else 's' }}
-      {% if feed.active_source_id is none %}
+      {% if feed.active_source_id is none and not feed.scope_folder_name and feed.active_sources is not none %}
         · {{ feed.active_sources }} active source{{ '' if feed.active_sources == 1 else 's' }}
       {% endif %}
     </p>
@@ -16,6 +17,37 @@
       <i class="ti ti-refresh"></i>
     </button>
   </div>
+</div>
+
+<div class="filter-bar" id="filter-bar"
+     data-from="{{ feed.filter_from or '' }}"
+     data-to="{{ feed.filter_to or '' }}"
+     data-source-ids="{{ feed.filter_source_ids|join(',') }}"
+     data-folder-ids="{{ feed.filter_folder_ids|join(',') }}"
+     data-scope-folder-id="{{ feed.scope_folder_id or '' }}"
+     data-scope-folder-name="{{ feed.scope_folder_name or '' }}">
+  <div class="filter-row">
+    <div class="filter-group filter-date-group">
+      <span class="filter-label">When</span>
+      <button type="button" class="filter-chip-btn date-shortcut" data-shortcut="1d">1d</button>
+      <button type="button" class="filter-chip-btn date-shortcut" data-shortcut="1w">1w</button>
+      <button type="button" class="filter-chip-btn date-shortcut" data-shortcut="1m">1m</button>
+      <button type="button" class="filter-chip-btn date-range-btn" id="date-range-btn"
+              title="Pick a custom date range">
+        <i class="ti ti-calendar"></i>
+        <span class="date-range-label">Custom</span>
+      </button>
+    </div>
+    <div class="filter-group filter-content-group">
+      <span class="filter-label">Sources</span>
+      <button type="button" class="filter-chip-btn content-select-btn" id="content-select-btn"
+              title="Pick groups and sources to show">
+        <i class="ti ti-list-search"></i>
+        <span class="content-select-label">All</span>
+      </button>
+    </div>
+  </div>
+  <div class="filter-active" id="filter-active" hidden></div>
 </div>
 
 {% if feed.banner_visible %}
@@ -41,7 +73,19 @@
   {% if not feed.articles %}
     <div class="empty-state">
       <i class="ti ti-news-off"></i>
-      <p>No articles yet. {% if feed.active_source_id %}This source has no articles ingested.{% else %}Add a source from the sidebar to start.{% endif %}</p>
+      {% if feed.has_scope and feed.has_filters %}
+        <p>No articles in &ldquo;{{ feed.scope_folder_name }}&rdquo; match these filters.</p>
+        <button class="btn" id="clear-filters-btn">Clear filters</button>
+      {% elif feed.has_scope %}
+        <p>No articles in &ldquo;{{ feed.scope_folder_name }}&rdquo;.</p>
+      {% elif feed.has_filters %}
+        <p>No articles match these filters.</p>
+        <button class="btn" id="clear-filters-btn">Clear filters</button>
+      {% elif feed.active_source_id %}
+        <p>This source has no articles ingested.</p>
+      {% else %}
+        <p>No articles yet. Add a source from the sidebar to start.</p>
+      {% endif %}
     </div>
   {% endif %}
   {% include "_feed_rows.html" %}

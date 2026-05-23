@@ -1,11 +1,337 @@
 file: project-cancelled.yaml
 status_filter:
 - CANCELLED
-exported_at: '2026-05-22T23:14:07.064090+00:00'
+exported_at: '2026-05-23T17:44:13.215681+00:00'
 project_charters: []
-epics: []
-orphans: []
+epics:
+- id: EP-260512-2230-002
+  project_id: PR-260512-2041-001
+  type: EPIC
+  created_at: '2026-05-12T22:35:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: '2026-05-23T14:05:36.036593'
+  locked: true
+  title: Article Ingestion & Storage
+  status: CANCELLED
+  parent_id: PC-260512-2041-001
+  children_ids: []
+  updated_at: '2026-05-23T14:05:36.036593'
+  updated_by: CLAUDE_CODE
+  approved_by_human: true
+  cancellation_reason: Removed at user request — empty placeholder epic (no features/stories/AC
+    ever authored). Capability dropped from MVP scope; charter In-scope/Key-deliverables
+    items pruned to match. children_ids link on PC-260512-2041-001 left intact for
+    Filum-side severance on approval.
+  tags: []
+  body: "# EP02 — Article Ingestion & Storage\n\n## Feature Navigation Flows\n\n(Features\
+    \ pending — next §5.1.1 round.)\n\n---\n\n## Body\n\nTurns a polled feed into\
+    \ stored, deduplicated article metadata. feedparser\nparses RSS / Atom; Open Graph\
+    \ + JSON-LD enrich thin entries; Trafilatura is\nthe readability fallback for\
+    \ summary text. Articles persist in SQLite with\nURL as dedup key, indexed by\
+    \ published_at. A daily cleanup prunes records\nolder than 30 days (configurable).\n\
+    \n**Key functional areas:**\n\n- feedparser-driven RSS / Atom parsing.\n- SQLite\
+    \ schema: Source and Article tables, indexes by URL + published_at.\n- Deduplication\
+    \ by canonical URL.\n- Open Graph + JSON-LD metadata enrichment.\n- Trafilatura\
+    \ summary fallback.\n- 30-day retention cleanup job.\n\n**Out of scope:**\n\n\
+    - Full-text body storage (charter restricts to metadata only).\n- AI extraction\
+    \ fallback (Phase 4+).\n- Playwright / dynamic-fetch path (deferred — separate\
+    \ feature gated on\n  static-fetch failure).\n- Per-article tagging (charter §3\
+    \ out-of-scope).\n- Polling scheduling (see EP03).\n- Feed display (see EP04).\n\
+    \n**Reference documents:**\n\n- DATA_MODEL.md §Source, §Article (to be authored).\n\
+    \n---\n"
+  acceptance_criteria: null
+  relations: []
+  features: []
+- id: EP-260512-2230-005
+  project_id: PR-260512-2041-001
+  type: EPIC
+  created_at: '2026-05-12T22:35:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: '2026-05-23T14:05:36.048474'
+  locked: true
+  title: Setup & Self-Hosting
+  status: CANCELLED
+  parent_id: PC-260512-2041-001
+  children_ids: []
+  updated_at: '2026-05-23T14:05:36.048474'
+  updated_by: CLAUDE_CODE
+  approved_by_human: true
+  cancellation_reason: Removed at user request — empty placeholder epic (no features/stories/AC
+    ever authored). Capability dropped from MVP scope; charter In-scope/Key-deliverables
+    items pruned to match. children_ids link on PC-260512-2041-001 left intact for
+    Filum-side severance on approval.
+  tags: []
+  body: "# EP05 — Setup & Self-Hosting\n\n## Feature Navigation Flows\n\n(Features\
+    \ pending — next §5.1.1 round.)\n\n---\n\n## Body\n\nWhat turns a fresh checkout\
+    \ into a running app. A local launcher\n(`python -m almanach` or equivalent) spawns\
+    \ FastAPI, runs DB migrations,\nstarts the scheduler. First-run experience seeds\
+    \ the DB with 10–15 popular\nsources. README covers install + run. Base error\
+    \ handling surfaces RSS\ndiscovery failures, paywall visual cues, and network\
+    \ errors in the UI\ninstead of crashing the app.\n\n**Key functional areas:**\n\
+    \n- Local launcher entry point.\n- DB migration / first-run schema bootstrap.\n\
+    - 10–15 pre-configured seed sources loaded on first run.\n- README (install, run,\
+    \ configure).\n- Error handling: RSS discovery failure, paywall visual cue, network\n\
+    \  errors surfaced to the user.\n- Responsive breakpoint at 720px (narrow viewport\
+    \ behaviour).\n\n**Out of scope:**\n\n- Docker / RPi / VPS deployment (charter\
+    \ §3, §8 — Phase 4+).\n- Automated install scripts beyond the README.\n- Always-on\
+    \ / systemd integration (charter §3 — Phase 4+).\n- Multi-user / authentication\
+    \ (charter §3 — out of scope entirely).\n\n**Reference documents:**\n\n- README.md\
+    \ (to be authored).\n- 04_content/html/mockup.html (responsive layout).\n\n---\n"
+  acceptance_criteria: null
+  relations: []
+  features: []
+orphans:
+- id: US-260523-1619-001
+  project_id: PR-260512-2041-001
+  type: USER_STORY
+  created_at: '2026-05-23T16:19:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: '2026-05-23T16:50:23.661939'
+  locked: true
+  title: Feed Filter Bar
+  status: CANCELLED
+  parent_id: null
+  children_ids: []
+  updated_at: '2026-05-23T16:50:23.661939'
+  updated_by: CLAUDE_CODE
+  approved_by_human: true
+  cancellation_reason: null
+  story_statement: As a reader, I want a filter bar at the top of the feed that lets
+    me constrain articles by date range, so that I see only the articles relevant
+    to my current focus.
+  tags: []
+  body: 'Hosts the filter-bar UI introduced by CR-260523-1500-001 — sibling story
+    under
+
+    FT-260522-2230-001, kept separate from US-260522-2230-003 to stay within §3.6
+    AC
+
+    thresholds. The bar sits above the continuous-scroll feed and applies an additive
+
+    (AND) predicate to the feed query: an explicit date range (max 1-year span) or
+    a
+
+    1d / 1w / 1m shortcut, plus a cumulative Group / Subgroup / Source multi-select.
+
+    Active filters surface as removable chips with a Clear-all; an empty intersection
+
+    shows a filter-specific empty state. Cross-filter composition with the sidebar
+
+    scope (US-260523-1619-002) is asserted at feature level by AC-260523-1501-004.
+
+
+    **Data model fields touched:**
+
+
+    - `Article.published_at` (read — date predicate)
+
+    - `Article.source_id`, `Source.group_id`, `Source.subgroup_id` (read — content
+    predicate)
+
+
+    **Spec reference:** CR-260523-1500-001 §Change Summary; DATA_MODEL.md §3
+
+    (`idx_article_published_at`). Filter-bar wireframe pending §5.1.2.
+
+    '
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLED_BY
+    target_id: AC-260523-1500-001
+  - type: FULFILLED_BY
+    target_id: AC-260523-1500-002
+  - type: FULFILLED_BY
+    target_id: AC-260523-1500-003
+  - type: FULFILLED_BY
+    target_id: AC-260523-1500-004
+  - type: FULFILLED_BY
+    target_id: AC-260523-1500-005
+  - type: FULFILLED_BY
+    target_id: AC-260523-1500-006
+  - type: FULFILLED_BY
+    target_id: AC-260523-1500-007
+- id: US-260523-1619-002
+  project_id: PR-260512-2041-001
+  type: USER_STORY
+  created_at: '2026-05-23T16:19:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: '2026-05-23T16:50:23.672915'
+  locked: true
+  title: Sidebar Title-Click Feed Scope
+  status: CANCELLED
+  parent_id: null
+  children_ids: []
+  updated_at: '2026-05-23T16:50:23.672915'
+  updated_by: CLAUDE_CODE
+  approved_by_human: true
+  cancellation_reason: null
+  story_statement: As a reader, I want clicking a Group or Subgroup title in the sidebar
+    to scope the feed to that title's sources, so that I can focus the feed on one
+    branch of my hierarchy with a single click.
+  tags: []
+  body: 'Hosts the sidebar-as-feed-scope behaviour introduced by CR-260523-1501-001
+    —
+
+    sibling story under FT-260522-2230-001. Clicking a Group / Subgroup title (distinct
+
+    from the existing chevron expand / collapse) sets it as the active feed scope;
+    the
+
+    feed re-renders to articles whose source belongs to the title directly or via
+    a
+
+    descendant. Only one scope is active at a time — shared single-active-row contract
+
+    with the source-row click (FT-260512-2245-003). Clicking the active title again,
+
+    or All sources, clears it. An empty scope shows a scope-named empty state. Composes
+
+    (AND) with the filter bar (US-260523-1619-001); cross-integration asserted at
+
+    feature level by AC-260523-1501-004.
+
+
+    **Data model fields touched:**
+
+
+    - `Source.group_id`, `Source.subgroup_id`, `Article.source_id` (read — scope predicate)
+
+
+    **Spec reference:** CR-260523-1501-001 §Change Summary; existing sidebar tree
+
+    (FT-260522-2115-001) + feed (US-260522-2230-003). No new wireframe — reuses the
+
+    source-row active-state convention.
+
+    '
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLED_BY
+    target_id: AC-260523-1501-001
+  - type: FULFILLED_BY
+    target_id: AC-260523-1501-002
+  - type: FULFILLED_BY
+    target_id: AC-260523-1501-003
+  - type: FULFILLED_BY
+    target_id: AC-260523-1501-005
 tests: []
 bugs: []
-change_requests: []
+change_requests:
+- id: CR-260523-0842-001
+  project_id: PR-260512-2041-001
+  type: CR
+  created_at: '2026-05-23T08:42:45.526512'
+  created_by: HUMAN
+  cancelled_at: '2026-05-23T09:50:26.631592'
+  locked: true
+  title: UI pain points
+  status: CANCELLED
+  priority: CRITICAL
+  updated_at: '2026-05-23T09:50:26.631592'
+  updated_by: CLAUDE_CODE
+  approved_by_human: true
+  cancellation_reason: 'Split into 2 BUGs + 4 CRs per §5.2.1 triage (umbrella was
+    structurally incomplete: no AC, no CONFIRMS, body covered 6 functionalities).
+    Children: BUG-260523-0900-001, BUG-260523-0900-002, CR-260523-0900-001..004.'
+  tags: []
+  body: 'I am not satisfied by different UI pain points
+
+
+    1. first when clicking on a title or news object that is below on the screen,
+    the ddrop down menu does not appear fully on the screen, you need to make sure
+    that for the items below, the drop down is visible to the user. ![drop down not
+    visible](01_docs/04_content/images/drop down not visible.png)
+
+
+    2. when i want to drag and drop an element above or below another so they are
+    same level of hierarchy but one come earlier ot after, the UI does not render
+    it correctly and is pretty unstable. fix it ![unstable manual drag and drop above
+    another element so they are the same level but one come before the other](01_docs/04_content/images/unstable
+    manual drag and drop above another element so they are the same level but one
+    come before the other.png)
+
+    ![don''t forget to do the same for news object so they can be assigned to higher
+    level group in hierarchiy or lower level (if already existing)](01_docs/04_content/images/don''t
+    forget to do the same for news object so they can be assigned to higher level
+    group in hierarchiy or lower level (if already existing).png)
+
+
+    3. each news object or title must have in drop down menu an option to move higher
+    or lower in hierarchy moving up in hierarchy or down (or promotew or demote) ![add
+    additional options here for titles objects](01_docs/04_content/images/add additional
+    options here for titles objects.png)
+
+
+    4. keep right pane news layout as it is (and keep also layout for individual news).
+    I want it more compact, make it more compact ![righ pane must be more compact](01_docs/04_content/images/righ
+    pane must be more compact.png)
+
+
+    5. left pane must keep same layout but should also be more compact ![left pane
+    to be more compact](01_docs/04_content/images/left pane to be more compact.png)
+
+
+    6. Should be possible to change width of left pane and righ pane moving the separator
+    ![add adjustable separator](01_docs/04_content/images/add adjustable separator.png)
+
+    As a benchmark, use same concept as for filum separator here (separate as shown
+    in the benchmark, the scrollbar keeping as is from actual panes separator). when
+    increasing widht of one pane content adjusts ![benchmarrk](01_docs/04_content/images/benchmarrk.png)
+
+
+    '
+  acceptance_criteria: null
+  relations: []
+- id: CR-260523-1428-001
+  project_id: PR-260512-2041-001
+  type: CR
+  created_at: '2026-05-23T14:28:53.423282'
+  created_by: HUMAN
+  cancelled_at: '2026-05-23T15:01:17.226851'
+  locked: true
+  title: Filter
+  status: CANCELLED
+  priority: HIGH
+  updated_at: '2026-05-23T15:01:17.226851'
+  updated_by: CLAUDE_CODE
+  approved_by_human: true
+  cancellation_reason: Superseded by CR-260523-1500-001 (filter bar) + CR-260523-1501-001
+    (left-pane title scope). Original CR bundled two distinct functionalities; split
+    per §3.6.2 placement check. Superseding CRs are OPEN with approved AC; this stub
+    is closed out as a data-hygiene step.
+  tags: []
+  body: '1. i want to implement a filter that enables me to select only the the news
+    in a certain period of time (selecting dates, range max 1 year) or simply published
+    within 1d, 1 week, 1 month
+
+
+    The filter effect is usable from the top side of the right pane and applies to
+    the left pane content and as a result has effect on what is rendered in the right
+    pane
+
+
+    the filter can also select specific titles or news sources only. multiple filter
+    can be applied at the same time. (for the content selection filter from the filter,
+    user sees a drop down menu with full list of contents ordeered inside their respective
+    group title and select cumulative content here, pressing = selectin while pressing
+    one more time = deselcting, until user is in drop down menu, the menu is still
+    active).
+
+
+    2. when i select a title or a sub title in the left pane, i want that it displays
+    on the right pane only the news from the news sources contained inside
+
+
+    ![news to be displayed in the selected title only](01_docs/04_content/images/news
+    to be displayed in the selected title only.png)
+
+
+
+    '
+  acceptance_criteria: null
+  relations:
+  - type: SUPERSEDED_BY
+    target_id: CR-260523-1500-001
+  - type: SUPERSEDED_BY
+    target_id: CR-260523-1501-001
 acceptance_criteria: []

@@ -6,6 +6,20 @@
 
   const state = {
     activeSourceId: null,
+    // Sidebar folder scope (CR-260523-1501-001) — single id or null.
+    scopeFolderId: null,
+    scopeFolderName: null,
+    // Filter bar (CR-260523-1500-001) — date predicates and content multi-select.
+    filter: {
+      from: null,        // ISO date string "YYYY-MM-DD"
+      to: null,          // ISO date string "YYYY-MM-DD"
+      shortcut: null,    // "1d" | "1w" | "1m" | null  (mutually-exclusive with from/to)
+      sourceIds: [],     // explicit source ids
+      folderIds: [],     // folder ids (server expands to subtree)
+    },
+    // Cache of /filter-tree response so reopening the popover is instant.
+    filterTree: null,
+    filterTreeNameById: null,
     pageSize: 50,
     feedNextAfter: null,
     feedHasMore: false,
@@ -55,8 +69,17 @@
   // ----- sidebar partial swap -----
 
   async function refreshSidebar() {
-    const url = "/sidebar-partial" + (state.activeSourceId ? "?active=" + encodeURIComponent(state.activeSourceId) : "");
-    const html = await api(url);
+    const params = new URLSearchParams();
+    if (state.activeSourceId) params.set("active", state.activeSourceId);
+    if (state.scopeFolderId) params.set("scope", state.scopeFolderId);
+    // CR-260523-1630-001: forward the active date predicate so sidebar
+    // unread pills narrow with the filter bar. Content multi-select and
+    // sidebar scope deliberately NOT forwarded (AC-260523-1630-004).
+    const dateBounds = computeFilterDateBounds();
+    if (dateBounds.from) params.set("from", dateBounds.from);
+    if (dateBounds.to) params.set("to", dateBounds.to);
+    const q = params.toString();
+    const html = await api("/sidebar-partial" + (q ? "?" + q : ""));
     $("#source-list").innerHTML = html;
     bindSidebar();
     bindFolders();
@@ -74,17 +97,48 @@
     } catch (e) { /* silent */ }
   }
 
+  function buildFeedParams() {
+    const params = new URLSearchParams();
+    if (state.activeSourceId) params.set("source", state.activeSourceId);
+    if (state.scopeFolderId) params.set("scope_folder_id", state.scopeFolderId);
+    const dateBounds = computeFilterDateBounds();
+    if (dateBounds.from) params.set("from", dateBounds.from);
+    if (dateBounds.to) params.set("to", dateBounds.to);
+    if (state.filter.sourceIds.length) {
+      params.set("source_ids", state.filter.sourceIds.join(","));
+    }
+    if (state.filter.folderIds.length) {
+      params.set("folder_ids", state.filter.folderIds.join(","));
+    }
+    params.set("size", state.pageSize);
+    return params;
+  }
+
+  function computeFilterDateBounds() {
+    // Shortcut wins if set (mutually exclusive with custom range — UI keeps
+    // them in sync). Returns {from, to} as ISO strings, both inclusive.
+    if (state.filter.shortcut) {
+      const now = new Date();
+      const ms = { "1d": 86400e3, "1w": 7 * 86400e3, "1m": 30 * 86400e3 }[state.filter.shortcut];
+      const from = new Date(now.getTime() - ms);
+      return { from: from.toISOString(), to: null };
+    }
+    let from = null, to = null;
+    if (state.filter.from) from = state.filter.from + "T00:00:00";
+    if (state.filter.to) to = state.filter.to + "T23:59:59";
+    return { from, to };
+  }
+
   async function refreshFeed() {
     // Full reload — replaces the whole feed pane (header + first batch).
     // Resets the scroll cursor.
-    const params = new URLSearchParams();
-    if (state.activeSourceId) params.set("source", state.activeSourceId);
-    params.set("size", state.pageSize);
+    const params = buildFeedParams();
     const html = await api("/feed-partial?" + params.toString());
     $("#feed-pane").innerHTML = html;
     readFeedCursor();
     bindFeed();
     bindBanner();
+    bindFilterBar();
   }
 
   function readFeedCursor() {
@@ -106,9 +160,7 @@
     const spinner = $("#feed-spinner");
     if (spinner) spinner.hidden = false;
     try {
-      const params = new URLSearchParams();
-      if (state.activeSourceId) params.set("source", state.activeSourceId);
-      params.set("size", state.pageSize);
+      const params = buildFeedParams();
       params.set("after", state.feedNextAfter);
       params.set("rows_only", "true");
       const html = await api("/feed-partial?" + params.toString());
@@ -196,9 +248,44 @@
     if (row.classList.contains("muted")) return;
     const id = row.getAttribute("data-source-id");
     state.activeSourceId = id || null;
+    // CR-260523-1501-001 AC-260523-1501-003: source / folder / All-sources
+    // selection is mutually exclusive — clear any active folder scope.
+    state.scopeFolderId = null;
+    state.scopeFolderName = null;
     refreshFeed();
     $$("#source-list .source-item").forEach(r => r.classList.remove("active"));
+    $$("#source-list .folder-row.active").forEach(r => r.classList.remove("active"));
     row.classList.add("active");
+  }
+
+  function onFolderTitleClick(ev) {
+    // CR-260523-1501-001: clicking a Group/Subgroup title scopes the feed
+    // to articles whose source belongs to that folder's subtree. Clicking
+    // the active title again clears the scope.
+    ev.stopPropagation();
+    const nameEl = ev.currentTarget;
+    const row = nameEl.closest(".folder-row");
+    if (!row) return;
+    const id = nameEl.getAttribute("data-folder-id");
+    const name = (row.getAttribute("data-folder-name") || "").trim();
+    const isActive = row.classList.contains("active");
+    if (isActive) {
+      state.scopeFolderId = null;
+      state.scopeFolderName = null;
+    } else {
+      state.scopeFolderId = id;
+      state.scopeFolderName = name;
+      state.activeSourceId = null;
+    }
+    $$("#source-list .source-item").forEach(r => r.classList.remove("active"));
+    $$("#source-list .folder-row.active").forEach(r => r.classList.remove("active"));
+    if (state.scopeFolderId) {
+      row.classList.add("active");
+    } else {
+      const all = $("#source-list .source-item.all-sources");
+      if (all) all.classList.add("active");
+    }
+    refreshFeed();
   }
 
   // ----- add-source modal -----
@@ -280,12 +367,42 @@
       muteIcon.classList.toggle("ti-eye-off", !muted);
       muteIcon.classList.toggle("ti-eye", muted);
     }
+    applyMenuContextItems(menu, row);
+    // Reset any prior flip class so measurement reflects the default-down layout.
+    menu.classList.remove("row-menu--flipped");
     menu.hidden = false;
+    menu.style.visibility = "hidden";
+    menu.style.top = "0px";
+    menu.style.left = "0px";
+
     const rect = anchor.getBoundingClientRect();
-    // Overlap the spawning row by 2 px so cursor never enters a true "gap";
-    // the .row-menu::before bridge covers the remaining traversal.
-    menu.style.top = (window.scrollY + rect.bottom - 2) + "px";
-    menu.style.left = (window.scrollX + rect.left - 100) + "px";
+    const menuRect = menu.getBoundingClientRect();
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+
+    // Default: open downward, anchored to the trigger's right edge.
+    let top = rect.bottom - 2;
+    let left = rect.left - 100;
+    let flipped = false;
+
+    // Vertical overflow → flip upward (anchor on trigger's bottom: 100%).
+    if (top + menuRect.height > vh - 4 && rect.top - menuRect.height + 2 >= 4) {
+      top = rect.top - menuRect.height + 2;
+      flipped = true;
+    } else if (top + menuRect.height > vh - 4) {
+      // Neither direction fits — pin the menu within the viewport, let body scroll.
+      top = Math.max(4, vh - menuRect.height - 4);
+    }
+
+    // Horizontal overflow.
+    if (left + menuRect.width > vw - 4) left = Math.max(4, vw - menuRect.width - 4);
+    if (left < 4) left = 4;
+
+    menu.style.top = (window.scrollY + top) + "px";
+    menu.style.left = (window.scrollX + left) + "px";
+    menu.style.maxHeight = (vh - 8) + "px";
+    if (flipped) menu.classList.add("row-menu--flipped");
+    menu.style.visibility = "";
     state.menuOpenFor = row;
     state.overRow = true;
     state.overMenu = false;
@@ -295,10 +412,96 @@
       item.onclick = async (ev) => {
         ev.stopPropagation();
         const action = item.getAttribute("data-action");
+        if (item.classList.contains("is-disabled")) return;
         closeRowMenu();
         await handleRowAction(row, action);
       };
     });
+  }
+
+  // ----- promote/demote enablement (CR-260523-0900-001) -----
+
+  function applyMenuContextItems(menu, row) {
+    // Mark Promote / Demote items as enabled or disabled based on whether the
+    // move is legal for this row. We never hide the items so the menu stays
+    // structurally identical across row types — only the .is-disabled class
+    // and tooltip change.
+    const items = {
+      promote: menu.querySelector('[data-action="promote"]'),
+      demote: menu.querySelector('[data-action="demote"]'),
+    };
+    if (!items.promote || !items.demote) return;
+    const kind = rowKind(row);
+    const can = canPromoteDemote(row, kind);
+    setMenuItemEnabled(items.promote, can.promote, can.promoteReason);
+    setMenuItemEnabled(items.demote, can.demote, can.demoteReason);
+  }
+
+  function setMenuItemEnabled(el, enabled, reason) {
+    el.classList.toggle("is-disabled", !enabled);
+    if (!enabled && reason) el.setAttribute("title", reason);
+    else el.removeAttribute("title");
+  }
+
+  function rowKind(row) {
+    if (row.classList.contains("folder-row")) return "folder";
+    if (row.classList.contains("article")) return "article";
+    return "source";
+  }
+
+  function canPromoteDemote(row, kind) {
+    if (kind === "folder") {
+      const depth = parseInt(row.getAttribute("data-depth") || "1", 10);
+      const parentId = row.getAttribute("data-parent-id") || "";
+      const promote = depth > 1;
+      const prevSibling = previousSiblingFolderRow(row);
+      const demote = !!prevSibling && depth < MAX_DEPTH;
+      return {
+        promote,
+        promoteReason: promote ? "" : "Already at root.",
+        demote,
+        demoteReason: demote ? "" : (prevSibling ? "Demote would exceed max depth." : "No preceding folder to nest under."),
+      };
+    }
+    if (kind === "source") {
+      const folderId = row.getAttribute("data-folder-id") || "";
+      const promote = !!folderId;
+      const prevSibling = previousSiblingSourceRow(row);
+      const demote = !!prevSibling;
+      return {
+        promote,
+        promoteReason: promote ? "" : "Already in Ungrouped.",
+        demote,
+        demoteReason: demote ? "" : "No preceding source to nest under.",
+      };
+    }
+    // article
+    const folderId = row.getAttribute("data-folder-id") || "";
+    return {
+      promote: !!folderId,
+      promoteReason: folderId ? "" : "Article inherits Source folder.",
+      demote: false,
+      demoteReason: "Articles cannot demote in MVP.",
+    };
+  }
+
+  function previousSiblingFolderRow(row) {
+    let el = row.previousElementSibling;
+    while (el) {
+      if (el.classList && el.classList.contains("folder-row")) return el;
+      el = el.previousElementSibling;
+    }
+    return null;
+  }
+
+  function previousSiblingSourceRow(row) {
+    let el = row.previousElementSibling;
+    while (el) {
+      if (el.classList && el.classList.contains("source-item") &&
+          !el.classList.contains("all-sources")) return el;
+      el = el.previousElementSibling;
+    }
+    return null;
   }
 
   function closeRowMenu() {
@@ -334,12 +537,64 @@
       }
       if (action === "mute") return toggleFolderMute(row, folderId);
       if (action === "remove") return confirmFolderRemove(row, folderId);
+      if (action === "promote") return promoteRow("folder", folderId, row);
+      if (action === "demote") return demoteRow("folder", folderId, row);
+      return;
+    }
+    if (row.classList.contains("article")) {
+      const articleId = row.getAttribute("data-article-id");
+      if (action === "promote") return promoteRow("article", articleId, row);
+      // Articles have no rename/mute/remove in MVP; menu items are decorative.
       return;
     }
     const id = row.getAttribute("data-source-id");
     if (action === "rename") return startRename(row);
     if (action === "mute") return toggleMute(row, id);
     if (action === "remove") return confirmRemove(row, id);
+    if (action === "promote") return promoteRow("source", id, row);
+    if (action === "demote") return demoteRow("source", id, row);
+  }
+
+  async function promoteRow(kind, id, row) {
+    const endpoint = kind === "folder"
+      ? "/folders/" + id + "/promote"
+      : kind === "article"
+        ? "/articles/" + id + "/promote"
+        : "/sources/" + id + "/promote";
+    try {
+      await api(endpoint, { method: "PATCH" });
+      await refreshSidebar();
+      if (kind === "article") await refreshFeed();
+      showToast("Promoted.");
+    } catch (e) {
+      const msg = (e.detail && e.detail.message) || "Promote failed.";
+      showToast(msg, "error");
+    }
+  }
+
+  async function demoteRow(kind, id, row) {
+    let preceding = null;
+    if (kind === "folder") {
+      const prev = previousSiblingFolderRow(row);
+      if (prev) preceding = prev.getAttribute("data-folder-id");
+    } else if (kind === "source") {
+      const prev = previousSiblingSourceRow(row);
+      if (prev) preceding = prev.getAttribute("data-source-id");
+    }
+    const endpoint = kind === "folder"
+      ? "/folders/" + id + "/demote"
+      : "/sources/" + id + "/demote";
+    try {
+      await api(endpoint, {
+        method: "PATCH",
+        body: { preceding_id: preceding },
+      });
+      await refreshSidebar();
+      showToast("Demoted.");
+    } catch (e) {
+      const msg = (e.detail && e.detail.message) || "Demote failed.";
+      showToast(msg, "error");
+    }
   }
 
   async function toggleFolderMute(row, id) {
@@ -496,10 +751,38 @@
       if (art.__almBound) return;
       art.__almBound = true;
       art.addEventListener("click", onArticleClick);
+      // Article ⋮ menu (CR-260523-0900-001).
+      const btn = art.querySelector(".article-menu-btn");
+      if (btn) {
+        btn.addEventListener("click", (ev) => {
+          ev.stopPropagation();
+          ev.preventDefault();
+          openRowMenu(art, btn);
+        });
+      }
+      // Article drag (CR-260523-0900-001 AC-260523-0900-022).
+      art.addEventListener("dragstart", onArticleDragStart);
+      art.addEventListener("dragend", onDragEnd);
     });
   }
 
+  function onArticleDragStart(ev) {
+    const row = ev.currentTarget;
+    drag = {
+      kind: "article",
+      id: row.getAttribute("data-article-id"),
+      originRow: row,
+      currentFolderId: row.getAttribute("data-folder-id") || null,
+    };
+    row.classList.add("is-dragging");
+    ev.dataTransfer.effectAllowed = "move";
+    try { ev.dataTransfer.setData("text/plain", drag.id || ""); } catch (e) {}
+    snapshotRowRects();
+    lastAboveByTarget = new WeakMap();
+  }
+
   async function onArticleClick(ev) {
+    if (ev.target.closest(".row-action-btn")) return;
     const article = ev.currentTarget;
     const id = article.getAttribute("data-article-id");
     const url = article.getAttribute("data-url");
@@ -580,10 +863,23 @@
         }
       });
     });
-    // Double-click on a folder name → inline rename.
+    // Single-click on a folder name → scope feed (CR-260523-1501-001).
+    // Double-click → inline rename. A short delay defers the single-click
+    // action so a second click within 280ms registers as a dblclick and
+    // cancels the scope toggle.
     $$("#source-list .folder-name").forEach(nameEl => {
+      let clickTimer = null;
+      nameEl.addEventListener("click", (ev) => {
+        if (ev.target.closest(".folder-name-input")) return;
+        if (clickTimer) return;  // dblclick about to fire — let it through
+        clickTimer = setTimeout(() => {
+          clickTimer = null;
+          onFolderTitleClick({ currentTarget: nameEl, stopPropagation: () => {} });
+        }, 240);
+      });
       nameEl.addEventListener("dblclick", (ev) => {
         ev.stopPropagation();
+        if (clickTimer) { clearTimeout(clickTimer); clickTimer = null; }
         startFolderRename(nameEl);
       });
     });
@@ -815,9 +1111,21 @@
 
   const DROP_INDENT_PX = 24;
   const DROP_OUTDENT_PX = -8;
+  // BUG-260523-0900-002: hysteresis band around row midpoints prevents
+  // above/below flicker when the cursor lingers near a boundary. The
+  // indicator only flips when the cursor crosses the midpoint by more
+  // than this band.
+  const DROP_HYSTERESIS_PX = 6;
 
   let drag = null;  // { kind, id, originRow, currentGroupId, currentSubgroupId }
   let dropPlan = null;
+  // Cached rects keyed by row element — captured at dragstart so dragover
+  // events don't trigger expensive layout reads on every mouse move
+  // (BUG-260523-0900-002 root cause #2).
+  let dragRectCache = null;
+  // Last computed "above" verdict per target, to apply hysteresis on the
+  // next dragover against the same target.
+  let lastAboveByTarget = null;
 
   function bindDragDrop() {
     $$('#source-list [draggable="true"]').forEach(row => {
@@ -857,6 +1165,26 @@
     row.classList.add("is-dragging");
     ev.dataTransfer.effectAllowed = "move";
     try { ev.dataTransfer.setData("text/plain", drag.id || ""); } catch (e) {}
+    snapshotRowRects();
+    lastAboveByTarget = new WeakMap();
+  }
+
+  function snapshotRowRects() {
+    // BUG-260523-0900-002: cache row rects so dragover doesn't recompute
+    // layout each event. Refreshed on scroll/resize via attached listeners.
+    dragRectCache = new WeakMap();
+    $$("#source-list .folder-row, #source-list .source-item, #source-list .ungrouped-zone")
+      .forEach(el => dragRectCache.set(el, el.getBoundingClientRect()));
+  }
+
+  function cachedRect(el) {
+    if (!dragRectCache) return el.getBoundingClientRect();
+    let r = dragRectCache.get(el);
+    if (!r) {
+      r = el.getBoundingClientRect();
+      dragRectCache.set(el, r);
+    }
+    return r;
   }
 
   function computeSubtreeMaxDepth(folderRow) {
@@ -883,14 +1211,26 @@
     clearDropIndicator();
     drag = null;
     dropPlan = null;
+    dragRectCache = null;
+    lastAboveByTarget = null;
   }
 
   function rowContentX(row) {
     // Use the row's .folder-name (or .source-name) left edge as the
     // content-start. This is the indent baseline against which X-offset is
-    // measured.
+    // measured. Uses cached row rect so dragover doesn't trigger reflow on
+    // every event (BUG-260523-0900-002).
     const inner = row.querySelector(".folder-name, .source-name");
-    if (!inner) return row.getBoundingClientRect().left + 16;
+    if (!inner) return cachedRect(row).left + 16;
+    // Inner rects also cached — fallback to live read on cache miss.
+    if (dragRectCache) {
+      let r = dragRectCache.get(inner);
+      if (!r) {
+        r = inner.getBoundingClientRect();
+        dragRectCache.set(inner, r);
+      }
+      return r.left;
+    }
     return inner.getBoundingClientRect().left;
   }
 
@@ -901,13 +1241,24 @@
     if (!target || !drag) return null;
 
     if (target.classList.contains("ungrouped-zone")) {
-      if (drag.kind !== "source") return null;
+      if (drag.kind !== "source" && drag.kind !== "article") return null;
       return { kind: "into-ungrouped", target };
     }
 
-    const rect = target.getBoundingClientRect();
+    const rect = cachedRect(target);
     const half = rect.top + rect.height / 2;
-    const above = y < half;
+    // BUG-260523-0900-002: hysteresis band — only flip the above/below
+    // verdict when the cursor crosses the midpoint by more than
+    // DROP_HYSTERESIS_PX. Within the band, retain the previous verdict.
+    const distance = y - half;
+    let above;
+    const prev = lastAboveByTarget ? lastAboveByTarget.get(target) : undefined;
+    if (Math.abs(distance) <= DROP_HYSTERESIS_PX && prev !== undefined) {
+      above = prev;
+    } else {
+      above = distance < 0;
+      if (lastAboveByTarget) lastAboveByTarget.set(target, above);
+    }
     const contentX = rowContentX(target);
     const xOffset = x - contentX;
 
@@ -971,6 +1322,20 @@
       return null;
     }
 
+    // ARTICLE dragging — drop onto a folder or Ungrouped zone only.
+    if (drag.kind === "article") {
+      if (target.classList.contains("folder-row")) {
+        return { kind: "article-into-folder", target };
+      }
+      if (target.classList.contains("source-item")) {
+        // Drop onto a source row → inherit that source's folder (NULL =
+        // Ungrouped behaviour).
+        const tFolderId = target.getAttribute("data-folder-id") || null;
+        return { kind: "article-into-source-folder", target, folderId: tFolderId };
+      }
+      return null;
+    }
+
     return null;
   }
 
@@ -998,6 +1363,7 @@
     const childKinds = [
       "folder-into-folder", "folder-into-parent-of-source", "folder-to-root",
       "source-into-folder", "into-ungrouped",
+      "article-into-folder", "article-into-source-folder",
     ];
     if (childKinds.includes(plan.kind)) {
       t.classList.add("drop-target");
@@ -1138,19 +1504,109 @@
           body = { folder_id: null };
         }
       } else if (plan.kind === "into-ungrouped") {
-        endpoint = "/sources/" + drag.id + "/parent";
-        body = { folder_id: null };
+        if (drag.kind === "article") {
+          endpoint = "/articles/" + drag.id + "/parent";
+          body = { folder_id: null };
+        } else {
+          endpoint = "/sources/" + drag.id + "/parent";
+          body = { folder_id: null };
+        }
+      // === ARTICLE drops ===
+      } else if (plan.kind === "article-into-folder") {
+        const fid = plan.target.getAttribute("data-folder-id");
+        endpoint = "/articles/" + drag.id + "/parent";
+        body = { folder_id: fid };
+      } else if (plan.kind === "article-into-source-folder") {
+        endpoint = "/articles/" + drag.id + "/parent";
+        body = { folder_id: plan.folderId };
       }
 
       if (endpoint && body) {
         await api(endpoint, { method: "PATCH", body });
         await refreshSidebar();
+        if (drag.kind === "article") await refreshFeed();
       }
     } catch (e) {
       const msg = (e.detail && e.detail.message) || "Move failed.";
       showToast(msg, "error");
     }
     onDragEnd();
+  }
+
+  // -- pane separator (CR-260523-0900-004) --
+
+  const SIDEBAR_MIN = 200;
+  const SIDEBAR_MAX = 480;
+  let resizeRaf = 0;
+  let persistTimer = 0;
+  let pendingWidth = null;
+
+  function bindPaneSeparator() {
+    const handle = $("#pane-separator");
+    const container = $("#app-container");
+    if (!handle || !container) return;
+    handle.addEventListener("mousedown", (ev) => {
+      ev.preventDefault();
+      startPaneResize(handle, container, ev.clientX);
+    });
+    handle.addEventListener("keydown", (ev) => {
+      // Keyboard accessibility — arrow keys nudge by 8px.
+      if (ev.key !== "ArrowLeft" && ev.key !== "ArrowRight") return;
+      const current = parseInt(
+        getComputedStyle(container).getPropertyValue("--sidebar-width")
+        || "260", 10
+      );
+      const delta = ev.key === "ArrowLeft" ? -8 : 8;
+      applyPaneWidth(container, current + delta, true);
+      ev.preventDefault();
+    });
+  }
+
+  function startPaneResize(handle, container, startX) {
+    const currentWidth = container.getBoundingClientRect()
+      ? parseInt(getComputedStyle(container).getPropertyValue("--sidebar-width")
+                 || "260", 10)
+      : 260;
+    document.body.classList.add("is-resizing-pane");
+    handle.classList.add("is-dragging");
+
+    const onMove = (ev) => {
+      if (resizeRaf) return;
+      resizeRaf = requestAnimationFrame(() => {
+        resizeRaf = 0;
+        const delta = ev.clientX - startX;
+        applyPaneWidth(container, currentWidth + delta, false);
+      });
+    };
+    const onUp = () => {
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup", onUp);
+      document.body.classList.remove("is-resizing-pane");
+      handle.classList.remove("is-dragging");
+      if (pendingWidth != null) persistPaneWidth(pendingWidth);
+    };
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup", onUp);
+  }
+
+  function applyPaneWidth(container, raw, persistNow) {
+    const clamped = Math.max(SIDEBAR_MIN, Math.min(SIDEBAR_MAX, raw));
+    container.style.setProperty("--sidebar-width", clamped + "px");
+    pendingWidth = clamped;
+    if (persistNow) persistPaneWidth(clamped);
+  }
+
+  function persistPaneWidth(value) {
+    clearTimeout(persistTimer);
+    persistTimer = setTimeout(async () => {
+      try {
+        await api("/settings/sidebar_width_px", {
+          method: "PATCH",
+          body: { width_px: value },
+        });
+      } catch (e) { /* silent — local state already reflects the change */ }
+      pendingWidth = null;
+    }, 250);
   }
 
   // -- onboarding banner --
@@ -1167,6 +1623,409 @@
         });
       } catch (e) { /* silent — UI hides regardless */ }
       if (banner) banner.remove();
+    });
+  }
+
+  // ----- filter bar (CR-260523-1500-001) -----
+
+  function bindFilterBar() {
+    // Date shortcut chips.
+    $$("#filter-bar .date-shortcut").forEach(btn => {
+      btn.addEventListener("click", (ev) => {
+        ev.stopPropagation();
+        const code = btn.getAttribute("data-shortcut");
+        if (state.filter.shortcut === code) {
+          state.filter.shortcut = null;
+        } else {
+          state.filter.shortcut = code;
+          state.filter.from = null;
+          state.filter.to = null;
+        }
+        applyFilterChange();
+      });
+    });
+    // Custom date-range button.
+    const dateBtn = $("#date-range-btn");
+    if (dateBtn) {
+      dateBtn.addEventListener("click", (ev) => {
+        ev.stopPropagation();
+        toggleDateRangePopover(dateBtn);
+      });
+    }
+    // Content-select button.
+    const contentBtn = $("#content-select-btn");
+    if (contentBtn) {
+      contentBtn.addEventListener("click", (ev) => {
+        ev.stopPropagation();
+        toggleContentSelectPopover(contentBtn);
+      });
+    }
+    // Empty-state "Clear filters" button.
+    const clear = $("#clear-filters-btn");
+    if (clear) {
+      clear.addEventListener("click", (ev) => {
+        ev.stopPropagation();
+        clearAllFilters();
+      });
+    }
+    repaintFilterBar();
+  }
+
+  function clearAllFilters() {
+    state.filter.shortcut = null;
+    state.filter.from = null;
+    state.filter.to = null;
+    state.filter.sourceIds = [];
+    state.filter.folderIds = [];
+    applyFilterChange();
+  }
+
+  function applyFilterChange() {
+    closeDateRangePopover();
+    closeContentSelectPopover();
+    refreshFeed();
+    // CR-260523-1630-001: sidebar unread pills honour the date predicate.
+    // Content multi-select / sidebar scope are intentionally ignored by
+    // refreshSidebar (AC-260523-1630-004), so a single refresh covers
+    // every applyFilterChange path safely.
+    refreshSidebar();
+  }
+
+  function repaintFilterBar() {
+    // Reflect state on the chip-btn UI affordances + render active-chip strip.
+    $$("#filter-bar .date-shortcut").forEach(btn => {
+      const code = btn.getAttribute("data-shortcut");
+      btn.classList.toggle("is-active", state.filter.shortcut === code);
+    });
+    const dateBtn = $("#date-range-btn");
+    const dateLabel = dateBtn && dateBtn.querySelector(".date-range-label");
+    if (dateBtn && dateLabel) {
+      const hasCustom = !!(state.filter.from || state.filter.to);
+      dateBtn.classList.toggle("is-active", hasCustom);
+      if (hasCustom) {
+        const lo = state.filter.from || "…";
+        const hi = state.filter.to || "…";
+        dateLabel.textContent = lo + " → " + hi;
+      } else {
+        dateLabel.textContent = "Custom";
+      }
+    }
+    const contentBtn = $("#content-select-btn");
+    const contentLabel = contentBtn && contentBtn.querySelector(".content-select-label");
+    if (contentBtn && contentLabel) {
+      const n = state.filter.sourceIds.length + state.filter.folderIds.length;
+      contentBtn.classList.toggle("is-active", n > 0);
+      contentLabel.textContent = n > 0 ? n + " selected" : "All";
+    }
+    repaintFilterActive();
+  }
+
+  function repaintFilterActive() {
+    const container = $("#filter-active");
+    if (!container) return;
+    container.innerHTML = "";
+    const chips = [];
+
+    if (state.scopeFolderId) {
+      chips.push({
+        kind: "scope",
+        label: "Scope: " + (state.scopeFolderName || "folder"),
+        onClear: () => {
+          state.scopeFolderId = null;
+          state.scopeFolderName = null;
+          // Clear active state in the sidebar too.
+          $$("#source-list .folder-row.active").forEach(r => r.classList.remove("active"));
+          const all = $("#source-list .source-item.all-sources");
+          if (all) all.classList.add("active");
+          applyFilterChange();
+        },
+      });
+    }
+    if (state.filter.shortcut) {
+      chips.push({
+        kind: "date",
+        label: "Last " + state.filter.shortcut,
+        onClear: () => { state.filter.shortcut = null; applyFilterChange(); },
+      });
+    } else if (state.filter.from || state.filter.to) {
+      const lo = state.filter.from || "…";
+      const hi = state.filter.to || "…";
+      chips.push({
+        kind: "date",
+        label: lo + " → " + hi,
+        onClear: () => { state.filter.from = null; state.filter.to = null; applyFilterChange(); },
+      });
+    }
+    const nameById = state.filterTreeNameById || {};
+    state.filter.folderIds.forEach(fid => {
+      const n = nameById["folder:" + fid] || "Folder";
+      chips.push({
+        kind: "folder",
+        label: n,
+        onClear: () => {
+          state.filter.folderIds = state.filter.folderIds.filter(x => x !== fid);
+          applyFilterChange();
+        },
+      });
+    });
+    state.filter.sourceIds.forEach(sid => {
+      const n = nameById["source:" + sid] || "Source";
+      chips.push({
+        kind: "source",
+        label: n,
+        onClear: () => {
+          state.filter.sourceIds = state.filter.sourceIds.filter(x => x !== sid);
+          applyFilterChange();
+        },
+      });
+    });
+
+    if (chips.length === 0) {
+      container.hidden = true;
+      return;
+    }
+    container.hidden = false;
+    chips.forEach(c => {
+      const el = document.createElement("span");
+      el.className = "filter-active-chip" + (c.kind === "scope" ? " is-scope" : "");
+      el.innerHTML =
+        '<span class="filter-active-chip-label"></span>' +
+        '<button type="button" class="filter-active-chip-x" aria-label="Clear filter"><i class="ti ti-x"></i></button>';
+      el.querySelector(".filter-active-chip-label").textContent = c.label;
+      el.querySelector(".filter-active-chip-x").addEventListener("click", c.onClear);
+      container.appendChild(el);
+    });
+    const clearAll = document.createElement("button");
+    clearAll.type = "button";
+    clearAll.className = "filter-clear-all-btn";
+    clearAll.textContent = "Clear all";
+    clearAll.addEventListener("click", () => {
+      // "Clear all" wipes filter bar; sidebar scope is kept (it has its own chip).
+      state.filter.shortcut = null;
+      state.filter.from = null;
+      state.filter.to = null;
+      state.filter.sourceIds = [];
+      state.filter.folderIds = [];
+      applyFilterChange();
+    });
+    container.appendChild(clearAll);
+  }
+
+  // -- date-range popover --
+
+  function toggleDateRangePopover(anchor) {
+    const pop = $("#date-range-popover");
+    if (!pop) return;
+    if (!pop.hidden) { closeDateRangePopover(); return; }
+    positionPopover(pop, anchor);
+    $("#date-range-from").value = state.filter.from || "";
+    $("#date-range-to").value = state.filter.to || "";
+    const err = $("#date-range-error");
+    if (err) { err.hidden = true; err.textContent = ""; }
+    pop.hidden = false;
+    // Wire actions (idempotent per open — replace handlers).
+    $("#date-range-apply").onclick = applyDateRange;
+    $("#date-range-clear").onclick = () => {
+      state.filter.from = null;
+      state.filter.to = null;
+      applyFilterChange();
+    };
+  }
+
+  function closeDateRangePopover() {
+    const pop = $("#date-range-popover");
+    if (pop) pop.hidden = true;
+  }
+
+  function applyDateRange() {
+    const from = $("#date-range-from").value || null;
+    const to = $("#date-range-to").value || null;
+    const err = $("#date-range-error");
+    if (from && to && new Date(to) < new Date(from)) {
+      err.hidden = false;
+      err.textContent = "End date must be on or after start date.";
+      return;
+    }
+    if (from && to) {
+      const diffDays = (new Date(to) - new Date(from)) / 86400e3;
+      if (diffDays > 365) {
+        err.hidden = false;
+        err.textContent = "Range cannot exceed 1 year.";
+        return;
+      }
+    }
+    state.filter.from = from;
+    state.filter.to = to;
+    state.filter.shortcut = null;  // mutually exclusive
+    applyFilterChange();
+  }
+
+  // -- content-select popover --
+
+  async function toggleContentSelectPopover(anchor) {
+    const pop = $("#content-select-popover");
+    if (!pop) return;
+    if (!pop.hidden) { closeContentSelectPopover(); return; }
+    positionPopover(pop, anchor);
+    pop.hidden = false;
+    await ensureFilterTreeLoaded();
+    renderContentSelectList();
+    const search = $("#content-select-search");
+    if (search) {
+      search.value = "";
+      search.oninput = onContentSelectSearch;
+      setTimeout(() => search.focus(), 0);
+    }
+    $("#content-select-clear").onclick = () => {
+      state.filter.sourceIds = [];
+      state.filter.folderIds = [];
+      renderContentSelectList();
+      repaintFilterBar();
+    };
+    $("#content-select-done").onclick = () => {
+      closeContentSelectPopover();
+      // Apply the staged selection.
+      refreshFeed();
+    };
+  }
+
+  function closeContentSelectPopover() {
+    const pop = $("#content-select-popover");
+    if (pop) pop.hidden = true;
+  }
+
+  async function ensureFilterTreeLoaded() {
+    if (state.filterTree) return;
+    try {
+      const data = await api("/filter-tree");
+      state.filterTree = (data && data.tree) || [];
+      // Build a name lookup for chip labels.
+      const idx = {};
+      state.filterTree.forEach(n => {
+        if (n.kind === "folder") idx["folder:" + n.id] = n.name;
+        if (n.kind === "source") idx["source:" + n.id] = n.name;
+      });
+      state.filterTreeNameById = idx;
+    } catch (e) {
+      state.filterTree = [];
+      state.filterTreeNameById = {};
+    }
+  }
+
+  function renderContentSelectList() {
+    const list = $("#content-select-list");
+    if (!list) return;
+    list.innerHTML = "";
+    if (!state.filterTree || state.filterTree.length === 0) {
+      list.innerHTML = '<div class="content-select-empty">No sources to filter yet.</div>';
+      return;
+    }
+    state.filterTree.forEach(node => {
+      const row = document.createElement("div");
+      row.className = "content-select-row";
+      row.setAttribute("data-kind", node.kind);
+      row.setAttribute("data-depth", String(node.depth || 0));
+      row.setAttribute("data-id", node.id);
+      row.setAttribute("data-name-lc", (node.name || "").toLowerCase());
+      // Indent based on depth.
+      row.style.paddingLeft = (8 + (node.depth || 0) * 14) + "px";
+      if (node.kind === "ungrouped_header") {
+        row.innerHTML = '<span class="content-select-row-name">' + escapeHtml(node.name) + '</span>';
+        list.appendChild(row);
+        return;
+      }
+      const check = document.createElement("span");
+      check.className = "content-select-row-check";
+      check.innerHTML = '<i class="ti ti-check"></i>';
+      row.appendChild(check);
+      if (node.kind === "source" && node.colour) {
+        const dot = document.createElement("span");
+        dot.className = "content-select-row-dot";
+        dot.style.background = node.colour;
+        row.appendChild(dot);
+      }
+      const name = document.createElement("span");
+      name.className = "content-select-row-name";
+      name.textContent = node.name;
+      row.appendChild(name);
+      // Mark selected state.
+      const selectedKey = node.kind === "folder"
+        ? state.filter.folderIds.includes(node.id)
+        : state.filter.sourceIds.includes(node.id);
+      if (selectedKey) row.classList.add("is-selected");
+      row.addEventListener("click", (ev) => {
+        ev.stopPropagation();
+        toggleContentSelectRow(node);
+        // Re-render so selection visuals update; dropdown stays open
+        // (AC-260523-1500-004).
+        renderContentSelectList();
+        repaintFilterBar();
+      });
+      list.appendChild(row);
+    });
+  }
+
+  function toggleContentSelectRow(node) {
+    if (node.kind === "folder") {
+      const i = state.filter.folderIds.indexOf(node.id);
+      if (i >= 0) state.filter.folderIds.splice(i, 1);
+      else state.filter.folderIds.push(node.id);
+    } else if (node.kind === "source") {
+      const i = state.filter.sourceIds.indexOf(node.id);
+      if (i >= 0) state.filter.sourceIds.splice(i, 1);
+      else state.filter.sourceIds.push(node.id);
+    }
+  }
+
+  function onContentSelectSearch(ev) {
+    const q = (ev.target.value || "").trim().toLowerCase();
+    $$("#content-select-list .content-select-row").forEach(row => {
+      if (!q) { row.classList.remove("is-hidden"); return; }
+      const name = row.getAttribute("data-name-lc") || "";
+      row.classList.toggle("is-hidden", !name.includes(q));
+    });
+  }
+
+  function positionPopover(pop, anchor) {
+    const rect = anchor.getBoundingClientRect();
+    // Reset so measurement is accurate.
+    pop.style.visibility = "hidden";
+    pop.hidden = false;
+    pop.style.top = "0px";
+    pop.style.left = "0px";
+    const pr = pop.getBoundingClientRect();
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    let top = rect.bottom + 6;
+    let left = rect.left;
+    if (left + pr.width > vw - 8) left = Math.max(8, vw - pr.width - 8);
+    if (top + pr.height > vh - 8) top = Math.max(8, rect.top - pr.height - 6);
+    pop.style.top = (window.scrollY + top) + "px";
+    pop.style.left = (window.scrollX + left) + "px";
+    pop.hidden = true;
+    pop.style.visibility = "";
+  }
+
+  function escapeHtml(s) {
+    return String(s || "")
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+  }
+
+  function bindFilterPopoverDismiss() {
+    // Click-outside closes either popover. Listening once on document.
+    document.addEventListener("click", (ev) => {
+      const inDate = ev.target.closest("#date-range-popover") || ev.target.closest("#date-range-btn");
+      const inContent = ev.target.closest("#content-select-popover") || ev.target.closest("#content-select-btn");
+      if (!inDate) closeDateRangePopover();
+      if (!inContent) {
+        const pop = $("#content-select-popover");
+        if (pop && !pop.hidden) {
+          closeContentSelectPopover();
+          // Apply the staged selection on click-outside (AC-260523-1500-004).
+          refreshFeed();
+        }
+      }
     });
   }
 
@@ -1205,6 +2064,9 @@
     bindAddSourceForm();
     bindRowMenuHover();
     bindBanner();
+    bindPaneSeparator();
+    bindFilterBar();
+    bindFilterPopoverDismiss();
     updateLastSyncLabel();
     startLastSyncPoll();
   }

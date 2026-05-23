@@ -1,17 +1,24 @@
 {# Article rows partial — returned by /feed-partial?rows_only=true for
    scroll-append (US-260522-2230-003). No feed header, no empty state,
-   no spinner — just the cards. #}
+   no spinner — just the cards. Article rows are draggable and carry a
+   row ⋮ menu per CR-260523-0900-001. #}
 {% for a in feed.articles %}
   <article class="article"
            data-article-id="{{ a.id }}"
            data-url="{{ a.url }}"
-           data-published-at="{{ a.published_at }}">
+           data-published-at="{{ a.published_at }}"
+           data-folder-id="{{ a.folder_id or '' }}"
+           draggable="true">
     <div class="article-meta">
       {% if a.is_unread %}<span class="badge-new"></span>{% endif %}
       <span class="source-dot" style="background:{{ a.source_colour }};"></span>
       <span class="article-source">{{ a.source_name }}</span>
       <span class="article-sep">·</span>
       <span class="article-time">{{ a.relative_time }}</span>
+      <button class="row-action-btn article-menu-btn"
+              type="button" title="Article actions" aria-label="Article actions">
+        <i class="ti ti-dots-vertical"></i>
+      </button>
     </div>
     <p class="article-title">{{ a.title }}</p>
     {% if a.summary %}<p class="article-summary">{{ a.summary }}</p>{% endif %}

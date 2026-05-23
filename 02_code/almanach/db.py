@@ -45,7 +45,9 @@ CREATE TABLE IF NOT EXISTS article (
     summary TEXT,
     published_at TEXT NOT NULL,
     fetched_at TEXT NOT NULL,
-    read_at TEXT
+    read_at TEXT,
+    folder_id TEXT REFERENCES folder(id) ON DELETE SET NULL,
+    position REAL NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS settings (
@@ -61,6 +63,8 @@ CREATE INDEX IF NOT EXISTS idx_article_read_at_null ON article(read_at) WHERE re
 CREATE INDEX IF NOT EXISTS idx_folder_parent_id ON folder(parent_id);
 -- idx_source_folder_id is created by `_ensure_source_iter3_columns` so that
 -- it runs AFTER the legacy-to-iter3 ALTER adds the column to a pre-FT05 DB.
+-- idx_article_folder_id is created by `_ensure_article_hierarchy_columns`
+-- so it runs AFTER the additive ALTER on pre-CR-260523-0900-001 DBs.
 """
 
 # Iteration-3 depth cap (CR-260522-2101-001 / AC-260522-2400-001).
@@ -71,6 +75,7 @@ DEFAULT_SETTINGS = {
     "retention_days": "30",
     "next_palette_index": "0",
     "grouping_banner_dismissed": "0",
+    "sidebar_width_px": "260",
 }
 
 
@@ -128,7 +133,28 @@ def initialise() -> None:
     _ensure_source_iter3_columns(cur)
     _migrate_legacy_groups_to_folder(cur)
     _drop_legacy_source_grouping_columns(cur)
+    _ensure_article_hierarchy_columns(cur)
     conn.commit()
+
+
+def _ensure_article_hierarchy_columns(cur: sqlite3.Cursor) -> None:
+    """Add Article.folder_id + Article.position if missing (CR-260523-0900-001).
+
+    Additive migration — pre-CR Article rows land with folder_id=NULL
+    (inherit grouping from Source) and position=0.
+    """
+    cur.execute("PRAGMA table_info(article)")
+    existing = {row["name"] for row in cur.fetchall()}
+    if "folder_id" not in existing:
+        cur.execute(
+            "ALTER TABLE article ADD COLUMN folder_id TEXT "
+            "REFERENCES folder(id) ON DELETE SET NULL"
+        )
+    if "position" not in existing:
+        cur.execute("ALTER TABLE article ADD COLUMN position REAL NOT NULL DEFAULT 0")
+    cur.execute(
+        "CREATE INDEX IF NOT EXISTS idx_article_folder_id ON article(folder_id)"
+    )
 
 
 def _ensure_source_iter3_columns(cur: sqlite3.Cursor) -> None:

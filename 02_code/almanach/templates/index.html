@@ -11,8 +11,9 @@
   </div>
 </header>
 
-<div class="container">
-  <aside class="sidebar">
+<div class="container" id="app-container"
+     style="--sidebar-width: {{ sidebar.sidebar_width_px }}px;">
+  <aside class="sidebar" id="sidebar-pane">
     <div class="sidebar-header">
       <span class="sidebar-title">Sources</span>
       <div class="sidebar-header-actions" style="display:flex; gap:2px;">
@@ -31,6 +32,10 @@
     </div>
   </aside>
 
+  <div class="pane-separator" id="pane-separator"
+       role="separator" aria-orientation="vertical"
+       aria-label="Resize sidebar" tabindex="0"></div>
+
   <main class="feed" id="feed-pane">
     {% include "_feed.html" %}
   </main>
@@ -40,4 +45,36 @@
 {% include "_confirm_dialog.html" %}
 {% include "_row_menu.html" %}
 {% include "_toast.html" %}
+
+{# Filter popovers (CR-260523-1500-001) #}
+<div class="filter-popover" id="date-range-popover" hidden role="dialog" aria-label="Date range">
+  <div class="filter-popover-row">
+    <label class="filter-popover-label" for="date-range-from">From</label>
+    <input type="date" id="date-range-from" class="date-range-input">
+  </div>
+  <div class="filter-popover-row">
+    <label class="filter-popover-label" for="date-range-to">To</label>
+    <input type="date" id="date-range-to" class="date-range-input">
+  </div>
+  <div class="filter-popover-error" id="date-range-error" hidden></div>
+  <div class="filter-popover-actions">
+    <button type="button" class="btn" id="date-range-clear">Clear</button>
+    <button type="button" class="btn btn-primary" id="date-range-apply">Apply</button>
+  </div>
+</div>
+
+<div class="filter-popover content-select-popover" id="content-select-popover" hidden
+     role="dialog" aria-label="Select sources">
+  <div class="content-select-search">
+    <i class="ti ti-search"></i>
+    <input type="text" id="content-select-search" placeholder="Filter sources…" autocomplete="off">
+  </div>
+  <div class="content-select-list" id="content-select-list">
+    <div class="content-select-loading">Loading…</div>
+  </div>
+  <div class="filter-popover-actions">
+    <button type="button" class="btn" id="content-select-clear">Clear</button>
+    <button type="button" class="btn btn-primary" id="content-select-done">Done</button>
+  </div>
+</div>
 {% endblock %}
