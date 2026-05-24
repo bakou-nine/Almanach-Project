@@ -184,11 +184,13 @@ def _build_article_query(
     source_ids: Optional[list[str]],
     folder_ids: Optional[list[str]],
     scope_folder_id: Optional[str],
+    keywords: Optional[list[str]],
+    keyword_mode: str,
     trailing: str,
 ) -> tuple[str, list]:
     """Compose the article SELECT used by list_articles / count_articles.
 
-    Filter parameters (CR-260523-1500-001 / CR-260523-1501-001):
+    Filter parameters (CR-260523-1500-001 / CR-260523-1501-001 / CR-260524-0644-001):
       - `from_date` / `to_date`: ISO string bounds on `Article.published_at`.
       - `source_ids`: explicit list of source ids to include (content multi-select).
       - `folder_ids`: list of folder ids; each is expanded to its subtree and
@@ -197,6 +199,12 @@ def _build_article_query(
       - `scope_folder_id`: single folder for sidebar scope; the source's
         `folder_id` must fall in this folder's subtree. Composes with the
         content multi-select via AND.
+      - `keywords`: list of case-insensitive substrings, each matched against
+        `Article.title` OR `Article.summary` (CR-260524-0644-001). The keywords
+        combine with each other via OR (keyword_mode="any", default) or AND
+        (keyword_mode="all"); the keyword group then composes with every other
+        predicate via AND. Blank entries are dropped; an empty list is no
+        constraint.
 
     Cascade mute (CR-260522-2101-001 iteration 2, DATA_MODEL.md §2.3) still
     applies when `source_id` is None.
@@ -261,6 +269,23 @@ def _build_article_query(
     if to_date is not None:
         where.append("a.published_at <= ?")
         where_params.append(to_date)
+    if keywords:
+        kw_parts: list[str] = []
+        for raw_kw in keywords:
+            kw = (raw_kw or "").strip()
+            if not kw:
+                continue
+            # Escape LIKE wildcards so the term matches as a literal substring;
+            # LIKE is ASCII-case-insensitive in SQLite (CR-260524-0644-001).
+            esc = kw.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+            pattern = f"%{esc}%"
+            kw_parts.append(
+                "(a.title LIKE ? ESCAPE '\\' OR a.summary LIKE ? ESCAPE '\\')"
+            )
+            where_params.extend([pattern, pattern])
+        if kw_parts:
+            joiner = " AND " if keyword_mode == "all" else " OR "
+            where.append("(" + joiner.join(kw_parts) + ")")
     if after is not None:
         where.append("a.published_at < ?")
         where_params.append(after)
@@ -288,6 +313,8 @@ def list_articles(
     source_ids: Optional[list[str]] = None,
     folder_ids: Optional[list[str]] = None,
     scope_folder_id: Optional[str] = None,
+    keywords: Optional[list[str]] = None,
+    keyword_mode: str = "any",
 ) -> list[dict]:
     """List articles newest-first, optionally filtered by source / cursor / filters."""
     sql, params = _build_article_query(
@@ -303,6 +330,8 @@ def list_articles(
         source_ids=source_ids,
         folder_ids=folder_ids,
         scope_folder_id=scope_folder_id,
+        keywords=keywords,
+        keyword_mode=keyword_mode,
         trailing="ORDER BY a.published_at DESC LIMIT ? OFFSET ?",
     )
     params = params + [limit, offset]
@@ -320,6 +349,8 @@ def count_articles(
     source_ids: Optional[list[str]] = None,
     folder_ids: Optional[list[str]] = None,
     scope_folder_id: Optional[str] = None,
+    keywords: Optional[list[str]] = None,
+    keyword_mode: str = "any",
 ) -> int:
     sql, params = _build_article_query(
         select_clause="SELECT COUNT(*) AS n",
@@ -331,6 +362,8 @@ def count_articles(
         source_ids=source_ids,
         folder_ids=folder_ids,
         scope_folder_id=scope_folder_id,
+        keywords=keywords,
+        keyword_mode=keyword_mode,
         trailing="",
     )
     cur = get_connection().cursor()

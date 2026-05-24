@@ -24,6 +24,7 @@
      data-to="{{ feed.filter_to or '' }}"
      data-source-ids="{{ feed.filter_source_ids|join(',') }}"
      data-folder-ids="{{ feed.filter_folder_ids|join(',') }}"
+     data-keyword-mode="{{ feed.filter_keyword_mode or 'any' }}"
      data-scope-folder-id="{{ feed.scope_folder_id or '' }}"
      data-scope-folder-name="{{ feed.scope_folder_name or '' }}">
   <div class="filter-row">
@@ -45,6 +46,22 @@
         <i class="ti ti-list-search"></i>
         <span class="content-select-label">All</span>
       </button>
+    </div>
+    <div class="filter-group filter-keyword-group">
+      <span class="filter-label">Keyword</span>
+      <div class="filter-keyword-box">
+        <i class="ti ti-search"></i>
+        <input type="text" class="filter-keyword-input" id="keyword-input"
+               placeholder="Add word + Enter" autocomplete="off"
+               title="Type a word and press Enter to add it as a keyword filter (matched against title or summary, case-insensitive). Add several to combine them.">
+      </div>
+      <div class="keyword-mode-toggle" id="keyword-mode-toggle" hidden
+           title="How multiple keywords combine">
+        <button type="button" class="filter-chip-btn keyword-mode-btn" data-mode="any"
+                title="Match articles containing ANY active keyword">Match any</button>
+        <button type="button" class="filter-chip-btn keyword-mode-btn" data-mode="all"
+                title="Match articles containing ALL active keywords">Match all</button>
+      </div>
     </div>
   </div>
   <div class="filter-active" id="filter-active" hidden></div>

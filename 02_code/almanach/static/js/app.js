@@ -16,6 +16,8 @@
       shortcut: null,    // "1d" | "1w" | "1m" | null  (mutually-exclusive with from/to)
       sourceIds: [],     // explicit source ids
       folderIds: [],     // folder ids (server expands to subtree)
+      keywords: [],      // CR-260524-0644-001 — active keyword chips (trimmed, deduped)
+      keywordMode: "any",// "any" (OR) | "all" (AND) — how multiple keywords combine
     },
     // Cache of /filter-tree response so reopening the popover is instant.
     filterTree: null,
@@ -110,6 +112,10 @@
     if (state.filter.folderIds.length) {
       params.set("folder_ids", state.filter.folderIds.join(","));
     }
+    if (state.filter.keywords.length) {
+      state.filter.keywords.forEach(k => params.append("keyword", k));
+      params.set("keyword_mode", state.filter.keywordMode);
+    }
     params.set("size", state.pageSize);
     return params;
   }
@@ -139,6 +145,18 @@
     bindFeed();
     bindBanner();
     bindFilterBar();
+    // CR-260524-0644-001: keep the keyword input focused after an Enter-apply
+    // re-renders the pane, so the user can keep refining without re-clicking.
+    if (keywordShouldRefocus) {
+      keywordShouldRefocus = false;
+      const kw = $("#keyword-input");
+      if (kw) {
+        kw.focus();
+        const v = kw.value;
+        kw.value = "";
+        kw.value = v;  // move caret to end
+      }
+    }
   }
 
   function readFeedCursor() {
@@ -1628,6 +1646,10 @@
 
   // ----- filter bar (CR-260523-1500-001) -----
 
+  // CR-260524-0644-001: set when a keyword apply triggers a feed re-render, so
+  // refreshFeed can restore focus to the freshly-rendered keyword input.
+  let keywordShouldRefocus = false;
+
   function bindFilterBar() {
     // Date shortcut chips.
     $$("#filter-bar .date-shortcut").forEach(btn => {
@@ -1660,6 +1682,32 @@
         toggleContentSelectPopover(contentBtn);
       });
     }
+    // Keyword input — Enter adds the typed word as a removable chip; multiple
+    // keywords are supported (CR-260524-0644-001).
+    const kwInput = $("#keyword-input");
+    if (kwInput) {
+      kwInput.addEventListener("keydown", (ev) => {
+        if (ev.key === "Enter") {
+          ev.preventDefault();
+          addKeyword(kwInput.value);
+        } else if (ev.key === "Escape") {
+          ev.preventDefault();
+          kwInput.value = "";
+          kwInput.blur();
+        }
+      });
+    }
+    // Any/All toggle — how multiple active keywords combine (AC-260524-0650-004).
+    $$("#keyword-mode-toggle .keyword-mode-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const mode = btn.getAttribute("data-mode") === "all" ? "all" : "any";
+        if (mode === state.filter.keywordMode) return;
+        state.filter.keywordMode = mode;
+        repaintFilterBar();
+        // Only re-query when the choice can change the result (>=2 keywords).
+        if (state.filter.keywords.length >= 2) applyFilterChange();
+      });
+    });
     // Empty-state "Clear filters" button.
     const clear = $("#clear-filters-btn");
     if (clear) {
@@ -1671,12 +1719,32 @@
     repaintFilterBar();
   }
 
+  function addKeyword(raw) {
+    // Blank / whitespace-only Enter adds nothing (AC-260524-0650-003).
+    const kw = (raw || "").trim();
+    const input = $("#keyword-input");
+    if (input) input.value = "";
+    if (!kw) return;
+    // Case-insensitive dedup — re-adding an existing keyword is a no-op.
+    if (state.filter.keywords.some(k => k.toLowerCase() === kw.toLowerCase())) return;
+    state.filter.keywords.push(kw);
+    keywordShouldRefocus = true;
+    applyFilterChange();
+  }
+
+  function removeKeyword(kw) {
+    const before = state.filter.keywords.length;
+    state.filter.keywords = state.filter.keywords.filter(k => k !== kw);
+    if (state.filter.keywords.length !== before) applyFilterChange();
+  }
+
   function clearAllFilters() {
     state.filter.shortcut = null;
     state.filter.from = null;
     state.filter.to = null;
     state.filter.sourceIds = [];
     state.filter.folderIds = [];
+    state.filter.keywords = [];
     applyFilterChange();
   }
 
@@ -1717,6 +1785,17 @@
       contentBtn.classList.toggle("is-active", n > 0);
       contentLabel.textContent = n > 0 ? n + " selected" : "All";
     }
+    // Keyword input is a transient add-box now (keywords live as chips), so the
+    // user's in-progress text is left alone. Reflect the Any/All toggle, shown
+    // only when >=2 keywords are active (CR-260524-0644-001 / AC-260524-0650-004).
+    const modeToggle = $("#keyword-mode-toggle");
+    if (modeToggle) {
+      modeToggle.hidden = state.filter.keywords.length < 2;
+      $$("#keyword-mode-toggle .keyword-mode-btn").forEach(btn => {
+        const m = btn.getAttribute("data-mode") === "all" ? "all" : "any";
+        btn.classList.toggle("is-active", m === state.filter.keywordMode);
+      });
+    }
     repaintFilterActive();
   }
 
@@ -1756,6 +1835,13 @@
         onClear: () => { state.filter.from = null; state.filter.to = null; applyFilterChange(); },
       });
     }
+    state.filter.keywords.forEach(kw => {
+      chips.push({
+        kind: "keyword",
+        label: "“" + kw + "”",
+        onClear: () => removeKeyword(kw),
+      });
+    });
     const nameById = state.filterTreeNameById || {};
     state.filter.folderIds.forEach(fid => {
       const n = nameById["folder:" + fid] || "Folder";
@@ -1806,6 +1892,7 @@
       state.filter.to = null;
       state.filter.sourceIds = [];
       state.filter.folderIds = [];
+      state.filter.keywords = [];
       applyFilterChange();
     });
     container.appendChild(clearAll);

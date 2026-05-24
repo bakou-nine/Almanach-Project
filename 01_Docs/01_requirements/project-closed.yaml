@@ -1,7 +1,7 @@
 file: project-closed.yaml
 status_filter:
 - CLOSED
-exported_at: '2026-05-23T17:44:13.215681+00:00'
+exported_at: '2026-05-24T10:47:04.435726+00:00'
 project_charters:
 - id: PC-260512-2041-001
   project_id: PR-260512-2041-001
@@ -19,7 +19,7 @@ project_charters:
   - EP-260512-2230-003
   - EP-260512-2230-004
   - EP-260512-2230-005
-  updated_at: '2026-05-23T16:42:02.177554'
+  updated_at: '2026-05-24T10:45:12.543449'
   updated_by: HUMAN
   approved_by_human: true
   cancellation_reason: null
@@ -2429,7 +2429,7 @@ project_charters:
     - FT-260522-2050-002
     - FT-260522-2230-001
     - FT-260523-0900-001
-    updated_at: '2026-05-23T16:42:02.177554'
+    updated_at: '2026-05-24T10:45:12.543449'
     updated_by: HUMAN
     approved_by_human: true
     cancellation_reason: null
@@ -2673,8 +2673,10 @@ project_charters:
       parent_id: EP-260512-2230-004
       children_ids:
       - US-260522-2230-003
-      updated_at: '2026-05-23T16:50:23.649776'
-      updated_by: CLAUDE_CODE
+      - US-260523-1906-001
+      - US-260523-1906-002
+      updated_at: '2026-05-24T10:45:12.542401'
+      updated_by: HUMAN
       approved_by_human: true
       cancellation_reason: null
       tags: []
@@ -2778,6 +2780,159 @@ project_charters:
           target_id: AC-260523-0900-031
         - type: FULFILLED_BY
           target_id: AC-260523-0900-033
+      - id: US-260523-1906-001
+        project_id: PR-260512-2041-001
+        type: USER_STORY
+        created_at: '2026-05-23T19:06:00'
+        created_by: CLAUDE_CODE
+        cancelled_at: null
+        locked: false
+        title: Feed Filter Bar
+        status: CLOSED
+        parent_id: FT-260522-2230-001
+        children_ids: []
+        updated_at: '2026-05-24T10:45:12.539401'
+        updated_by: HUMAN
+        approved_by_human: true
+        cancellation_reason: null
+        story_statement: As a reader, I want a filter bar at the top of the feed that
+          lets me constrain articles by date range, so that I see only the articles
+          relevant to my current focus.
+        tags: []
+        body: 'Hosts the filter-bar UI introduced by CR-260523-1500-001 — sibling
+          story under
+
+          FT-260522-2230-001, kept separate from US-260522-2230-003 to stay within
+          §3.6 AC
+
+          thresholds. The bar sits above the continuous-scroll feed and applies an
+          additive
+
+          (AND) predicate to the feed query: an explicit date range (max 1-year span)
+          or a
+
+          1d / 1w / 1m shortcut, a cumulative Group / Subgroup / Source multi-select,
+          plus one or more keyword chips that combine via an Any/All toggle (CR-260524-0644-001).
+
+          Active filters surface as removable chips with a Clear-all; an empty intersection
+
+          shows a filter-specific empty state. Cross-filter composition with the sidebar
+
+          scope (US-260523-1906-002) is asserted at feature level by AC-260523-1501-004.
+
+
+          **Data model fields touched:**
+
+
+          - `Article.published_at` (read — date predicate)
+
+          - `Article.source_id`, `Source.group_id`, `Source.subgroup_id` (read — content
+          predicate)
+
+
+          **Spec reference:** CR-260523-1500-001 §Change Summary; DATA_MODEL.md §3
+
+          (`idx_article_published_at`). Filter-bar wireframe pending §5.1.2.
+
+          '
+        acceptance_criteria: null
+        relations:
+        - type: CONFIRMED_BY
+          target_id: CR-260524-0644-001
+        - type: FULFILLED_BY
+          target_id: AC-260523-1500-001
+        - type: FULFILLED_BY
+          target_id: AC-260523-1500-002
+        - type: FULFILLED_BY
+          target_id: AC-260523-1500-003
+        - type: FULFILLED_BY
+          target_id: AC-260523-1500-004
+        - type: FULFILLED_BY
+          target_id: AC-260523-1500-005
+        - type: FULFILLED_BY
+          target_id: AC-260523-1500-006
+        - type: FULFILLED_BY
+          target_id: AC-260523-1500-007
+        - type: FULFILLED_BY
+          target_id: AC-260524-0650-001
+        - type: FULFILLED_BY
+          target_id: AC-260524-0650-002
+        - type: FULFILLED_BY
+          target_id: AC-260524-0650-003
+        - type: FULFILLED_BY
+          target_id: AC-260524-0730-001
+      - id: US-260523-1906-002
+        project_id: PR-260512-2041-001
+        type: USER_STORY
+        created_at: '2026-05-23T19:06:00'
+        created_by: CLAUDE_CODE
+        cancelled_at: null
+        locked: false
+        title: Sidebar Title-Click Feed Scope
+        status: CLOSED
+        parent_id: FT-260522-2230-001
+        children_ids: []
+        updated_at: '2026-05-24T06:05:44.806879'
+        updated_by: HUMAN
+        approved_by_human: true
+        cancellation_reason: null
+        story_statement: As a reader, I want clicking a Group or Subgroup title in
+          the sidebar to scope the feed to that title's sources, so that I can focus
+          the feed on one branch of my hierarchy with a single click.
+        tags: []
+        body: 'Hosts the sidebar-as-feed-scope behaviour introduced by CR-260523-1501-001
+          —
+
+          sibling story under FT-260522-2230-001. Clicking a Group / Subgroup title
+          (distinct
+
+          from the existing chevron expand / collapse) sets it as the active feed
+          scope; the
+
+          feed re-renders to articles whose source belongs to the title directly or
+          via a
+
+          descendant. Only one scope is active at a time — shared single-active-row
+          contract
+
+          with the source-row click (FT-260512-2245-003). Clicking the active title
+          again,
+
+          or All sources, clears it. An empty scope shows a scope-named empty state.
+          Composes
+
+          (AND) with the filter bar (US-260523-1906-001); cross-integration asserted
+          at
+
+          feature level by AC-260523-1501-004.
+
+
+          **Data model fields touched:**
+
+
+          - `Source.group_id`, `Source.subgroup_id`, `Article.source_id` (read — scope
+          predicate)
+
+
+          **Spec reference:** CR-260523-1501-001 §Change Summary; existing sidebar
+          tree
+
+          (FT-260522-2115-001) + feed (US-260522-2230-003). No new wireframe — reuses
+          the
+
+          source-row active-state convention.
+
+          '
+        acceptance_criteria: null
+        relations:
+        - type: FULFILLED_BY
+          target_id: AC-260523-1501-001
+        - type: FULFILLED_BY
+          target_id: AC-260523-1501-002
+        - type: FULFILLED_BY
+          target_id: AC-260523-1501-003
+        - type: FULFILLED_BY
+          target_id: AC-260523-1501-005
     - id: FT-260523-0900-001
       project_id: PR-260512-2041-001
       type: FEATURE
@@ -2860,6 +3015,122 @@ tests:
     target_id: BUG-260517-1128-001
   - type: FULFILLED_BY
     target_id: AC-260512-2300-002
+- id: TEST-260524-0715-001
+  project_id: PR-260512-2041-001
+  type: TEST
+  created_at: '2026-05-24T07:15:28.029572'
+  created_by: HUMAN
+  cancelled_at: null
+  locked: false
+  title: CR-260524-0644-001 - Test 1
+  status: CLOSED
+  result: PASS
+  updated_at: '2026-05-24T10:31:14.559742'
+  updated_by: HUMAN
+  approved_by_human: null
+  cancellation_reason: null
+  tags: []
+  body: "❯ no the filter does not work i want that when i enter a key world and press\
+    \ enter  it is added to the list of active filters \n  that i can then remove\
+    \ pressing x. I should be able to add multiple one.\n\n\nsearch bar appear but\
+    \ has not effect on the content yuet ![no effect of search bar](01_docs/04_content/images/no\
+    \ effect of search bar.png)"
+  acceptance_criteria: null
+  relations:
+  - type: CONFIRMS
+    target_id: CR-260524-0644-001
+  - type: FULFILLED_BY
+    target_id: AC-260524-0650-001
+  - type: FULFILLED_BY
+    target_id: AC-260524-0650-002
+  - type: FULFILLED_BY
+    target_id: AC-260524-0650-003
+- id: TEST-260524-1009-001
+  project_id: PR-260512-2041-001
+  type: TEST
+  created_at: '2026-05-24T10:09:27.363991'
+  created_by: HUMAN
+  cancelled_at: null
+  locked: false
+  title: CR-260524-0644-001 - Test 2
+  status: CLOSED
+  result: PASS
+  updated_at: '2026-05-24T10:45:12.535402'
+  updated_by: HUMAN
+  approved_by_human: null
+  cancellation_reason: null
+  tags: []
+  body: 'cool stuff, seems to work you made however i want the user to be able to
+    consider the key word he added as AND or as OR relation can you take care about
+    this?
+
+    ![AND_OR relation](01_docs/04_content/images/AND_OR relation.png)'
+  acceptance_criteria: null
+  relations:
+  - type: CONFIRMS
+    target_id: CR-260524-0644-001
+  - type: FULFILLED_BY
+    target_id: AC-260524-0650-001
+  - type: FULFILLED_BY
+    target_id: AC-260524-0650-002
+  - type: FULFILLED_BY
+    target_id: AC-260524-0650-003
+  - type: FULFILLED_BY
+    target_id: AC-260524-0730-001
+- id: TEST-260524-1029-001
+  project_id: PR-260512-2041-001
+  type: TEST
+  created_at: '2026-05-24T10:29:36.895798'
+  created_by: HUMAN
+  cancelled_at: null
+  locked: false
+  title: CR-260524-0644-001 - Test 3
+  status: CLOSED
+  result: PASS
+  updated_at: '2026-05-24T10:45:12.536402'
+  updated_by: HUMAN
+  approved_by_human: null
+  cancellation_reason: null
+  tags: []
+  body: 'ok seems to work for me but i want you to make the buttons Any and All more
+    intuitive, just name them as they areL: Match any: Match all
+
+
+    ![OR;AND Buttons](01_docs/04_content/images/OR;AND Buttons.png)'
+  acceptance_criteria: null
+  relations:
+  - type: CONFIRMS
+    target_id: CR-260524-0644-001
+  - type: FULFILLED_BY
+    target_id: AC-260524-0650-001
+  - type: FULFILLED_BY
+    target_id: AC-260524-0650-002
+  - type: FULFILLED_BY
+    target_id: AC-260524-0650-003
+  - type: FULFILLED_BY
+    target_id: AC-260524-0730-001
+- id: TEST-260524-1045-001
+  project_id: PR-260512-2041-001
+  type: TEST
+  created_at: '2026-05-24T10:45:09.978518'
+  created_by: HUMAN
+  cancelled_at: null
+  locked: false
+  title: CR-260524-0644-001 - Test 4
+  status: CLOSED
+  result: PASS
+  updated_at: '2026-05-24T10:45:12.537402'
+  updated_by: HUMAN
+  approved_by_human: null
+  cancellation_reason: null
+  tags: []
+  body: ''
+  acceptance_criteria: null
+  relations:
+  - type: CONFIRMS
+    target_id: CR-260524-0644-001
+  - type: FULFILLED_BY
+    target_id: AC-260524-0730-001
 bugs:
 - id: BUG-260517-1128-001
   project_id: PR-260512-2041-001
@@ -4103,6 +4374,460 @@ change_requests:
     target_id: AC-260523-0900-052
   - type: FULFILLED_BY
     target_id: AC-260523-0900-053
+- id: CR-260523-1500-001
+  project_id: PR-260512-2041-001
+  type: CR
+  created_at: '2026-05-23T15:00:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: 'Feed filters: date range + multi-select content selection'
+  status: CLOSED
+  priority: HIGH
+  updated_at: '2026-05-24T06:06:01.519642'
+  updated_by: HUMAN
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: '# CR — Feed filters: date range + multi-select content selection
+
+
+    ## Change Summary
+
+    First half of the split from CR-260523-1428-001 (the original "Filter" CR; item
+    1 of its body). Adds a filter bar at the top of the right-pane feed that lets
+    the user constrain visible articles by (a) a date range — either an explicit start/end
+    (max 1-year span) or shortcut chips (1d / 1w / 1m) — and/or (b) a cumulative multi-select
+    of titles (Groups / Subgroups) and individual news sources. Multiple filters compose
+    (logical AND). The filter bar lives in the right pane but its predicate is applied
+    to the article query, so the rendered feed reflects only matching articles. Item
+    2 of the original CR (left-pane title click scopes the right pane) is handled
+    by sibling CR-260523-1501-001.
+
+
+    This CR introduces NEW behaviour the feed feature does not currently assert —
+    see §3.4 dedup rule: AC are new objects, not extensions of existing AC.
+
+
+    ---
+
+
+    ## Affected Requirement Objects
+
+    | ID — Title | Action | Status transition |
+
+    | :--- | :--- | :--- |
+
+    | `FT-260522-2230-001` — Continuous-Scroll Feed | modified (filter-aware feed
+    query) | CLOSED → OPEN (on CR promotion per §5.2.2) |
+
+    | `US-260522-2230-003` — Continuous-Scroll Feed | modified (extends `/feed-partial`
+    with optional `from` / `to` / `group_ids` / `subgroup_ids` / `source_ids` query
+    params; client-side filter bar UI) | CLOSED → OPEN (on CR promotion per §5.2.2)
+    |
+
+
+    A new sibling US under FT-260522-2230-001 dedicated to the filter-bar UI may be
+    proposed during §5.2.4 step 4 if extending US-260522-2230-003 would push it past
+    §3.6 overload thresholds.
+
+
+    ## Design Changes
+
+    New wireframe required under `01_Docs/03_design/01_wireframes/feature level/`
+    showing the filter bar default state + open content-selection dropdown (Group
+    → Subgroup → Source tree) + active-filter chip states. To be authored in a §5.1.2
+    design pass on this CR before §5.2.4 dev entry. Existing reference image: `01_Docs/04_content/images/news
+    to be displayed in the selected title only.png` (provided by user; primarily illustrates
+    item 2, but constrains the right-pane behaviour this CR also shapes).
+
+
+    ## Data Model Changes
+
+    No schema changes. Filter predicate is applied at query time over existing `Article.published_at`,
+    `Article.source_id`, `Source.group_id`, `Source.subgroup_id`. DATA_MODEL.md §3
+    (`idx_article_published_at`) already supports the date-range cursor query path.
+
+
+    ## Supersede / Versioning
+
+    SUPERSEDES → CR-260523-1428-001 (paired with sibling CR-260523-1501-001 — both
+    new CRs supersede the original; the original is split into these two because §3.6.2
+    placement check flagged it as bundling two distinct functionalities under one
+    CR).
+
+
+    ## Scope Impact Assessment
+
+    - **Features affected:** FT-260522-2230-001 (Continuous-Scroll Feed) — feed query
+    gains filter parameters and the right pane gains the filter-bar surface.
+
+    - **Features blocked:** none.
+
+    - **Features unblocked:** none.
+
+    - **Regression risk:** medium — the feed query is on the hot path. Existing CLOSED
+    AC under FT-260522-2230-001 and US-260522-2230-003 (unfiltered feed behaviour)
+    must continue to pass when no filter is active.
+
+    - **Breaking changes:** none (filter params are additive and optional on `/feed-partial`).
+
+
+    ---
+
+    '
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLED_BY
+    target_id: AC-260523-1500-001
+  - type: FULFILLED_BY
+    target_id: AC-260523-1500-002
+  - type: FULFILLED_BY
+    target_id: AC-260523-1500-003
+  - type: FULFILLED_BY
+    target_id: AC-260523-1500-004
+  - type: FULFILLED_BY
+    target_id: AC-260523-1500-005
+  - type: FULFILLED_BY
+    target_id: AC-260523-1500-006
+  - type: FULFILLED_BY
+    target_id: AC-260523-1500-007
+  - type: FULFILLED_BY
+    target_id: AC-260523-1501-004
+  - type: SUPERSEDES
+    target_id: CR-260523-1428-001
+- id: CR-260523-1501-001
+  project_id: PR-260512-2041-001
+  type: CR
+  created_at: '2026-05-23T15:01:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: Left-pane title click scopes right-pane feed to its sources
+  status: CLOSED
+  priority: MED
+  updated_at: '2026-05-24T06:05:44.804974'
+  updated_by: HUMAN
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: '# CR — Left-pane title click scopes right-pane feed to its sources
+
+
+    ## Change Summary
+
+    Second half of the split from CR-260523-1428-001 (item 2 of its body). Clicking
+    a Group title or Subgroup title in the sidebar (left pane) scopes the right-pane
+    feed to articles whose source belongs to that Group or Subgroup. The selected
+    title is visually marked active; clicking the active selection (or "All sources")
+    clears the scope. The scope coexists with the filter bar introduced by sibling
+    CR-260523-1500-001 — both predicates apply together when set (cross-CR integration
+    is asserted by AC-260523-1501-004, multi-FULFILLS-linked to both CRs per §3.4).
+
+
+    This CR extends an existing interactive surface (the sidebar tree click affordance,
+    today limited to Source rows) to Group and Subgroup title rows. The new behaviour
+    is asserted by new AC objects rather than amendments to the existing source-row
+    click AC.
+
+
+    ---
+
+
+    ## Affected Requirement Objects
+
+    | ID — Title | Action | Status transition |
+
+    | :--- | :--- | :--- |
+
+    | `US-260522-2230-003` — Continuous-Scroll Feed | modified (feed query honours
+    active sidebar scope when a Group/Subgroup is selected) | CLOSED → OPEN (on CR
+    promotion per §5.2.2) |
+
+
+    The sidebar Group/Subgroup feature owning the row affordance (likely under EP-260512-2230-001
+    Source Management — candidate FT to confirm during §5.2.4 entry) will be added
+    to this table once §5.2.4 step 1 input read resolves the exact host requirement.
+
+
+    ## Design Changes
+
+    None new. Reuses the existing sidebar tree from the Source Management epic. Active-state
+    visual treatment of Group/Subgroup rows follows the existing source-row active-state
+    convention (no additional wireframe required).
+
+
+    ## Data Model Changes
+
+    No schema changes. Selection state is client-side; the predicate composes with
+    existing `Article.source_id` / `Source.group_id` / `Source.subgroup_id` columns.
+
+
+    ## Supersede / Versioning
+
+    SUPERSEDES → CR-260523-1428-001 (paired with sibling CR-260523-1500-001).
+
+
+    ## Scope Impact Assessment
+
+    - **Features affected:** US-260522-2230-003 (Continuous-Scroll Feed) — feed query
+    honours sidebar scope; sidebar Group/Subgroup feature — click affordance extended.
+
+    - **Features blocked:** none.
+
+    - **Features unblocked:** none.
+
+    - **Regression risk:** low — additive click affordance; existing source-row click
+    contract unchanged.
+
+    - **Breaking changes:** none.
+
+
+    ---
+
+    '
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLED_BY
+    target_id: AC-260523-1501-001
+  - type: FULFILLED_BY
+    target_id: AC-260523-1501-002
+  - type: FULFILLED_BY
+    target_id: AC-260523-1501-003
+  - type: FULFILLED_BY
+    target_id: AC-260523-1501-004
+  - type: FULFILLED_BY
+    target_id: AC-260523-1501-005
+  - type: SUPERSEDES
+    target_id: CR-260523-1428-001
+- id: CR-260523-1630-001
+  project_id: PR-260512-2041-001
+  type: CR
+  created_at: '2026-05-23T16:30:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: Sidebar unread counts honour the active date filter
+  status: CLOSED
+  priority: MED
+  updated_at: '2026-05-24T06:05:31.709105'
+  updated_by: HUMAN
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: '# CR — Sidebar unread counts honour the active date filter
+
+
+    ## Change Summary
+
+    UAT feedback against CR-260523-1500-001: when the user picks a date affordance
+    in the filter bar (`1d` / `1w` / `1m` shortcut OR a custom date range), the per-source
+    unread pill, the recursive folder unread sums, and the All-sources total in the
+    sidebar should all narrow to "unread within that window". Today the sidebar counts
+    are computed off the full `Article.read_at IS NULL` aggregate ignorant of any
+    filter-bar state, so the user sees the filter visibly reshape the right pane while
+    the sidebar still advertises the unfiltered totals — confusing and inconsistent
+    with the original CR-260523-1428-001 body ("filter ... applies to the left pane
+    content").
+
+
+    Scope is intentionally restricted to the date predicate. The content-selection
+    multi-select (CR-260523-1500-001 AC-260523-1500-004) is NOT applied to sidebar
+    counts: a sidebar that zeroes-out non-selected sources collides with the sidebar''s
+    "always list every source" contract (US-260513-0010-001), and the filter bar already
+    expresses the content predicate elsewhere. The sidebar folder scope introduced
+    by CR-260523-1501-001 also stays out of scope — it scopes the feed, not the source
+    list.
+
+
+    ---
+
+
+    ## Affected Requirement Objects
+
+    | ID — Title | Action | Status transition |
+
+    | :--- | :--- | :--- |
+
+    | `US-260513-0010-001` — Sidebar Rendering | modified (per-source unread counts
+    + All-sources total accept an optional date predicate; `/sidebar-partial` accepts
+    `from` / `to` query params) | CLOSED → OPEN (on CR promotion per §5.2.2) |
+
+    | `US-260522-2116-003` — Sidebar Tree Rendering | modified (recursive folder unread
+    sums honour the same date predicate; bottom-up aggregation matches the per-source
+    filtered counts) | CLOSED → OPEN (on CR promotion per §5.2.2) |
+
+
+    ## Design Changes
+
+    None. Sidebar layout, pill placement, colours, typography all unchanged. Only
+    the numerical value rendered inside each pill changes when a date filter is active.
+
+
+    ## Data Model Changes
+
+    None. The date predicate composes over existing `Article.published_at` (indexed
+    by `idx_article_published_at`, DATA_MODEL.md §3) and `Article.read_at IS NULL`.
+    No schema migration.
+
+
+    ## Supersede / Versioning
+
+    (none)
+
+
+    ## Scope Impact Assessment
+
+    - **Features affected:** FT-260512-2245-003 (sidebar render), FT-260522-2115-001
+    (sidebar tree). Frontend wiring on `app.js` to also send the active date predicate
+    to `/sidebar-partial` whenever the filter bar updates.
+
+    - **Features blocked:** none.
+
+    - **Features unblocked:** none.
+
+    - **Regression risk:** low — with no date filter set, the new code path collapses
+    to the pre-CR aggregation; existing CLOSED AC under both USs continue to pass.
+    Single point of caution: muted-cascade semantics already in `unread_counts_per_source()`
+    / `total_unread_excluding_muted()` must be preserved when the date predicate is
+    threaded through.
+
+    - **Breaking changes:** none (`from` / `to` are additive optional query params
+    on `/sidebar-partial`).
+
+
+    ---
+
+    '
+  acceptance_criteria: null
+  relations:
+  - type: CONFIRMS
+    target_id: US-260513-0010-001
+  - type: CONFIRMS
+    target_id: US-260522-2116-003
+  - type: FULFILLED_BY
+    target_id: AC-260523-1630-001
+  - type: FULFILLED_BY
+    target_id: AC-260523-1630-002
+  - type: FULFILLED_BY
+    target_id: AC-260523-1630-003
+  - type: FULFILLED_BY
+    target_id: AC-260523-1630-004
+- id: CR-260524-0644-001
+  project_id: PR-260512-2041-001
+  type: CR
+  created_at: '2026-05-24T06:44:30.750718'
+  created_by: HUMAN
+  cancelled_at: null
+  locked: false
+  title: Keyword filter for the right-pane feed
+  status: CLOSED
+  priority: HIGH
+  updated_at: '2026-05-24T10:45:12.534401'
+  updated_by: HUMAN
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: '# CR — Keyword filter for the right-pane feed
+
+
+    ## Change Summary
+
+    User request: the right-pane filter bar should let the reader constrain the feed
+    to articles that contain given keyword(s). Adds a keyword input to the existing
+    filter bar (US-260523-1906-001), alongside the date-range, date-shortcut, and
+    content-selection controls. Typing a word and pressing Enter adds it as an active
+    keyword chip (removable via × or Clear all); multiple keywords may be added. A
+    keyword matches when an article title or summary contains it (case-insensitive
+    substring). No article body text is stored, so title + summary is the full match
+    scope.
+
+
+    **Scope revision (TEST-260524-0715-001, §5.2.4 step 3):** the keyword control
+    was re-specified from a single live-filtered term to multiple Enter-added chips,
+    and an Any/All toggle (AC-260524-0730-001) was added so the reader chooses how
+    the active keywords combine — Any = OR (match at least one), All = AND (match
+    all), default Any. The keyword group still composes via AND with the date and
+    content-selection filters. Also fixes the reported "search has no effect on content"
+    defect (verified end-to-end against the feed query: baseline 9105 -> single keyword
+    70; ANY 103 >= ALL 14).
+
+
+    New behaviour the feed feature does not currently assert -> new AC per §3.4 dedup
+    (not extensions of the date/content AC).
+
+
+    ---
+
+
+    ## Affected Requirement Objects
+
+    | ID — Title | Action | Status transition |
+
+    | :--- | :--- | :--- |
+
+    | `US-260523-1906-001` — Feed Filter Bar | modified (gains keyword control + keyword
+    predicate on the feed query) | CLOSED -> OPEN (CR promotion, §5.2.2) |
+
+
+    ---
+
+
+    ## Design Changes
+
+    (none) — reuses the existing filter-bar layout and the chip / empty-state conventions
+    (AC-260523-1500-001 / 006 / 007). No new wireframe.
+
+
+    ## Data Model Changes
+
+    (none) — no schema change. Keyword predicate applied at query time over `Article.title`
+    (not null) and `Article.summary` (nullable). DATA_MODEL.md §2.2.
+
+
+    ## Supersede / Versioning
+
+    (none)
+
+
+    ## Scope Impact Assessment
+
+    - **Features affected:** FT-260522-2230-001 (Continuous-Scroll Feed) — `/feed-partial`
+    gains an optional keyword param; the filter bar gains the keyword control.
+
+    - **Features blocked:** (none)
+
+    - **Features unblocked:** (none)
+
+    - **Regression risk:** low — the keyword param is additive and optional; existing
+    filter AC and unfiltered-feed AC must continue to pass when no keyword is set.
+
+    - **Breaking changes:** (none)
+
+
+    ---
+
+    '
+  acceptance_criteria: null
+  relations:
+  - type: CONFIRMED_BY
+    target_id: TEST-260524-0715-001
+  - type: CONFIRMED_BY
+    target_id: TEST-260524-1009-001
+  - type: CONFIRMED_BY
+    target_id: TEST-260524-1029-001
+  - type: CONFIRMED_BY
+    target_id: TEST-260524-1045-001
+  - type: CONFIRMS
+    target_id: US-260523-1906-001
+  - type: FULFILLED_BY
+    target_id: AC-260524-0650-001
+  - type: FULFILLED_BY
+    target_id: AC-260524-0650-002
+  - type: FULFILLED_BY
+    target_id: AC-260524-0650-003
+  - type: FULFILLED_BY
+    target_id: AC-260524-0730-001
 acceptance_criteria:
 - id: AC-260512-2245-001
   project_id: PR-260512-2041-001
@@ -8140,6 +8865,660 @@ acceptance_criteria:
     target_id: CR-260523-0900-004
   - type: FULFILLS
     target_id: FT-260523-0900-001
+- id: AC-260523-1500-001
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-23T15:00:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: A filter bar renders at the top of the right pane with controls for date
+    range, date shortcuts (1d / 1w / 1m), and content selection.
+  status: CLOSED
+  result: PASS
+  priority: HIGH
+  updated_at: '2026-05-24T06:06:01.519642'
+  updated_by: HUMAN
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: '## Description
+
+    Establishes the filter-bar surface introduced by this CR — see CR-260523-1500-001
+    §Change Summary and Affected Requirement Objects. The bar sits above the continuous-scroll
+    feed (FT-260522-2230-001) and exposes the three filter controls listed in the
+    title. The bar is always visible; controls in their default (empty) state apply
+    no filter.
+
+
+    ## Test Instructions
+
+
+    1. Open the app on the main feed view.
+
+    2. Verify a filter bar is visible at the top of the right pane, above the feed
+    list.
+
+    3. Verify the bar shows three controls: a date-range picker, three shortcut chips
+    (1d / 1w / 1m), and a content-selection control (button or dropdown trigger).
+
+    4. Verify that with no filter set, the feed displays its default (all sources,
+    all time, newest-first).
+
+    '
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: CR-260523-1500-001
+  - type: FULFILLS
+    target_id: US-260523-1906-001
+- id: AC-260523-1500-002
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-23T15:00:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: Choosing an explicit start and end date (max 1-year span) in the date-range
+    picker constrains the feed to articles with `published_at` within the selected
+    window.
+  status: CLOSED
+  result: PASS
+  priority: HIGH
+  updated_at: '2026-05-24T06:05:59.614943'
+  updated_by: HUMAN
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: '## Description
+
+    Date-range filter — explicit-window mode. The picker accepts a start and end date
+    and enforces a maximum window of 365 days; selecting an end date more than one
+    year after the start is rejected inline. The feed re-renders to show only articles
+    with `published_at` in [start, end] (inclusive on both ends).
+
+
+    ## Test Instructions
+
+
+    1. Open the date-range picker.
+
+    2. Select a start date 7 days before today and an end date of today. Apply.
+
+    3. Verify the feed re-renders and shows only articles whose `published_at` falls
+    within the selected window.
+
+    4. Re-open the picker and attempt to set an end date more than 365 days after
+    the start. Verify an inline error appears (e.g. "Range cannot exceed 1 year")
+    and the apply action is blocked.
+
+    5. Clear the date range. Verify the feed returns to its default (no date constraint).
+
+    '
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: CR-260523-1500-001
+  - type: FULFILLS
+    target_id: US-260523-1906-001
+- id: AC-260523-1500-004
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-23T15:00:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: The content-selection control opens a dropdown listing every news source
+    grouped by Group → Subgroup → Source; clicking a row toggles its selection and
+    the dropdown stays open across multiple toggles.
+  status: CLOSED
+  result: PASS
+  priority: HIGH
+  updated_at: '2026-05-24T06:05:56.567275'
+  updated_by: HUMAN
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: '## Description
+
+    Content-selection filter — multi-select dropdown. Mirrors the sidebar tree (Group
+    → Subgroup → Source). Each row has a toggle affordance; clicking selects (checked
+    visual state), clicking again deselects. Selecting a Group or Subgroup row implicitly
+    includes every Source beneath it. The dropdown stays open across multiple toggles
+    so the user can build a multi-select in one gesture; it closes on click-outside
+    or via an explicit Done affordance. Selection state persists when the dropdown
+    is re-opened.
+
+
+    ## Test Instructions
+
+
+    1. Open the content-selection dropdown.
+
+    2. Verify the list is rendered as Group → Subgroup → Source rows in sidebar order.
+
+    3. Click a Source row. Verify it enters a selected (checked) visual state and
+    the dropdown stays open.
+
+    4. Click two more Source rows. Verify all three are now selected and the dropdown
+    is still open.
+
+    5. Click one of the selected rows. Verify it deselects (and the other two stay
+    selected).
+
+    6. Click outside the dropdown. Verify the dropdown closes and the feed re-renders
+    to show only articles from the selected sources.
+
+    7. Re-open the dropdown. Verify the prior selection state is preserved.
+
+    8. Select a Group row containing multiple Sources. Verify every Source beneath
+    the Group is implicitly included in the feed predicate (the feed shows articles
+    from all of them).
+
+    '
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: CR-260523-1500-001
+  - type: FULFILLS
+    target_id: US-260523-1906-001
+- id: AC-260523-1500-005
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-23T15:00:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: Date filter and content-selection filter compose — the feed shows only articles
+    satisfying BOTH predicates (logical AND).
+  status: CLOSED
+  result: PASS
+  priority: HIGH
+  updated_at: '2026-05-24T06:05:54.834327'
+  updated_by: HUMAN
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: '## Description
+
+    Cross-filter composition. When both a date filter and a content-selection filter
+    are active, the feed shows articles satisfying (date predicate) AND (content predicate).
+    Applying or clearing one filter does not reset the other.
+
+
+    ## Test Instructions
+
+
+    1. Apply the "1w" date shortcut.
+
+    2. Open the content-selection dropdown, select two specific Sources, and close
+    the dropdown.
+
+    3. Verify the feed shows only articles from those two Sources AND published within
+    the last 7 days.
+
+    4. Clear the date shortcut. Verify the content-selection filter remains active
+    (only those two Sources) and the date constraint is removed.
+
+    5. Re-apply "1d", then clear the content-selection filter. Verify the feed shows
+    all sources within the last 24 hours.
+
+    '
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: CR-260523-1500-001
+  - type: FULFILLS
+    target_id: US-260523-1906-001
+- id: AC-260523-1501-001
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-23T15:01:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: Clicking a Group title in the sidebar scopes the right-pane feed to articles
+    whose source belongs to that Group (directly or via any Subgroup beneath).
+  status: CLOSED
+  result: PASS
+  priority: HIGH
+  updated_at: '2026-05-24T06:05:36.591653'
+  updated_by: HUMAN
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: '## Description
+
+    Sidebar-as-feed-scope — Group level. The Group row gains a click affordance on
+    its title text (in addition to its existing chevron expand/collapse — the chevron''s
+    behaviour is unchanged). Clicking the title selects the Group as the active feed
+    scope; the right-pane feed re-renders to show only articles from sources beneath
+    that Group (whether directly attached to the Group or routed via one of its Subgroups).
+    Clicking the active Group title again clears the scope.
+
+
+    ## Test Instructions
+
+
+    1. In the sidebar, click the title text of a Group that has at least one Source
+    beneath it (directly or via a Subgroup).
+
+    2. Verify the Group row enters an active visual state.
+
+    3. Verify the right-pane feed re-renders to show only articles from sources beneath
+    that Group.
+
+    4. Click the Group title again. Verify the active state clears and the feed returns
+    to "All sources".
+
+    5. Verify the chevron expand/collapse still works independently of the title click.
+
+    '
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: CR-260523-1501-001
+  - type: FULFILLS
+    target_id: US-260523-1906-002
+- id: AC-260523-1501-002
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-23T15:01:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: Clicking a Subgroup title in the sidebar scopes the right-pane feed to articles
+    whose source belongs to that Subgroup only.
+  status: CLOSED
+  result: PASS
+  priority: HIGH
+  updated_at: '2026-05-24T06:05:38.292921'
+  updated_by: HUMAN
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: '## Description
+
+    Sidebar-as-feed-scope — Subgroup level. Same affordance as the Group case but
+    narrower. The Subgroup row''s title becomes clickable; clicking it scopes the
+    feed to only its member sources (excluding sibling Subgroups under the same Group).
+    The parent Group row does NOT enter the active state when a child Subgroup is
+    selected.
+
+
+    ## Test Instructions
+
+
+    1. Expand a Group that contains at least one Subgroup with member sources.
+
+    2. Click the Subgroup title.
+
+    3. Verify the Subgroup row enters an active visual state and the parent Group
+    row does NOT enter the active state.
+
+    4. Verify the feed shows only articles from sources beneath that Subgroup.
+
+    5. Click the Subgroup title again. Verify the active state clears and the feed
+    returns to default scope.
+
+    '
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: CR-260523-1501-001
+  - type: FULFILLS
+    target_id: US-260523-1906-002
+- id: AC-260523-1501-004
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-23T15:01:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: Sidebar scope and filter-bar predicates compose — the visible feed satisfies
+    (sidebar scope) AND (date filter) AND (content-selection filter).
+  status: CLOSED
+  result: PASS
+  priority: HIGH
+  updated_at: '2026-05-24T06:05:40.151442'
+  updated_by: HUMAN
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: '## Description
+
+    Cross-CR integration AC. Asserts that the sidebar scope (CR-260523-1501-001) and
+    the top-of-pane filter bar (CR-260523-1500-001) combine as additional `AND` predicates
+    on the feed query; neither overrides the other. This AC FULFILLS both CRs per
+    §3.4 multi-FULFILLS — it asserts behaviour that only emerges when both CRs land,
+    so it belongs to both verification scopes.
+
+
+    ## Test Instructions
+
+
+    1. Click a Group title in the sidebar (CR-260523-1501-001 selects the Group as
+    scope).
+
+    2. Open the filter bar''s content-selection dropdown and additionally select one
+    specific Source that lives beneath that Group.
+
+    3. Apply the "1w" date shortcut.
+
+    4. Verify the feed shows only articles that satisfy ALL three: belong to the selected
+    Source (which is within the selected Group) AND are within the last 7 days.
+
+    5. Clear the date shortcut. Verify the sidebar scope and the source filter both
+    remain active and the feed updates accordingly.
+
+    6. Click "All sources". Verify the Group scope clears but the source filter (filter-bar)
+    persists.
+
+    '
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: CR-260523-1500-001
+  - type: FULFILLS
+    target_id: CR-260523-1501-001
+  - type: FULFILLS
+    target_id: FT-260522-2230-001
+- id: AC-260523-1630-001
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-23T16:30:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: When a date shortcut (1d / 1w / 1m) is active in the filter bar, every per-source
+    unread pill in the sidebar shows the count of unread articles whose `published_at`
+    falls within that relative window.
+  status: CLOSED
+  result: PASS
+  priority: HIGH
+  updated_at: '2026-05-24T06:05:25.692884'
+  updated_by: HUMAN
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: '## Description
+
+    Per-source pill narrows to the active date shortcut. Source rows whose unread
+    count drops to zero under the predicate still render (sidebar contract from US-260513-0010-001:
+    every source is listed). Muted source rows continue to hide their count per the
+    existing muted visual.
+
+
+    ## Test Instructions
+
+
+    1. Pick a source whose pre-filter unread count is non-zero and note the value.
+
+    2. Click the `1w` chip in the filter bar.
+
+    3. Verify the same source row''s pill updates to a value ≤ the noted count, and
+    that the new value equals the count of unread articles from that source published
+    in the last 7 days.
+
+    4. Click the active `1w` chip again to clear it. Verify the pill returns to the
+    original value.
+
+    5. Repeat with `1d` and `1m`; verify the values are non-decreasing as the window
+    widens (1d ≤ 1w ≤ 1m ≤ unfiltered).
+
+    '
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: CR-260523-1630-001
+  - type: FULFILLS
+    target_id: US-260513-0010-001
+- id: AC-260523-1630-002
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-23T16:30:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: When a custom date range is active in the filter bar (start / end via the
+    range picker), every per-source unread pill reflects unread articles whose `published_at`
+    falls within that range.
+  status: CLOSED
+  result: PASS
+  priority: HIGH
+  updated_at: '2026-05-24T06:05:27.701109'
+  updated_by: HUMAN
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: '## Description
+
+    Same as AC-260523-1630-001 but for explicit start / end dates. Range is inclusive
+    on both bounds (matches the feed behaviour in AC-260523-1500-002). Shortcut and
+    custom-range modes are mutually exclusive (already enforced by CR-260523-1500-001);
+    only the active mode is applied.
+
+
+    ## Test Instructions
+
+
+    1. Open the custom date-range picker and select a range covering the past 3 days.
+    Apply.
+
+    2. Verify every per-source pill in the sidebar updates to the count of unread
+    articles from that source published within the selected window.
+
+    3. Clear the range. Verify the pills return to the unfiltered values.
+
+    '
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: CR-260523-1630-001
+  - type: FULFILLS
+    target_id: US-260513-0010-001
+- id: AC-260523-1630-003
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-23T16:30:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: Recursive folder unread sums and the All-sources total in the sidebar honour
+    the same date predicate — the displayed pill at every tree level equals the sum
+    of the filtered per-source counts beneath it.
+  status: CLOSED
+  result: PASS
+  priority: HIGH
+  updated_at: '2026-05-24T06:05:29.461056'
+  updated_by: HUMAN
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: '## Description
+
+    Bottom-up aggregation: folder pill = sum of every descendant source''s filtered
+    pill (plus every descendant sub-folder''s filtered pill), excluding muted-cascade
+    rows. The All-sources virtual entry at the top mirrors `total_unread_excluding_muted`
+    under the same predicate. Holds at every tree depth 1…5 (US-260522-2116-003 tree-rendering
+    contract preserved under filter).
+
+
+    ## Test Instructions
+
+
+    1. With no filter active, note the per-source pill values, the folder pill values
+    at every depth, and the All-sources total.
+
+    2. Apply the `1d` shortcut.
+
+    3. Verify, for at least one folder at depth ≥ 2, that the folder''s pill equals
+    the sum of every descendant source''s NEW pill plus every descendant folder''s
+    NEW pill (muted-cascade excluded as before).
+
+    4. Verify the All-sources pill equals the sum of every top-level folder pill plus
+    every Ungrouped source pill under the same predicate.
+
+    '
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: CR-260523-1630-001
+  - type: FULFILLS
+    target_id: US-260522-2116-003
+- id: AC-260524-0650-001
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-24T06:50:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: Typing a word in the keyword input and pressing Enter adds it as an active
+    keyword filter; the feed then shows only articles whose title or summary contains
+    that word (case-insensitive substring). Multiple keywords can be added.
+  status: CLOSED
+  result: PASS
+  priority: HIGH
+  updated_at: '2026-05-24T10:31:06.290065'
+  updated_by: HUMAN
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: '## Description
+
+
+    Keyword control introduced by CR-260524-0644-001 (see its Change Summary). The
+
+    input sits in the filter bar (US-260523-1906-001) beside the date and
+
+    content-selection controls. Typing a word and pressing Enter adds it as an active
+
+    keyword (a removable chip); the feed is then constrained to articles whose
+
+    `Article.title` or `Article.summary` contains that word as a case-insensitive
+
+    substring. Several keywords may be added (they combine via the Any/All toggle
+    —
+
+    AC-260524-0650-004). No article body is stored (DATA_MODEL.md §2.2), so title
+    +
+
+    summary is the full match scope.
+
+
+    ## Test Instructions
+
+
+    1. Open the app on the main feed view.
+
+
+    2. Verify the filter bar shows a keyword input ("Add word + Enter") next to the
+    date and content-selection controls.
+
+
+    3. Type a word you know appears in some articles'' titles or summaries (lowercase)
+    and press Enter.
+
+
+    4. Verify the word is added as a chip and the feed re-renders to show only articles
+    whose title or summary contains that word.
+
+
+    5. Click the chip''s × to remove it, then type the same word in CAPITALS and press
+    Enter. Verify the same articles match (matching is case-insensitive).
+
+
+    6. Type a second, different word that appears in other articles and press Enter.
+    Verify a second chip appears and stays.
+
+    '
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: CR-260524-0644-001
+  - type: FULFILLS
+    target_id: TEST-260524-0715-001
+  - type: FULFILLS
+    target_id: TEST-260524-1009-001
+  - type: FULFILLS
+    target_id: TEST-260524-1029-001
+  - type: FULFILLS
+    target_id: US-260523-1906-001
+- id: AC-260524-0650-002
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-24T06:50:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: Each active keyword shows as its own removable chip; the keyword group composes
+    (AND) with the date and content-selection filters; a chip's × removes only that
+    keyword and Clear all removes every filter.
+  status: CLOSED
+  result: PASS
+  priority: HIGH
+  updated_at: '2026-05-24T10:31:10.639313'
+  updated_by: HUMAN
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: '## Description
+
+
+    Cross-filter composition and chip affordance for the keyword filter. Each active
+
+    keyword surfaces as its own removable chip, consistent with AC-260523-1500-006.
+
+    The keyword group composes with a date and/or content-selection filter via logical
+
+    AND (an article must satisfy the keyword predicate AND the other predicates).
+    A
+
+    chip''s × removes only that one keyword; Clear all removes every filter at once.
+
+    (How multiple keywords combine *with each other* is AC-260524-0650-004.)
+
+
+    ## Test Instructions
+
+
+    1. Apply the "1w" date shortcut.
+
+
+    2. Type a keyword present in some recent articles and press Enter.
+
+
+    3. Verify the feed shows only articles that BOTH fall within the last 7 days AND
+    contain the keyword in title or summary.
+
+
+    4. Verify the keyword appears as its own removable chip alongside the "Last 1w"
+    chip.
+
+
+    5. Add a second keyword (press Enter). Verify a second keyword chip appears.
+
+
+    6. Click the first keyword chip''s ×. Verify only that keyword is removed; the
+    second keyword chip and the "1w" date filter stay active and the feed updates.
+
+
+    7. Click "Clear all". Verify every keyword chip and the date filter are removed
+    and the feed returns to its default.
+
+    '
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: CR-260524-0644-001
+  - type: FULFILLS
+    target_id: TEST-260524-0715-001
+  - type: FULFILLS
+    target_id: TEST-260524-1009-001
+  - type: FULFILLS
+    target_id: TEST-260524-1029-001
+  - type: FULFILLS
+    target_id: US-260523-1906-001
 - id: AC-260512-2300-002
   project_id: PR-260512-2041-001
   type: AC
@@ -8756,6 +10135,437 @@ acceptance_criteria:
     target_id: CR-260523-0900-003
   - type: FULFILLS
     target_id: FT-260512-2245-003
+- id: AC-260523-1500-003
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-23T15:00:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: Clicking a date-shortcut chip (1d / 1w / 1m) applies a relative date window
+    ending at the current moment; chips are mutually exclusive.
+  status: CLOSED
+  result: PASS
+  priority: MED
+  updated_at: '2026-05-24T06:05:53.082956'
+  updated_by: HUMAN
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: '## Description
+
+    Date-range filter — shortcut mode. Each chip applies a relative window: 1d = last
+    24 h, 1w = last 7 days, 1m = last 30 days, computed from the current moment. Chips
+    are mutually exclusive — clicking one deselects the others. Clicking the active
+    chip again clears the shortcut. Shortcut chips and the explicit date-range picker
+    share the same underlying date predicate (setting one clears the other).
+
+
+    ## Test Instructions
+
+
+    1. Click the "1d" chip.
+
+    2. Verify the chip enters an active state and the feed shows only articles published
+    within the last 24 hours.
+
+    3. Click the "1w" chip. Verify "1d" is no longer active, "1w" is active, and the
+    feed shows articles within the last 7 days.
+
+    4. Click the active "1w" chip again. Verify the chip clears and the feed returns
+    to its default (no date constraint).
+
+    5. Apply "1m", then open the explicit date-range picker and select a custom range.
+    Verify "1m" deselects when the custom range is applied.
+
+    '
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: CR-260523-1500-001
+  - type: FULFILLS
+    target_id: US-260523-1906-001
+- id: AC-260523-1500-006
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-23T15:00:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: Active filters are surfaced as removable chips in the filter bar; each chip's
+    × clears that single filter, and a "Clear all" affordance clears every active
+    filter at once.
+  status: CLOSED
+  result: PASS
+  priority: MED
+  updated_at: '2026-05-24T06:05:51.270559'
+  updated_by: HUMAN
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: '## Description
+
+    Active-filter affordances. Each applied filter (date range, date shortcut, or
+    each selected Group / Subgroup / Source) is summarised as a removable chip in
+    the filter bar. Clicking a chip''s × clears only that filter. A "Clear all" link/button
+    clears every active filter and returns the feed to its default.
+
+
+    ## Test Instructions
+
+
+    1. Apply "1w" and select two Source rows in the content-selection dropdown.
+
+    2. Verify three chips render in the filter bar (one for the date shortcut, one
+    per selected Source).
+
+    3. Click the × on the date chip. Verify only the date constraint is cleared; the
+    two source filters remain active.
+
+    4. Click "Clear all". Verify every chip is removed and the feed returns to its
+    default state.
+
+    '
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: CR-260523-1500-001
+  - type: FULFILLS
+    target_id: US-260523-1906-001
+- id: AC-260523-1500-007
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-23T15:00:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: When the active filter combination yields zero articles, the feed area shows
+    an empty-state message "No articles match these filters" with a "Clear filters"
+    affordance.
+  status: CLOSED
+  result: PASS
+  priority: MED
+  updated_at: '2026-05-24T06:05:49.485466'
+  updated_by: HUMAN
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: '## Description
+
+    Error/empty state — filter intersection empty. Distinct from the default empty-feed
+    state (which signals "no articles ingested yet"). Triggered when the feed query
+    returns zero rows under an active filter combination. The empty-state copy explicitly
+    names the filter context so the user understands why the list is empty and offers
+    a one-click escape.
+
+
+    ## Test Instructions
+
+
+    1. Apply a date range covering a window with no articles (e.g. a far-future range).
+
+    2. Verify the feed area shows the message "No articles match these filters" and
+    a "Clear filters" link/button.
+
+    3. Click "Clear filters". Verify every active filter is removed and the feed returns
+    to its default state (showing articles, since they exist outside the filtered
+    window).
+
+    '
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: CR-260523-1500-001
+  - type: FULFILLS
+    target_id: US-260523-1906-001
+- id: AC-260523-1501-003
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-23T15:01:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: Only one sidebar scope (Group, Subgroup, or Source row) is active at a time;
+    selecting a new scope replaces the prior one without manual clearing.
+  status: CLOSED
+  result: PASS
+  priority: MED
+  updated_at: '2026-05-24T06:05:41.985553'
+  updated_by: HUMAN
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: '## Description
+
+    Sidebar selection exclusivity. The Group/Subgroup click introduced by this CR
+    shares the existing single-active-row contract with the source-row click affordance
+    (FT-260512-2245-003 sidebar AC). Clicking any row at any level transfers the active
+    state from whichever row was previously active.
+
+
+    ## Test Instructions
+
+
+    1. Click a Source row. Verify the Source row is active.
+
+    2. Click a Group title. Verify the Source row''s active state clears and the Group
+    row becomes active.
+
+    3. Click a Subgroup title under that Group. Verify the Group row''s active state
+    clears and the Subgroup becomes active.
+
+    4. Click "All sources" (or the equivalent clear affordance). Verify no row is
+    active and the feed returns to default scope.
+
+    '
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: CR-260523-1501-001
+  - type: FULFILLS
+    target_id: US-260523-1906-002
+- id: AC-260523-1501-005
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-23T15:01:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: When the active sidebar scope yields zero articles, the feed area shows an
+    empty-state message naming the scope (e.g. "No articles in {Group or Subgroup
+    name}").
+  status: CLOSED
+  result: PASS
+  priority: MED
+  updated_at: '2026-05-24T06:05:44.800592'
+  updated_by: HUMAN
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: '## Description
+
+    Error/empty state — empty sidebar scope. Distinct from the filter-bar empty state
+    (AC-260523-1500-007). Triggered when the user selects a Group or Subgroup whose
+    member sources currently have zero matching articles (either no articles at all,
+    or none satisfying an additionally-active filter-bar predicate). The message names
+    the scope so the user understands why the list is empty.
+
+
+    ## Test Instructions
+
+
+    1. Select a Group or Subgroup that has no articles (or apply an additional filter-bar
+    predicate that excludes all its articles).
+
+    2. Verify the feed area shows the message "No articles in {Group or Subgroup name}"
+    (with the actual name substituted).
+
+    3. Click the active Group/Subgroup title to clear the scope. Verify the feed returns
+    to default scope (All sources).
+
+    '
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: CR-260523-1501-001
+  - type: FULFILLS
+    target_id: US-260523-1906-002
+- id: AC-260523-1630-004
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-23T16:30:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: The content-selection multi-select and the sidebar folder scope do NOT affect
+    sidebar unread counts — only the date predicate does.
+  status: CLOSED
+  result: PASS
+  priority: MED
+  updated_at: '2026-05-24T06:05:31.701842'
+  updated_by: HUMAN
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: '## Description
+
+    Scope guard. Selecting sources in the filter-bar content dropdown (CR-260523-1500-001
+    AC-260523-1500-004) narrows the feed only; the sidebar continues to list every
+    source with its full (date-filtered) unread count. Selecting a Group / Subgroup
+    title in the sidebar (CR-260523-1501-001) scopes the feed only; sidebar counts
+    are unchanged by the sidebar scope.
+
+
+    ## Test Instructions
+
+
+    1. Apply `1w` in the filter bar; note the per-source pill values.
+
+    2. Open the content-selection dropdown and select two specific sources. Close
+    the dropdown.
+
+    3. Verify the sidebar pills are unchanged by the content selection — the previously-noted
+    values still display (the feed narrows but the sidebar counts do not).
+
+    4. Click a Group title to scope the feed to that Group. Verify sidebar pills are
+    still the date-filtered values (no further narrowing by sidebar scope).
+
+    5. Clear all filters. Verify pills return to unfiltered totals.
+
+    '
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: CR-260523-1630-001
+  - type: FULFILLS
+    target_id: US-260513-0010-001
+  - type: FULFILLS
+    target_id: US-260522-2116-003
+- id: AC-260524-0650-003
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-24T06:50:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: Pressing Enter on a blank or whitespace-only keyword adds no chip and applies
+    no constraint; an active keyword matching zero articles shows the filter empty-state
+    "No articles match these filters".
+  status: CLOSED
+  result: PASS
+  priority: MED
+  updated_at: '2026-05-24T10:31:14.559742'
+  updated_by: HUMAN
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: '## Description
+
+
+    Error / empty state for the keyword filter (interactive US -> error-state AC,
+
+    §3.8.2). Pressing Enter on a blank or whitespace-only input adds no keyword chip
+
+    and leaves the feed unconstrained by keyword. An active keyword that matches no
+
+    article title/summary — alone or combined with other filters — yields the existing
+
+    filter empty-state (AC-260523-1500-007 copy) with its Clear affordance.
+
+
+    ## Test Instructions
+
+
+    1. Click into the keyword input, type only spaces, and press Enter.
+
+
+    2. Verify no chip is added and the feed is not constrained by a keyword (behaves
+    as if no keyword is set).
+
+
+    3. Type a string that appears in no article (e.g. "zzzqqx") and press Enter.
+
+
+    4. Verify a chip is added and the feed area shows the empty-state message "No
+    articles match these filters" with a "Clear filters" affordance.
+
+
+    5. Click "Clear filters". Verify the keyword chip and any other filters clear
+    and the feed returns to showing articles.
+
+    '
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: CR-260524-0644-001
+  - type: FULFILLS
+    target_id: TEST-260524-0715-001
+  - type: FULFILLS
+    target_id: TEST-260524-1009-001
+  - type: FULFILLS
+    target_id: TEST-260524-1029-001
+  - type: FULFILLS
+    target_id: US-260523-1906-001
+- id: AC-260524-0730-001
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-24T07:30:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: The keyword Match any / Match all toggle controls how multiple active keywords
+    combine — Match any shows articles matching at least one keyword (OR), Match all
+    shows only articles matching every keyword (AND). The toggle appears once two
+    or more keywords are active.
+  status: CLOSED
+  result: PASS
+  priority: MED
+  updated_at: '2026-05-24T10:45:12.530401'
+  updated_by: HUMAN
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: '## Description
+
+
+    Combine-mode control for multiple keywords (CR-260524-0644-001 scope change per
+
+    TEST-260524-0715-001). When two or more keywords are active, a Match any / Match
+    all toggle in
+
+    the keyword group sets how they combine: Match any = OR (article matches if its
+    title or
+
+    summary contains at least one active keyword), Match all = AND (article matches
+    only if
+
+    it contains every active keyword). Default is Match any. The toggle is hidden
+    while fewer
+
+    than two keywords are active (it has no effect then). The keyword group as a whole
+
+    still composes via AND with the date and content-selection filters (AC-260524-0650-002).
+
+
+    ## Test Instructions
+
+
+    1. On the main feed, add two keywords that each appear in some articles (type
+    each, press Enter). Note roughly how many articles show.
+
+
+    2. Verify a "Match any / Match all" toggle is now visible in the keyword area,
+    with "Match any" selected by default.
+
+
+    3. With "Match any" selected, verify the feed shows articles that contain EITHER
+    keyword (the broader set).
+
+
+    4. Click "Match all". Verify the feed narrows to only articles that contain BOTH
+    keywords (a smaller or equal set).
+
+
+    5. Click "Match any" again. Verify the feed widens back to the either-keyword
+    set.
+
+
+    6. Remove one keyword (chip ×) so only one remains. Verify the Match any / Match
+    all toggle disappears.
+
+    '
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: CR-260524-0644-001
+  - type: FULFILLS
+    target_id: TEST-260524-1009-001
+  - type: FULFILLS
+    target_id: TEST-260524-1029-001
+  - type: FULFILLS
+    target_id: TEST-260524-1045-001
+  - type: FULFILLS
+    target_id: US-260523-1906-001
 - id: AC-260522-2118-019
   project_id: PR-260512-2041-001
   type: AC

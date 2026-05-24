@@ -160,6 +160,8 @@ def build_feed_view(
     source_ids: Optional[list[str]] = None,
     folder_ids: Optional[list[str]] = None,
     scope_folder_id: Optional[str] = None,
+    keywords: Optional[list[str]] = None,
+    keyword_mode: str = "any",
 ) -> dict:
     """Build the feed payload.
 
@@ -172,11 +174,29 @@ def build_feed_view(
     Explicit source-filtered views ignore the cascade (mirror of FT04 mute
     behaviour).
 
-    Filter parameters (CR-260523-1500-001 / CR-260523-1501-001):
+    Filter parameters (CR-260523-1500-001 / CR-260523-1501-001 / CR-260524-0644-001):
       - `from_date` / `to_date`: ISO bounds on `Article.published_at`.
       - `source_ids` / `folder_ids`: filter-bar content multi-select.
       - `scope_folder_id`: sidebar Group/Subgroup scope.
+      - `keywords`: list of case-insensitive substrings on title/summary; each
+        active keyword is a removable chip. They combine via `keyword_mode`
+        ("any" = OR, "all" = AND); blank/duplicate entries are dropped
+        (CR-260524-0644-001 AC-260524-0650-001/003).
+      - `keyword_mode`: "any" (OR, default) or "all" (AND) — how the keywords
+        combine with each other (AC-260524-0650-004).
     """
+    keyword_mode = "all" if keyword_mode == "all" else "any"
+    norm_keywords: list[str] = []
+    _seen: set[str] = set()
+    for _kw in keywords or []:
+        _kw = (_kw or "").strip()
+        if not _kw:
+            continue
+        _low = _kw.lower()
+        if _low in _seen:
+            continue
+        _seen.add(_low)
+        norm_keywords.append(_kw)
     articles = models.list_articles(
         source_id=source_id,
         limit=page_size,
@@ -186,6 +206,8 @@ def build_feed_view(
         source_ids=source_ids,
         folder_ids=folder_ids,
         scope_folder_id=scope_folder_id,
+        keywords=norm_keywords,
+        keyword_mode=keyword_mode,
     )
     total = models.count_articles(
         source_id=source_id,
@@ -194,6 +216,8 @@ def build_feed_view(
         source_ids=source_ids,
         folder_ids=folder_ids,
         scope_folder_id=scope_folder_id,
+        keywords=norm_keywords,
+        keyword_mode=keyword_mode,
     )
     next_after = articles[-1]["published_at"] if articles else None
     has_more = len(articles) >= page_size
@@ -220,6 +244,7 @@ def build_feed_view(
             to_date,
             source_ids,
             folder_ids,
+            norm_keywords,
         ]
     )
 
@@ -258,6 +283,8 @@ def build_feed_view(
         "filter_to": to_date,
         "filter_source_ids": source_ids or [],
         "filter_folder_ids": folder_ids or [],
+        "filter_keywords": norm_keywords,
+        "filter_keyword_mode": keyword_mode,
         "page_size": page_size,
         "after": after,
         "next_after": next_after,

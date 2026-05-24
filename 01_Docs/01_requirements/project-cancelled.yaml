@@ -1,7 +1,7 @@
 file: project-cancelled.yaml
 status_filter:
 - CANCELLED
-exported_at: '2026-05-23T17:44:13.215681+00:00'
+exported_at: '2026-05-24T10:47:04.435726+00:00'
 project_charters: []
 epics:
 - id: EP-260512-2230-002
@@ -215,7 +215,31 @@ orphans:
   - type: FULFILLED_BY
     target_id: AC-260523-1501-005
 tests: []
-bugs: []
+bugs:
+- id: BUG-260524-0650-001
+  project_id: PR-260512-2041-001
+  type: BUG
+  created_at: '2026-05-24T06:50:57.260612'
+  created_by: HUMAN
+  cancelled_at: '2026-05-24T07:01:30.832863'
+  locked: true
+  title: Double bug in filter titles and sources selection
+  status: CANCELLED
+  priority: HIGH
+  updated_at: '2026-05-24T07:01:30.832863'
+  updated_by: HUMAN
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: "Bug 1: when selecting the sources and title selection filter from the right\
+    \ pane. I should be able to flag and unflag stuff only, wheras now it highliths\
+    \ stuff in blue but does not even make sens. currently it is not possible to flag\
+    \ and unflag. \n\nBug2: when i pick entire titles or simple source in left pane,\
+    \ the filter from right pane should automatrically flag only the content inside\
+    \ the title and the title itsel\n\n\n![2 bugs related to filter and content selection](01_docs/04_content/images/2\
+    \ bugs related to filter and content selection.png)"
+  acceptance_criteria: null
+  relations: []
 change_requests:
 - id: CR-260523-0842-001
   project_id: PR-260512-2041-001

@@ -112,6 +112,8 @@ async def feed_partial(
     source_ids: Optional[str] = Query(None, description="Comma-separated source ids (filter bar multi-select)"),
     folder_ids: Optional[str] = Query(None, description="Comma-separated folder ids (filter bar multi-select)"),
     scope_folder_id: Optional[str] = Query(None, description="Sidebar Group/Subgroup scope"),
+    keyword: Optional[list[str]] = Query(None, description="Keyword substring(s) on title/summary; repeatable (CR-260524-0644-001)"),
+    keyword_mode: str = Query("any", description="How multiple keywords combine: 'any' (OR) | 'all' (AND)"),
 ) -> HTMLResponse:
     """Feed partial endpoint.
 
@@ -122,8 +124,9 @@ async def feed_partial(
     - **Rows-only** (`rows_only=True`): returns just the `.article` rows
       for the next batch starting after the supplied `after` cursor.
 
-    Filter parameters (CR-260523-1500-001 / CR-260523-1501-001):
-      `from`, `to`, `source_ids`, `folder_ids`, `scope_folder_id`.
+    Filter parameters (CR-260523-1500-001 / CR-260523-1501-001 / CR-260524-0644-001):
+      `from`, `to`, `source_ids`, `folder_ids`, `scope_folder_id`, `keyword`
+      (repeatable), `keyword_mode`.
     """
     if source is not None:
         src = models.get_source(source)
@@ -140,6 +143,8 @@ async def feed_partial(
         source_ids=_parse_csv(source_ids),
         folder_ids=_parse_csv(folder_ids),
         scope_folder_id=scope_folder_id,
+        keywords=keyword,
+        keyword_mode=keyword_mode,
     )
     template = "_feed_rows.html" if rows_only else "_feed.html"
     return templates.TemplateResponse(

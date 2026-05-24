@@ -935,6 +935,37 @@ body.is-resizing-pane * {
 .filter-chip-btn .date-range-label,
 .filter-chip-btn .content-select-label { max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
+/* Keyword filter input (CR-260524-0644-001). */
+.filter-keyword-box {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 9px;
+  border: 0.5px solid var(--border-medium);
+  background: var(--bg-primary);
+  border-radius: 12px;
+  transition: border-color 0.12s;
+}
+.filter-keyword-box:focus-within { border-color: var(--text-info); }
+.filter-keyword-box i { font-size: 13px; color: var(--text-secondary); }
+.filter-keyword-box:focus-within i { color: var(--text-info); }
+.filter-keyword-input {
+  font: inherit;
+  font-size: 11.5px;
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  padding: 0;
+  width: 130px;
+  outline: none;
+}
+.filter-keyword-input::placeholder { color: var(--text-tertiary); }
+
+/* Any/All combine toggle — only shown with >=2 active keywords (AC-260524-0650-004). */
+.keyword-mode-toggle { display: inline-flex; align-items: center; gap: 3px; }
+.keyword-mode-toggle[hidden] { display: none; }
+.keyword-mode-btn { padding: 2px 8px; }
+
 .filter-active {
   display: flex;
   align-items: center;
