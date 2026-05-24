@@ -12,6 +12,7 @@
   --text-tertiary: #9a9892;
   --text-info: #1f6feb;
   --text-danger: #b22b2b;
+  --accent-green: #2f8a3e;
   --border-light: rgba(0, 0, 0, 0.07);
   --border-medium: rgba(0, 0, 0, 0.15);
   --radius-md: 8px;
@@ -48,18 +49,39 @@ body {
 .app-title {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 9px;
   font-size: 16px;
   font-weight: 500;
 }
 
-.app-title i { font-size: 20px; color: var(--text-info); }
+/* Revamp: app mark is a dark rounded-square glyph (design revamp.png). */
+.app-mark {
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--text-primary);
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+.app-mark i { font-size: 14px; color: var(--bg-page); }
 
 .header-actions {
   display: flex;
-  gap: 8px;
+  align-items: center;
+  gap: 7px;
   font-size: 12px;
   color: var(--text-secondary);
+}
+
+/* Revamp: green "online" status dot before the last-sync text. */
+.sync-status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent-green);
+  flex-shrink: 0;
 }
 
 .container {
@@ -886,22 +908,57 @@ body.is-resizing-pane * {
 .filter-bar {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding: 8px 0 12px;
-  margin-bottom: 4px;
-  border-bottom: 0.5px solid var(--border-light);
+  gap: 8px;
+  padding: 4px 0 14px;
+  margin-bottom: 6px;
 }
+/* Revamp: the three control groups live inside one rounded bordered toolbar
+   (design revamp.png), separated by thin vertical dividers. */
 .filter-row {
   display: flex;
   align-items: center;
-  gap: 18px;
+  gap: 0;
   flex-wrap: wrap;
+  background: var(--bg-primary);
+  border: 0.5px solid var(--border-medium);
+  border-radius: var(--radius-lg);
+  padding: 7px 14px;
 }
 .filter-group {
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 7px;
+  padding: 0 16px;
 }
+.filter-group:first-of-type { padding-left: 2px; }
+.filter-group:last-of-type { padding-right: 2px; }
+.filter-group + .filter-group { border-left: 0.5px solid var(--border-light); }
+
+/* Revamp: WHEN shortcuts (1d/1w/1m/Custom) as a joined segmented control. */
+.segmented {
+  display: inline-flex;
+  align-items: stretch;
+  border: 0.5px solid var(--border-medium);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--bg-secondary);
+}
+.segmented .filter-chip-btn {
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  padding: 4px 11px;
+}
+.segmented .filter-chip-btn + .filter-chip-btn {
+  border-left: 0.5px solid var(--border-medium);
+}
+.segmented .filter-chip-btn:hover { background: var(--bg-tertiary); }
+.segmented .filter-chip-btn.is-active {
+  background: var(--bg-primary);
+  color: var(--text-info);
+  box-shadow: inset 0 0 0 1px var(--text-info);
+}
+.segmented .filter-chip-btn.is-active i { color: var(--text-info); }
 .filter-label {
   font-size: 10.5px;
   font-weight: 500;
@@ -965,6 +1022,62 @@ body.is-resizing-pane * {
 .keyword-mode-toggle { display: inline-flex; align-items: center; gap: 3px; }
 .keyword-mode-toggle[hidden] { display: none; }
 .keyword-mode-btn { padding: 2px 8px; }
+
+/* CR-260524-1421-001: single Exact toggle (replaces the per-keyword Match case /
+   Match whole word buttons). Blue switch per good.png; on = case-sensitive
+   whole-word match, off = loose case-insensitive substring. */
+.keyword-add-btn { padding: 3px 9px; }
+.keyword-exact-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 4px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.keyword-exact-switch {
+  position: relative;
+  width: 30px;
+  height: 17px;
+  border-radius: 999px;
+  background: var(--bg-tertiary);
+  border: 0.5px solid var(--border-medium);
+  transition: background 0.15s ease, border-color 0.15s ease;
+  flex: 0 0 auto;
+}
+.keyword-exact-knob {
+  position: absolute;
+  top: 1.5px;
+  left: 1.5px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--bg-primary);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+  transition: transform 0.15s ease;
+}
+.keyword-exact-toggle.is-on .keyword-exact-switch {
+  background: var(--text-info);
+  border-color: var(--text-info);
+}
+.keyword-exact-toggle.is-on .keyword-exact-knob { transform: translateX(13px); }
+.keyword-exact-toggle.is-on .keyword-exact-label { color: var(--text-primary); }
+.keyword-exact-label { font-weight: 600; }
+/* Small mode badge inside a committed keyword chip ("Aa" / "W"). */
+.filter-active-chip-mode {
+  display: inline-flex;
+  align-items: center;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1;
+  padding: 2px 4px;
+  border-radius: 5px;
+  border: 0.5px solid currentColor;
+  letter-spacing: 0.3px;
+}
 
 .filter-active {
   display: flex;

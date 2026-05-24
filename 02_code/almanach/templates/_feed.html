@@ -30,14 +30,16 @@
   <div class="filter-row">
     <div class="filter-group filter-date-group">
       <span class="filter-label">When</span>
-      <button type="button" class="filter-chip-btn date-shortcut" data-shortcut="1d">1d</button>
-      <button type="button" class="filter-chip-btn date-shortcut" data-shortcut="1w">1w</button>
-      <button type="button" class="filter-chip-btn date-shortcut" data-shortcut="1m">1m</button>
-      <button type="button" class="filter-chip-btn date-range-btn" id="date-range-btn"
-              title="Pick a custom date range">
-        <i class="ti ti-calendar"></i>
-        <span class="date-range-label">Custom</span>
-      </button>
+      <div class="segmented">
+        <button type="button" class="filter-chip-btn date-shortcut" data-shortcut="1d">1d</button>
+        <button type="button" class="filter-chip-btn date-shortcut" data-shortcut="1w">1w</button>
+        <button type="button" class="filter-chip-btn date-shortcut" data-shortcut="1m">1m</button>
+        <button type="button" class="filter-chip-btn date-range-btn" id="date-range-btn"
+                title="Pick a custom date range">
+          <i class="ti ti-calendar"></i>
+          <span class="date-range-label">Custom</span>
+        </button>
+      </div>
     </div>
     <div class="filter-group filter-content-group">
       <span class="filter-label">Sources</span>
@@ -53,8 +55,22 @@
         <i class="ti ti-search"></i>
         <input type="text" class="filter-keyword-input" id="keyword-input"
                placeholder="Add word + Enter" autocomplete="off"
-               title="Type a word and press Enter to add it as a keyword filter (matched against title or summary, case-insensitive). Add several to combine them.">
+               title="Type a word, then press Enter or click Add (matched against title or summary). Use the Exact match toggle for a whole-word match. Add several to combine them.">
       </div>
+      {# CR-260524-1421-001: single "Exact match" toggle (replaces the per-keyword
+         Match case / Match whole word buttons). On = whole-word match
+         (case-insensitive); off = loose case-insensitive substring. Applies to the
+         next word added. #}
+      <button type="button" class="keyword-exact-toggle" id="keyword-exact-toggle"
+              role="switch" aria-checked="false"
+              title="Exact match: whole word only (case-insensitive). Off = loose match (case-insensitive, anywhere in the text).">
+        <span class="keyword-exact-switch"><span class="keyword-exact-knob"></span></span>
+        <span class="keyword-exact-label">Exact match</span>
+      </button>
+      <button type="button" class="filter-chip-btn keyword-add-btn" id="keyword-add-btn"
+              title="Add the typed word as a keyword filter (same as pressing Enter)">
+        <i class="ti ti-plus"></i><span>Add</span>
+      </button>
       <div class="keyword-mode-toggle" id="keyword-mode-toggle" hidden
            title="How multiple keywords combine">
         <button type="button" class="filter-chip-btn keyword-mode-btn" data-mode="any"

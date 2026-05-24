@@ -2,11 +2,700 @@ file: project-active.yaml
 status_filter:
 - OPEN
 - SOLVED
-exported_at: '2026-05-24T10:47:04.435726+00:00'
-project_charters: []
+exported_at: '2026-05-24T17:58:34.897446+00:00'
+project_charters:
+- id: PC-260512-2041-001
+  project_id: PR-260512-2041-001
+  type: PROJECT_CHARTER
+  created_at: '2026-05-12T20:41:46.592848'
+  created_by: HUMAN
+  cancelled_at: null
+  locked: false
+  title: Almanach
+  status: OPEN
+  parent_id: null
+  children_ids:
+  - EP-260512-2230-001
+  - EP-260512-2230-002
+  - EP-260512-2230-003
+  - EP-260512-2230-004
+  - EP-260512-2230-005
+  updated_at: '2026-05-24T14:51:29.795326'
+  updated_by: HUMAN
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: '# Project Charter — News Aggregator MVP
+
+
+    > A personal multi-source news reader with a clean two-pane interface
+
+
+    | | |
+
+    |---|---|
+
+    | **Project name** | News Aggregator |
+
+    | **Document type** | Project Charter — MVP scope |
+
+    | **Date** | 12 May 2026 |
+
+    | **Status** | Draft v1.0 — pending validation |
+
+    | **Estimated duration** | 3 to 4 weeks for MVP |
+
+
+    ---
+
+
+    ## 1. Context & motivation
+
+
+    Existing news aggregators (Feedly, Inoreader, commercial readers) either come
+    with subscription costs, limited customisation, or require trusting a third party
+    with reading habits. The motivation for this project is to build a personal, self-hosted
+    news aggregator that combines configurable web sources into a single, clean, distraction-free
+    feed.
+
+
+    The application starts with a simple promise: paste any news website URL, and
+    the application figures out how to extract its latest articles, then merges everything
+    into one chronological feed.
+
+
+    ---
+
+
+    ## 2. Objectives
+
+
+    ### Primary objective
+
+
+    Deliver a working MVP that lets a single user add news sources by URL, view a
+    combined feed of recent articles, and click through to read them on the original
+    site.
+
+
+    ### Success criteria
+
+
+    - The application can extract articles from at least 95% of mainstream news sites
+    without manual configuration.
+
+    - Adding a new source takes less than 30 seconds (paste URL, automatic feed discovery).
+
+    - While the app is running, the feed updates automatically in the background every
+    15 to 30 minutes by default (interval configurable from 5 to 120 minutes). Closing
+    the app pauses polling.
+
+    - Running costs stay under 5 USD per month for personal use, even with optional
+    AI features enabled.
+
+    - The interface is fast: the default 50-article feed page loads in under 500 ms
+    (with comfortable headroom up to 200 articles per page for users who increase
+    the page size).
+
+
+    ---
+
+
+    ## 3. Scope
+
+
+    ### In scope (MVP)
+
+
+    - Add, remove, mute, and rename news sources via a simple UI. Each source row
+    in the sidebar reveals a ⋮ action menu on hover with Rename, Mute / Unmute, and
+    Remove. Renaming changes only the displayed label in the sidebar; the canonical
+    URL / hostname used for polling and feed matching is unchanged. Muting hides a
+    source from the combined feed but keeps polling in the background — its articles
+    continue to be ingested and reappear instantly on unmute.
+
+    - Automatic RSS/Atom feed discovery from any homepage URL.
+
+    - Fallback to `sitemap.xml` and `news-sitemap.xml` when no RSS is found.
+
+    - Background polling on a single user-configurable global refresh interval (default
+    20 min, range 5–120 min). All sources poll on the same cadence.
+
+    - Two-pane interface: sources on the left, combined feed on the right. The feed
+    is server-paginated (50 articles per page, newest first, with prev / next controls
+    at the bottom). Sort is fixed to newest-first in MVP — no sort selector.
+
+    - Header bar with the app title and a "last sync · N min ago" indicator; a manual
+    refresh button in the feed header alongside background polling; an "All sources"
+    virtual entry at the top of the sidebar acts as the default view, showing the
+    combined feed and the total unread count.
+
+    - Per-source colour coding (auto-assigned from a curated palette of ~12 distinguishable
+    colours at source-add time; no user override in MVP) and unread counts (clicking
+    an article marks it as read; no manual flip-back).
+
+    - Open original articles in a new browser tab.
+
+
+    ### Out of scope (deferred to later phases)
+
+
+    - Multi-user support, accounts, or authentication.
+
+    - Mobile applications (the web UI should be responsive, but no native apps).
+
+    - Social features, sharing, or commenting.
+
+    - Full-text search across history (Phase 2).
+
+    - AI-generated summaries and topic clustering (Phase 3).
+
+    - Paywalled content handling beyond detection and skipping.
+
+    - Manual mark-as-unread — read state is one-way (click marks an article as read;
+    no UI to flip it back).
+
+    - Always-on / daemonised deployment (Raspberry Pi, VPS, Docker, systemd units)
+    — deferred to Phase 4+; MVP runs only while the user has the app open on a local
+    machine.
+
+    - Multi-mode feed sort (by source, by relevance) — MVP ships newest-first only;
+    the sort dropdown shown in the mockup is dropped.
+
+    - Per-article tags / categories — the tag pills shown in the mockup (Economy,
+    Tech, Markets, etc.) are out of scope for MVP. Categorisation is revisited in
+    Phase 3 (AI-derived) if needed.
+
+
+    ---
+
+
+    ## 4. Technical approach
+
+
+    ### Extraction strategy — waterfall
+
+
+    To minimise both complexity and operational cost, the extraction pipeline applies
+    progressively more expensive methods only when simpler ones fail:
+
+
+    1. **RSS/Atom feed discovery.** Scan the HTML head for alternate links. Try common
+    paths (`/feed`, `/rss`, `/atom.xml`) as fallback. *Free.*
+
+    2. **Sitemap fallback.** Parse `sitemap.xml` or `news-sitemap.xml` when no feed
+    is found. *Free.*
+
+    3. **Structured metadata.** Extract Open Graph and JSON-LD `NewsArticle` schema
+    from article pages. *Free.*
+
+    4. **Readability extraction.** Use Trafilatura or Mozilla Readability for article
+    body extraction. *Free.*
+
+    5. **AI fallback (Phase 3 only).** Call Claude Haiku on pre-cleaned HTML for the
+    few stubborn sites that resist the above. *Estimated cost: well under 1 USD per
+    month for typical use.*
+
+
+    ### Stack proposal
+
+
+    - **Backend:** Python 3.11+ with FastAPI for a small HTTP API.
+
+    - **Feed parsing:** `feedparser` library for RSS/Atom.
+
+    - **Article extraction:** Trafilatura for clean text extraction.
+
+    - **Storage:** SQLite with a single `articles` table, indexed by URL and published
+    date.
+
+    - **Scheduling:** APScheduler for background polling jobs.
+
+    - **Frontend:** server-rendered Jinja2 templates served directly by FastAPI. No
+    build step, no bundler, no SPA framework. Light vanilla JS / HTMX-style partials
+    for the interactive bits (source-add, refresh, mark-as-read).
+
+    - **Optional:** Playwright for JavaScript-heavy sites, used only when static fetch
+    fails.
+
+
+    ### AI integration philosophy
+
+
+    AI is treated as an optional enhancement, not a foundation. The MVP runs entirely
+    without AI calls. AI features are introduced in Phase 3 where they provide clear
+    value (summarisation, classification, cross-source analysis) and always after
+    cleaning the input to keep token costs minimal.
+
+
+    ---
+
+
+    ## 5. Key deliverables
+
+
+    - Functional backend API (add source, list articles, refresh).
+
+    - Frontend web interface matching the validated mockup design.
+
+    - SQLite database schema and migration scripts.
+
+    - Background polling service.
+
+
+    ---
+
+
+    ## 6. Timeline
+
+
+    | Phase | Duration | Deliverables |
+
+    |---|---|---|
+
+    | **Phase 1** | Week 1 | Backend foundations: RSS discovery, feedparser integration,
+    SQLite schema, background polling, basic `/sources` and `/articles` endpoints.
+    |
+
+    | **Phase 2** | Week 2 | Frontend MVP: two-pane interface, source management,
+    combined feed view, article click-through to original site. |
+
+    | **Phase 3** | Week 3 | Polish: per-source filtering, mute toggles, read/unread
+    state, responsive layout, error handling, deployment setup. |
+
+    | **Phase 4** | Week 4 *(optional)* | AI enhancements: on-demand summaries via
+    Claude Haiku, daily digest, basic topic tagging. |
+
+
+    ---
+
+
+    ## 7. Risks & mitigations
+
+
+    ### Sites without RSS or sitemap
+
+
+    A small percentage of modern news sites publish no RSS feed and no public sitemap.
+
+
+    **Mitigation:** fall back to JSON-LD and Open Graph extraction, which covers most
+    cases. For the residual, AI-assisted extraction in Phase 4 is the safety net.
+
+
+    ### Rate limiting and being blocked
+
+
+    Aggressive polling can get the application blocked or rate-limited.
+
+
+    **Mitigation:** respect `robots.txt`, set a polite User-Agent identifying the
+    application, limit to one request per 2 seconds per domain, and cache aggressively
+    to avoid redundant fetches.
+
+
+    ### Paywalled content
+
+
+    Some sources hide content behind paywalls.
+
+
+    **Mitigation:** detect paywall patterns (common selectors, content truncation
+    indicators) and store metadata only, with a clear visual cue in the feed. The
+    application is not designed to bypass paywalls.
+
+
+    ### Scope creep
+
+
+    News aggregators are easy to over-engineer with features like tagging, smart folders,
+    AI summarisation, and so on.
+
+
+    **Mitigation:** ship the MVP first with strict scope, validate the core experience,
+    then add features based on actual personal usage rather than imagined needs.
+
+
+    ---
+
+
+    ## 8. Resources & estimated costs
+
+
+    - **Development:** one developer, part-time, 3 to 4 weeks for MVP.
+
+    - **Hosting (MVP):** runs on a single local machine (developer laptop or workstation).
+    The app polls only while open; closing the app pauses polling. Always-on deployment
+    (RPi, VPS, Docker) is out of scope for MVP and deferred to Phase 4+.
+
+    - **Database:** SQLite, no licensing cost.
+
+    - **AI API budget (Phase 4 only):** 1 to 5 USD per month with Claude Haiku and
+    aggressive caching.
+
+    - **Total estimated running cost:** under 5 USD per month at the high end — no
+    hosting cost in the MVP (local machine only); only the optional Phase 4 AI budget
+    contributes.
+
+
+    # Mockup
+
+    [mockup](01_docs/04_content/html/mockup.html)
+
+    ---
+
+
+    ## 9. Next steps
+
+
+    - [ ] Review and validate this charter.
+
+    - [ ] Confirm remaining technology choices (feedparser, Trafilatura, APScheduler,
+    SQLite — frontend stack already locked to Jinja2 + FastAPI).
+
+    - [ ] Set up the project repository and base scaffolding.
+
+    - [ ] Begin Phase 1 — backend foundations.
+
+
+    ---
+
+
+    *End of document*
+
+    '
+  acceptance_criteria: null
+  relations: []
+  epics:
+  - id: EP-260512-2230-004
+    project_id: PR-260512-2041-001
+    type: EPIC
+    created_at: '2026-05-12T22:35:00'
+    created_by: CLAUDE_CODE
+    cancelled_at: null
+    locked: false
+    title: Feed Reading Experience
+    status: OPEN
+    parent_id: PC-260512-2041-001
+    children_ids:
+    - FT-260522-2050-002
+    - FT-260522-2230-001
+    - FT-260523-0900-001
+    updated_at: '2026-05-24T14:51:29.791327'
+    updated_by: HUMAN
+    approved_by_human: true
+    cancellation_reason: null
+    tags: []
+    body: "# EP04 — Feed Reading Experience\n\n## Feature Navigation Flows\n\n(Features\
+      \ pending — next §5.1.1 round.)\n\n---\n\n## Body\n\nThe reader UI. Two panes:\
+      \ sidebar (sources + \"All sources\" virtual\nentry + unread counts + auto colours)\
+      \ on the left, combined feed\non the right (newest-first, **continuous scroll**\
+      \ — no page nav).\nHeader bar above both panes shows app title plus\n\"last\
+      \ sync · N min ago\" and a manual refresh button. Clicking an\narticle opens\
+      \ it in a new browser tab and marks it as read\n(one-way; charter §3 out-of-scope).\n\
+      \n**Key functional areas:**\n\n- Two-pane layout template + responsive breakpoint\
+      \ at 720px.\n- Sidebar rendering: source rows, active state, muted state visual,\n\
+      \  unread-count pills, \"All sources\" virtual entry at top.\n- Continuous-scroll\
+      \ feed (newest-first, batches of 50, append on\n  scroll-near-bottom — owned\
+      \ by US-260522-2230-003,\n  CR-260522-2101-001 iteration 2).\n- Article row\
+      \ layout: every card uses the same full layout\n  (colour-dot · source · relative-time\
+      \ / bold title / two-line\n  summary) — no compact variant. Per\n  01_Docs/04_content/images/screenshot.png\
+      \ and AC-260522-2231-001\n  (design-fidelity AC under CR-260522-2101-001).\n\
+      - Click-to-read: open new tab, write read_at on Article.\n- Header bar: app\
+      \ title + last-sync indicator + manual refresh\n  button (wires to EP03 manual\
+      \ refresh).\n\n**Out of scope:**\n\n- Multi-mode feed sort (charter §3 — newest-first\
+      \ only).\n- Per-article tag pills (charter §3 out-of-scope).\n- Manual mark-as-unread\
+      \ (charter §3 — read state is one-way).\n- Native mobile apps (responsive web\
+      \ only).\n- Source CRUD (see EP01).\n- Article ingestion / storage (see EP02).\n\
+      - Pagination chrome (prev / next page nav) — removed by\n  CR-260522-2101-001\
+      \ iteration 2 in favour of continuous scroll.\n\n**Reference documents:**\n\n\
+      - UI_SPEC.md §TwoPaneLayout, §Sidebar, §Feed, §Header (to be\n  authored).\n\
+      - 04_content/html/mockup.html (whole-screen reference — pre-CR).\n- 01_Docs/04_content/images/screenshot.png\
+      \ (target design — post-CR\n  iteration 2).\n\n---\n"
+    acceptance_criteria: null
+    relations:
+    - type: CONFIRMED_BY
+      target_id: CR-260522-2101-001
+    - type: CONFIRMED_BY
+      target_id: CR-260523-0900-002
+    - type: CONFIRMED_BY
+      target_id: CR-260523-0900-004
+    features:
+    - id: FT-260522-2050-002
+      project_id: PR-260512-2041-001
+      type: FEATURE
+      created_at: '2026-05-22T20:50:00'
+      created_by: CLAUDE_CODE
+      cancelled_at: null
+      locked: false
+      title: Header Bar Last-Sync Indicator
+      status: OPEN
+      parent_id: EP-260512-2230-004
+      children_ids:
+      - US-260522-2050-003
+      - US-260522-2050-004
+      updated_at: '2026-05-24T14:51:29.781031'
+      updated_by: HUMAN
+      approved_by_human: true
+      cancellation_reason: null
+      tags: []
+      body: '# FT — Header Bar Last-Sync Indicator
+
+
+        ## Wireframes
+
+
+        (Mockup at 04_content/html/mockup.html shows the header area with ''last sync''
+        text + refresh button. §5.1.2 design pass will expand to button loading /
+        completion states.)
+
+
+        ---
+
+
+        ## Body
+
+
+        Minimum decomposition of EP-260512-2230-004 needed to host the AC fix-verifying
+        BUG-260521-2051-001 defects #2 (manual refresh completion feedback) and #3-#4
+        (last-sync persistence + post-refresh re-render). Two stories: (a) the last-sync
+        indicator display itself (reads MAX(`Source.last_polled_at`), partial-refreshes
+        on poll completion), and (b) the manual refresh button (click → backend roundtrip
+        → completion signal).
+
+
+        Does NOT cover the rest of EP-260512-2230-004 (two-pane layout, sidebar rendering,
+        feed pagination, article click-to-read, responsive breakpoint) — those remain
+        in EP04 body as future-feature scope pending separate §5.1.1 rounds.
+
+
+        **Out of scope:**
+
+
+        - Two-pane layout / responsive breakpoint (separate future feature under EP04).
+
+        - Feed pagination + article row layout (separate future feature).
+
+        - Click-to-read mechanism (separate future feature).
+
+        - Sidebar footer ''Updated'' line cleanup — that lives in US-260513-0010-001
+        (EP01) and is BUG-CONFIRMS''d directly.
+
+        - Per-source last_polled_at write — happens upstream in FT-260522-2050-001
+        stories.
+
+
+        **Reference documents:**
+
+
+        - DATA_MODEL.md §1.1 Source (`last_polled_at` read for indicator).
+
+        - UI_SPEC.md §Header (to be authored).
+
+        - 04_content/html/mockup.html (header area reference).
+
+
+        ---
+
+        '
+      acceptance_criteria: null
+      relations:
+      - type: CONFIRMED_BY
+        target_id: CR-260524-1421-001
+      - type: FULFILLED_BY
+        target_id: AC-260522-2050-002
+      - type: FULFILLED_BY
+        target_id: AC-260524-1500-001
+      stories: []
+    - id: FT-260522-2230-001
+      project_id: PR-260512-2041-001
+      type: FEATURE
+      created_at: '2026-05-22T22:30:00'
+      created_by: CLAUDE_CODE
+      cancelled_at: null
+      locked: false
+      title: Continuous-Scroll Feed
+      status: OPEN
+      parent_id: EP-260512-2230-004
+      children_ids:
+      - US-260522-2230-003
+      - US-260523-1906-001
+      - US-260523-1906-002
+      updated_at: '2026-05-24T14:51:29.800626'
+      updated_by: HUMAN
+      approved_by_human: true
+      cancellation_reason: null
+      tags: []
+      body: "# FT — Continuous-Scroll Feed\n\n## Wireframes\n\n- 01_Docs/04_content/images/screenshot.png\
+        \ (target — no\n  pagination chrome anywhere in the feed pane).\n\n---\n\n\
+        ## Body\n\nReplaces the page-based feed (50/page with prev / next nav)\nwith\
+        \ a single continuously-scrolling list. Initial render\nloads the newest 50\
+        \ articles; when the user scrolls within\n~200 px of the bottom, the client\
+        \ requests the next 50 via\n`/feed-partial?after=<published_at>&size=50` and\
+        \ appends.\n\nEnd-state: when an \"after\" fetch returns fewer than `size`\n\
+        articles, the client stops requesting (no more articles).\nThe empty-state\
+        \ message (existing pattern) shows only when\nthe feed is empty on first render.\n\
+        \nActive-source filter (sidebar source-row click) and manual\nrefresh are\
+        \ unchanged — both rebuild the feed from the top\n(page 1 equivalent) and\
+        \ restart the scroll cycle.\n\n**Out of scope:**\n\n- Reverse-scroll (loading\
+        \ newer-than-top articles in-place) —\n  a manual refresh / All-sources click\
+        \ resets to top.\n- Skeleton placeholders — a lightweight inline spinner at\
+        \ the\n  bottom-most edge of the list suffices.\n\n**Reference documents:**\n\
+        \n- 01_Docs/04_content/images/screenshot.png.\n- DATA_MODEL.md §3 (`idx_article_published_at`\
+        \ — already\n  present, supports the cursor-style next-batch query).\n\n---\n"
+      acceptance_criteria: null
+      relations:
+      - type: CONFIRMED_BY
+        target_id: CR-260522-2101-001
+      - type: CONFIRMED_BY
+        target_id: CR-260523-0900-002
+      - type: CONFIRMED_BY
+        target_id: CR-260523-1500-001
+      - type: CONFIRMED_BY
+        target_id: CR-260524-1421-001
+      - type: FULFILLED_BY
+        target_id: AC-260523-0900-030
+      - type: FULFILLED_BY
+        target_id: AC-260523-0900-032
+      - type: FULFILLED_BY
+        target_id: AC-260523-1501-004
+      - type: FULFILLED_BY
+        target_id: AC-260524-1500-002
+      - type: FULFILLED_BY
+        target_id: AC-260524-1500-003
+      - type: FULFILLED_BY
+        target_id: AC-260524-1500-004
+      stories: []
 epics: []
 orphans: []
 tests: []
 bugs: []
-change_requests: []
-acceptance_criteria: []
+change_requests:
+- id: CR-260524-1421-001
+  project_id: PR-260512-2041-001
+  type: CR
+  created_at: '2026-05-24T14:21:22.304967'
+  created_by: HUMAN
+  cancelled_at: null
+  locked: false
+  title: Design revamp
+  status: SOLVED
+  priority: MED
+  updated_at: '2026-05-24T17:52:06.352779'
+  updated_by: HUMAN
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: "# CR — Design revamp\n\n## Change Summary\n\nCosmetic re-skin of the Feed\
+    \ Reading Experience (EP-260512-2230-004) to the target\nmockup 01_Docs/04_content/images/design\
+    \ revamp.png. Confirmed scope: cosmetic re-skin\nplus one keyword-control simplification\
+    \ — layout and matching logic preserved.\nVisible changes:\n- Header: dark rounded-square\
+    \ app mark + green sync-status dot before the\n  \"Last sync · …\" text.\n- Filter\
+    \ bar: WHEN / SOURCES / KEYWORD unified into one rounded bordered toolbar; the\n\
+    \  1d/1w/1m/Custom shortcuts become a joined segmented control with the active\
+    \ window\n  shown filled.\n- Keyword cluster restyled to sit in the toolbar. The\
+    \ per-keyword Match case / Match\n  whole word buttons are replaced by a single\
+    \ blue \"Exact match\" toggle inline with the\n  input and Add button (good.png):\
+    \ Exact match on = whole-word match (case-insensitive), off =\n  loose case-insensitive\
+    \ substring. Other CR-260524-1315-001 behaviour is preserved\n  (Enter/Add, removable\
+    \ chips, Match any/all toggle); committed chips now show a\n  single \"Exact match\"\
+    \ badge.\nSidebar unchanged; \"New group\" stays as the header folder-plus icon\
+    \ (confirmed).\n\n## Affected Requirement Objects\n\n- FT-260522-2050-002 (Header\
+    \ Bar Last-Sync Indicator) — header mark + green dot.\n- FT-260522-2230-001 (Continuous-Scroll\
+    \ Feed) — filter toolbar, segmented WHEN,\n  keyword restyle (single Exact match\
+    \ toggle), feed-pane visual fidelity.\n(= this CR's CONFIRMS set; both reopened\
+    \ to OPEN per §5.2.2.)\n\n## Design Changes\n\nCSS-led in 02_code/almanach/static/css/style.css,\
+    \ reusing :root tokens (a new\n--accent-green token added for the status dot)\
+    \ — no raw values in new rules:\n.app-header mark + status dot; .filter-row restyled\
+    \ as a single rounded/bordered\ntoolbar with labelled segments; .date shortcuts\
+    \ wrapped in a .segmented joined\ncontrol; keyword cluster condensed. The per-keyword\
+    \ Match case / Match whole word\nbuttons are removed in favour of a single .keyword-exact-toggle\
+    \ (blue switch per\ngood.png; the prior yellow --accent-highlight token and the\
+    \ .keyword-opt-btn /\n.kw-opt-label / .keyword-pending rules are removed). app.js:\
+    \ a sticky\nstate.filter.exactMode flag; a word commits immediately on Enter/Add\
+    \ with\nwholeWord = exactMode, matchCase forced off (keyword_opt \"01\" when on,\
+    \ already supported by\ndb._kw_match), so the loose default path is unchanged;\
+    \ the committed chip shows one\n\"Exact match\" badge. Markup hooks: templates/index.html\
+    \ (header mark + dot) and\ntemplates/_feed.html (WHEN buttons wrapped in .segmented;\
+    \ Exact toggle added to the\nkeyword group). Keyword input ids/classes consumed\
+    \ elsewhere are unchanged.\n\n## Data Model Changes\n\n(none)\n\n## Supersede\
+    \ / Versioning\n\n(none) — the Exact match toggle is a presentation change over\
+    \ CR-260524-1315-001's two\nmutually-exclusive options; the underlying per-keyword\
+    \ match flags and db._kw_match\nare unchanged, so no AC is superseded. The single-Exact-match-toggle\
+    \ assertion lives in\nAC-260524-1500-003.\n\n## Scope Impact\n\nRe-skin plus a\
+    \ keyword-control simplification (two option buttons → one Exact match\ntoggle).\
+    \ Behaviour note: the UI no longer offers case-only or whole-only matching\nindependently\
+    \ — Exact match bundles whole-word (case-insensitive), off is loose substring;\
+    \ the backend\nstill supports every combination. No design system exists in this\
+    \ project (single\nstyle.css with :root tokens), so the GR 14 §6.7 design-system\
+    \ pre-flight steps are\nN/A; the §6.7 visual-confirmation gate still applies on\
+    \ index.html. Reopens\nFT-260522-2050-002 and FT-260522-2230-001 (and EP-260512-2230-004\
+    \ closure) until UAT\nre-passes the new AC. No data model, no API, no new matching\
+    \ behaviour.\n"
+  acceptance_criteria: null
+  relations:
+  - type: CONFIRMED_BY
+    target_id: TEST-260524-1512-001
+  - type: CONFIRMED_BY
+    target_id: TEST-260524-1714-001
+  - type: CONFIRMS
+    target_id: FT-260522-2050-002
+  - type: CONFIRMS
+    target_id: FT-260522-2230-001
+  - type: FULFILLED_BY
+    target_id: AC-260524-1500-001
+  - type: FULFILLED_BY
+    target_id: AC-260524-1500-002
+  - type: FULFILLED_BY
+    target_id: AC-260524-1500-003
+  - type: FULFILLED_BY
+    target_id: AC-260524-1500-004
+acceptance_criteria:
+- id: AC-260524-1500-003
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-24T15:00:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: The keyword control sits within the new toolbar with a single Exact match
+    toggle replacing the two Match case / Match whole word buttons; add via Enter
+    or Add, Exact match on commits a whole-word (case-insensitive) keyword shown with
+    an Exact match chip badge, off commits a loose match, and the Match any/all toggle
+    appears with two or more active keywords.
+  status: OPEN
+  result: FAIL
+  priority: MED
+  updated_at: '2026-05-24T17:52:06.380892'
+  updated_by: CLAUDE_CODE
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: "## Description\n\nGoal: restyle the keyword cluster into the new toolbar\
+    \ with a single Exact match toggle in\nplace of the two Match case / Match whole\
+    \ word buttons (CR-260524-1421-001, per\ngood.png). Outcome: a single blue Exact\
+    \ match switch sits inline with the keyword input and\nthe Add button; Exact match\
+    \ on adds a whole-word (case-insensitive) keyword, off adds a loose\ncase-insensitive\
+    \ match. Enter/Add, removable chips, and the Match any/all toggle from\nCR-260524-1315-001\
+    \ are preserved.\n\n## Test Instructions\n\n1. Open the app at / in a browser.\n\
+    \n2. In the KEYWORD segment of the toolbar, confirm a single toggle labelled \"\
+    Exact match\"\n   sits between the keyword input and the Add button (no separate\
+    \ Match case / Match\n   whole word buttons, nothing highlighted yellow).\n\n\
+    3. With Exact match off, type a word and press Enter; confirm it is added as a\
+    \ removable\n   chip with no Exact match badge.\n\n4. Turn the Exact match toggle\
+    \ on (it shows blue/filled), type a second word, then click\n   Add; confirm the\
+    \ new chip shows an \"Exact match\" badge.\n\n5. Confirm a Match any / Match all\
+    \ toggle appears now that two keywords are active.\n\n6. Switch between Match\
+    \ any and Match all and confirm the visible feed result set\n   updates.\n\n7.\
+    \ Remove each keyword chip via its × and confirm the Match any/all toggle\n  \
+    \ disappears once fewer than two keywords remain.\n"
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: CR-260524-1421-001
+  - type: FULFILLS
+    target_id: FT-260522-2230-001
+  - type: FULFILLS
+    target_id: TEST-260524-1512-001
+  - type: FULFILLS
+    target_id: TEST-260524-1714-001

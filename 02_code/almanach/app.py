@@ -50,6 +50,33 @@ def _parse_csv(raw: Optional[str]) -> Optional[list[str]]:
     return out or None
 
 
+def _zip_keyword_options(
+    words: Optional[list[str]], opts: Optional[list[str]]
+) -> Optional[list[dict]]:
+    """Pair repeatable `keyword` words with their aligned `keyword_opt` codes
+    into `{word, match_case, whole_word}` dicts (CR-260524-1315-001).
+
+    Each opt code is two chars (char0 = Match case, char1 = Match whole word,
+    '1'/'0'). A missing / malformed code defaults to '00' (both off), so a
+    client that sends only `keyword` keeps the prior case-insensitive substring
+    behaviour (CR-260524-0644-001).
+    """
+    if not words:
+        return None
+    opts = opts or []
+    out: list[dict] = []
+    for i, w in enumerate(words):
+        code = opts[i] if i < len(opts) else ""
+        out.append(
+            {
+                "word": w,
+                "match_case": len(code) > 0 and code[0] == "1",
+                "whole_word": len(code) > 1 and code[1] == "1",
+            }
+        )
+    return out
+
+
 @app.get("/", response_class=HTMLResponse)
 async def index(
     request: Request,
@@ -112,7 +139,8 @@ async def feed_partial(
     source_ids: Optional[str] = Query(None, description="Comma-separated source ids (filter bar multi-select)"),
     folder_ids: Optional[str] = Query(None, description="Comma-separated folder ids (filter bar multi-select)"),
     scope_folder_id: Optional[str] = Query(None, description="Sidebar Group/Subgroup scope"),
-    keyword: Optional[list[str]] = Query(None, description="Keyword substring(s) on title/summary; repeatable (CR-260524-0644-001)"),
+    keyword: Optional[list[str]] = Query(None, description="Keyword(s) on title/summary; repeatable (CR-260524-0644-001)"),
+    keyword_opt: Optional[list[str]] = Query(None, description="Per-keyword 2-char option code aligned to `keyword` order: char0=Match case, char1=Match whole word ('1'/'0'); defaults '00' (CR-260524-1315-001)"),
     keyword_mode: str = Query("any", description="How multiple keywords combine: 'any' (OR) | 'all' (AND)"),
 ) -> HTMLResponse:
     """Feed partial endpoint.
@@ -143,7 +171,7 @@ async def feed_partial(
         source_ids=_parse_csv(source_ids),
         folder_ids=_parse_csv(folder_ids),
         scope_folder_id=scope_folder_id,
-        keywords=keyword,
+        keywords=_zip_keyword_options(keyword, keyword_opt),
         keyword_mode=keyword_mode,
     )
     template = "_feed_rows.html" if rows_only else "_feed.html"

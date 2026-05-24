@@ -184,7 +184,7 @@ def _build_article_query(
     source_ids: Optional[list[str]],
     folder_ids: Optional[list[str]],
     scope_folder_id: Optional[str],
-    keywords: Optional[list[str]],
+    keywords: Optional[list[dict]],
     keyword_mode: str,
     trailing: str,
 ) -> tuple[str, list]:
@@ -199,9 +199,13 @@ def _build_article_query(
       - `scope_folder_id`: single folder for sidebar scope; the source's
         `folder_id` must fall in this folder's subtree. Composes with the
         content multi-select via AND.
-      - `keywords`: list of case-insensitive substrings, each matched against
-        `Article.title` OR `Article.summary` (CR-260524-0644-001). The keywords
-        combine with each other via OR (keyword_mode="any", default) or AND
+      - `keywords`: list of per-keyword dicts `{word, match_case, whole_word}`
+        (CR-260524-0644-001 / CR-260524-1315-001), each matched against
+        `Article.title` OR `Article.summary`. With no options set the keyword
+        keeps the case-insensitive substring LIKE path (AC-260524-0650-001);
+        Match case and/or Match whole word route through the `alm_kw_match`
+        SQL function (AC-260524-1315-002 / -003). The keywords combine with
+        each other via OR (keyword_mode="any", default) or AND
         (keyword_mode="all"); the keyword group then composes with every other
         predicate via AND. Blank entries are dropped; an empty list is no
         constraint.
@@ -272,17 +276,30 @@ def _build_article_query(
     if keywords:
         kw_parts: list[str] = []
         for raw_kw in keywords:
-            kw = (raw_kw or "").strip()
+            kw = (raw_kw.get("word") or "").strip()
             if not kw:
                 continue
-            # Escape LIKE wildcards so the term matches as a literal substring;
-            # LIKE is ASCII-case-insensitive in SQLite (CR-260524-0644-001).
-            esc = kw.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
-            pattern = f"%{esc}%"
-            kw_parts.append(
-                "(a.title LIKE ? ESCAPE '\\' OR a.summary LIKE ? ESCAPE '\\')"
-            )
-            where_params.extend([pattern, pattern])
+            match_case = 1 if raw_kw.get("match_case") else 0
+            whole_word = 1 if raw_kw.get("whole_word") else 0
+            if not match_case and not whole_word:
+                # Default: literal case-insensitive substring via LIKE
+                # (ASCII-case-insensitive in SQLite — CR-260524-0644-001).
+                esc = kw.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+                pattern = f"%{esc}%"
+                kw_parts.append(
+                    "(a.title LIKE ? ESCAPE '\\' OR a.summary LIKE ? ESCAPE '\\')"
+                )
+                where_params.extend([pattern, pattern])
+            else:
+                # Match case / whole word route through alm_kw_match
+                # (CR-260524-1315-001 / AC-260524-1315-002 / -003).
+                kw_parts.append(
+                    "(alm_kw_match(a.title, ?, ?, ?) = 1 "
+                    "OR alm_kw_match(a.summary, ?, ?, ?) = 1)"
+                )
+                where_params.extend(
+                    [kw, match_case, whole_word, kw, match_case, whole_word]
+                )
         if kw_parts:
             joiner = " AND " if keyword_mode == "all" else " OR "
             where.append("(" + joiner.join(kw_parts) + ")")
@@ -313,7 +330,7 @@ def list_articles(
     source_ids: Optional[list[str]] = None,
     folder_ids: Optional[list[str]] = None,
     scope_folder_id: Optional[str] = None,
-    keywords: Optional[list[str]] = None,
+    keywords: Optional[list[dict]] = None,
     keyword_mode: str = "any",
 ) -> list[dict]:
     """List articles newest-first, optionally filtered by source / cursor / filters."""
@@ -349,7 +366,7 @@ def count_articles(
     source_ids: Optional[list[str]] = None,
     folder_ids: Optional[list[str]] = None,
     scope_folder_id: Optional[str] = None,
-    keywords: Optional[list[str]] = None,
+    keywords: Optional[list[dict]] = None,
     keyword_mode: str = "any",
 ) -> int:
     sql, params = _build_article_query(

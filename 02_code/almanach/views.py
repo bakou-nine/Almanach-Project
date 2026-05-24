@@ -160,7 +160,7 @@ def build_feed_view(
     source_ids: Optional[list[str]] = None,
     folder_ids: Optional[list[str]] = None,
     scope_folder_id: Optional[str] = None,
-    keywords: Optional[list[str]] = None,
+    keywords: Optional[list[dict]] = None,
     keyword_mode: str = "any",
 ) -> dict:
     """Build the feed payload.
@@ -178,25 +178,34 @@ def build_feed_view(
       - `from_date` / `to_date`: ISO bounds on `Article.published_at`.
       - `source_ids` / `folder_ids`: filter-bar content multi-select.
       - `scope_folder_id`: sidebar Group/Subgroup scope.
-      - `keywords`: list of case-insensitive substrings on title/summary; each
-        active keyword is a removable chip. They combine via `keyword_mode`
-        ("any" = OR, "all" = AND); blank/duplicate entries are dropped
-        (CR-260524-0644-001 AC-260524-0650-001/003).
+      - `keywords`: list of per-keyword dicts `{word, match_case, whole_word}`
+        on title/summary; each active keyword is a removable chip. Match case /
+        Match whole word are chosen per keyword at add time (CR-260524-1315-001);
+        with neither set the keyword keeps the case-insensitive substring
+        behaviour (AC-260524-0650-001). They combine via `keyword_mode`
+        ("any" = OR, "all" = AND); blank/duplicate (case-insensitive on the
+        word) entries are dropped (CR-260524-0644-001 AC-260524-0650-001/003).
       - `keyword_mode`: "any" (OR, default) or "all" (AND) — how the keywords
         combine with each other (AC-260524-0650-004).
     """
     keyword_mode = "all" if keyword_mode == "all" else "any"
-    norm_keywords: list[str] = []
+    norm_keywords: list[dict] = []
     _seen: set[str] = set()
     for _kw in keywords or []:
-        _kw = (_kw or "").strip()
-        if not _kw:
+        _word = (_kw.get("word") or "").strip()
+        if not _word:
             continue
-        _low = _kw.lower()
+        _low = _word.lower()
         if _low in _seen:
             continue
         _seen.add(_low)
-        norm_keywords.append(_kw)
+        norm_keywords.append(
+            {
+                "word": _word,
+                "match_case": bool(_kw.get("match_case")),
+                "whole_word": bool(_kw.get("whole_word")),
+            }
+        )
     articles = models.list_articles(
         source_id=source_id,
         limit=page_size,

@@ -1,73 +1,17 @@
 file: project-delta.yaml
-generated_at: '2026-05-24T10:47:04.435726+00:00'
-delta_since: '2026-05-24T10:43:03.702149'
+generated_at: '2026-05-24T17:58:34.897446+00:00'
+delta_since: '2026-05-24T17:31:59.178877'
 delta_since_event: YAML_IMPORT
 changes:
   created:
-  - id: TEST-260524-1045-001
+  - id: TEST-260524-1757-001
     type: TEST
-    title: CR-260524-0644-001 - Test 4
+    title: various bugs
   edited: []
-  status_changed:
-  - id: FT-260522-2230-001
-    type: FEATURE
-    title: Continuous-Scroll Feed
-    status_from: OPEN
-    status_to: SOLVED
-  - id: EP-260512-2230-004
-    type: EPIC
-    title: Feed Reading Experience
-    status_from: OPEN
-    status_to: SOLVED
-  - id: PC-260512-2041-001
-    type: PROJECT_CHARTER
-    title: Almanach
-    status_from: OPEN
-    status_to: SOLVED
-  - id: AC-260524-0730-001
-    type: AC
-    title: null
-    status_from: OPEN
-    status_to: CLOSED
-  - id: CR-260524-0644-001
-    type: CR
-    title: Keyword filter for the right-pane feed
-    status_from: SOLVED
-    status_to: CLOSED
-  - id: TEST-260524-1045-001
-    type: TEST
-    title: CR-260524-0644-001 - Test 4
-    status_from: DRAFT
-    status_to: CLOSED
-  - id: US-260523-1906-001
-    type: USER_STORY
-    title: Feed Filter Bar
-    status_from: SOLVED
-    status_to: CLOSED
-  - id: FT-260522-2230-001
-    type: FEATURE
-    title: Continuous-Scroll Feed
-    status_from: SOLVED
-    status_to: CLOSED
-  - id: EP-260512-2230-004
-    type: EPIC
-    title: Feed Reading Experience
-    status_from: SOLVED
-    status_to: CLOSED
-  - id: PC-260512-2041-001
-    type: PROJECT_CHARTER
-    title: Almanach
-    status_from: SOLVED
-    status_to: CLOSED
+  status_changed: []
   cancelled: []
   reinstated: []
   links_changed:
     created: []
     removed: []
-  relations_created:
-  - type: FULFILLS
-    source_id: AC-260524-0730-001
-    target_id: TEST-260524-1045-001
-  - type: CONFIRMS
-    source_id: TEST-260524-1045-001
-    target_id: CR-260524-0644-001
+  relations_created: []

@@ -1,11 +1,49 @@
 file: project-draft.yaml
 status_filter:
 - DRAFT
-exported_at: '2026-05-24T10:47:04.435726+00:00'
+exported_at: '2026-05-24T17:58:34.897446+00:00'
 project_charters: []
 epics: []
 orphans: []
-tests: []
+tests:
+- id: TEST-260524-1757-001
+  project_id: PR-260512-2041-001
+  type: TEST
+  created_at: '2026-05-24T17:57:56.661886'
+  created_by: HUMAN
+  cancelled_at: null
+  locked: false
+  title: various bugs
+  status: DRAFT
+  result: null
+  updated_at: '2026-05-24T17:57:56.661886'
+  updated_by: null
+  approved_by_human: null
+  cancellation_reason: null
+  tags: []
+  body: '1. I do not like this loading icon with end of feed knowing nothing is loading
+    anymore, it is confusing and let us thing something is loading while nothing is
+    happening.![fake load bug](01_docs/04_content/images/fake load bug.png)
+
+
+    2. i see a double bug in filter when selecting group titles or simply single sources.
+
+    a. bug 1: in the drop down menu with list of selectable objects, i should not
+    see any blue highlting what i selected, it whould be either marked or unmarked.
+    that is all. All are already marked here and when i click bluie wrongly higholight
+    swhat i click, but the x should appear or disapper only when i click to decide
+    what remains on the filer.
+
+    b. the left pane also determines a filter content when clicking on 1 title or
+    a single source of news, this should change the list of content diplayed on the
+    right pane as all contents contained inside selected title or lower level should
+    be considered in scope, and what is not should be out of scope.  ![no correspondance
+    between content clicked on left pane with filter in tright pane](01_docs/04_content/images/no
+    correspondance between content clicked on left pane with filter in tright pane.png)
+
+    '
+  acceptance_criteria: null
+  relations: []
 bugs: []
 change_requests: []
 acceptance_criteria: []

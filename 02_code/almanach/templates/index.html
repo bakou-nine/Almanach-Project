@@ -3,10 +3,11 @@
 {% block body %}
 <header class="app-header">
   <div class="app-title">
-    <i class="ti ti-news"></i>
+    <span class="app-mark"><i class="ti ti-news"></i></span>
     <span>Almanach</span>
   </div>
   <div class="header-actions">
+    <span class="sync-status-dot" aria-hidden="true"></span>
     <span id="last-sync-label">Last sync · {{ sidebar.last_sync }}</span>
   </div>
 </header>

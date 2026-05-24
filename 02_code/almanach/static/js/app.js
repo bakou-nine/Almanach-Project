@@ -16,8 +16,14 @@
       shortcut: null,    // "1d" | "1w" | "1m" | null  (mutually-exclusive with from/to)
       sourceIds: [],     // explicit source ids
       folderIds: [],     // folder ids (server expands to subtree)
-      keywords: [],      // CR-260524-0644-001 — active keyword chips (trimmed, deduped)
+      // CR-260524-0644-001 / CR-260524-1315-001 — active keyword chips, each
+      // {word, matchCase, wholeWord} (trimmed, deduped case-insensitively on word).
+      keywords: [],
       keywordMode: "any",// "any" (OR) | "all" (AND) — how multiple keywords combine
+      // CR-260524-1421-001 — sticky "Exact match" toggle: when on, the next word
+      // added is committed as a whole-word match (case-insensitive, wholeWord only);
+      // off = loose case-insensitive substring (default).
+      exactMode: false,
     },
     // Cache of /filter-tree response so reopening the popover is instant.
     filterTree: null,
@@ -113,7 +119,12 @@
       params.set("folder_ids", state.filter.folderIds.join(","));
     }
     if (state.filter.keywords.length) {
-      state.filter.keywords.forEach(k => params.append("keyword", k));
+      // CR-260524-1315-001: each keyword carries an aligned 2-char option code
+      // (char0=Match case, char1=Match whole word).
+      state.filter.keywords.forEach(k => {
+        params.append("keyword", k.word);
+        params.append("keyword_opt", (k.matchCase ? "1" : "0") + (k.wholeWord ? "1" : "0"));
+      });
       params.set("keyword_mode", state.filter.keywordMode);
     }
     params.set("size", state.pageSize);
@@ -1682,19 +1693,38 @@
         toggleContentSelectPopover(contentBtn);
       });
     }
-    // Keyword input — Enter adds the typed word as a removable chip; multiple
-    // keywords are supported (CR-260524-0644-001).
+    // Keyword input — Enter (or the Add button) commits the typed word as a chip,
+    // baking in the current Exact-toggle mode (CR-260524-0644-001 /
+    // CR-260524-1315-001 / CR-260524-1421-001).
     const kwInput = $("#keyword-input");
     if (kwInput) {
       kwInput.addEventListener("keydown", (ev) => {
         if (ev.key === "Enter") {
           ev.preventDefault();
-          addKeyword(kwInput.value);
+          beginAddKeyword(kwInput.value);
         } else if (ev.key === "Escape") {
           ev.preventDefault();
           kwInput.value = "";
           kwInput.blur();
         }
+      });
+    }
+    // Explicit Add button — equivalent to pressing Enter (AC-260524-1315-001).
+    const kwAddBtn = $("#keyword-add-btn");
+    if (kwAddBtn) {
+      kwAddBtn.addEventListener("click", (ev) => {
+        ev.stopPropagation();
+        beginAddKeyword(kwInput ? kwInput.value : "");
+      });
+    }
+    // CR-260524-1421-001 — sticky Exact toggle. Flips the mode applied to the
+    // next word added; existing chips keep their baked-in mode, so no re-query.
+    const kwExact = $("#keyword-exact-toggle");
+    if (kwExact) {
+      kwExact.addEventListener("click", (ev) => {
+        ev.stopPropagation();
+        state.filter.exactMode = !state.filter.exactMode;
+        syncExactToggle();
       });
     }
     // Any/All toggle — how multiple active keywords combine (AC-260524-0650-004).
@@ -1719,22 +1749,37 @@
     repaintFilterBar();
   }
 
-  function addKeyword(raw) {
-    // Blank / whitespace-only Enter adds nothing (AC-260524-0650-003).
+  function beginAddKeyword(raw) {
+    // Blank / whitespace-only adds nothing (AC-260524-0650-003).
     const kw = (raw || "").trim();
     const input = $("#keyword-input");
     if (input) input.value = "";
     if (!kw) return;
-    // Case-insensitive dedup — re-adding an existing keyword is a no-op.
-    if (state.filter.keywords.some(k => k.toLowerCase() === kw.toLowerCase())) return;
-    state.filter.keywords.push(kw);
+    // Case-insensitive dedup — re-adding an existing word is a no-op
+    // (the mode comes from the Exact toggle at add time: remove + re-add,
+    // toggling Exact, to change it).
+    if (state.filter.keywords.some(k => k.word.toLowerCase() === kw.toLowerCase())) return;
+    // CR-260524-1421-001: commit immediately, baking in the sticky Exact-match
+    // mode. Exact match on => whole-word, case-insensitive (wholeWord only, never
+    // matchCase => keyword_opt "01"); off => loose case-insensitive substring ("00").
+    const ex = !!state.filter.exactMode;
+    state.filter.keywords.push({ word: kw, matchCase: false, wholeWord: ex });
     keywordShouldRefocus = true;
     applyFilterChange();
   }
 
-  function removeKeyword(kw) {
+  function syncExactToggle() {
+    // CR-260524-1421-001: reflect state.filter.exactMode on the toggle control.
+    const t = $("#keyword-exact-toggle");
+    if (!t) return;
+    const on = !!state.filter.exactMode;
+    t.classList.toggle("is-on", on);
+    t.setAttribute("aria-checked", on ? "true" : "false");
+  }
+
+  function removeKeyword(word) {
     const before = state.filter.keywords.length;
-    state.filter.keywords = state.filter.keywords.filter(k => k !== kw);
+    state.filter.keywords = state.filter.keywords.filter(k => k.word !== word);
     if (state.filter.keywords.length !== before) applyFilterChange();
   }
 
@@ -1796,6 +1841,7 @@
         btn.classList.toggle("is-active", m === state.filter.keywordMode);
       });
     }
+    syncExactToggle();
     repaintFilterActive();
   }
 
@@ -1838,8 +1884,10 @@
     state.filter.keywords.forEach(kw => {
       chips.push({
         kind: "keyword",
-        label: "“" + kw + "”",
-        onClear: () => removeKeyword(kw),
+        label: "“" + kw.word + "”",
+        // CR-260524-1315-001: committed chip shows its active match mode(s).
+        modes: { matchCase: kw.matchCase, wholeWord: kw.wholeWord },
+        onClear: () => removeKeyword(kw.word),
       });
     });
     const nameById = state.filterTreeNameById || {};
@@ -1874,8 +1922,13 @@
     chips.forEach(c => {
       const el = document.createElement("span");
       el.className = "filter-active-chip" + (c.kind === "scope" ? " is-scope" : "");
+      let modeHtml = "";
+      if (c.kind === "keyword" && c.modes && c.modes.wholeWord) {
+        // CR-260524-1421-001: a single "Exact match" badge (whole word, case-insensitive).
+        modeHtml += '<span class="filter-active-chip-mode" title="Exact match (whole word, case-insensitive)">Exact match</span>';
+      }
       el.innerHTML =
-        '<span class="filter-active-chip-label"></span>' +
+        '<span class="filter-active-chip-label"></span>' + modeHtml +
         '<button type="button" class="filter-active-chip-x" aria-label="Clear filter"><i class="ti ti-x"></i></button>';
       el.querySelector(".filter-active-chip-label").textContent = c.label;
       el.querySelector(".filter-active-chip-x").addEventListener("click", c.onClear);

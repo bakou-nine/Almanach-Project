@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 import sqlite3
 import threading
 from contextlib import contextmanager
@@ -8,6 +9,32 @@ from typing import Iterator
 from . import config
 
 _local = threading.local()
+
+
+def _kw_match(haystack, needle, case_sensitive: int, whole_word: int) -> int:
+    """Per-keyword filter match (CR-260524-1315-001), registered as the SQL
+    function `alm_kw_match(text, needle, case_sensitive, whole_word)`.
+
+    Used only when a keyword carries the Match case and/or Match whole word
+    option (AC-260524-1315-002 / -003); the no-option default keeps the prior
+    LIKE-based case-insensitive substring path in `models._build_article_query`
+    (AC-260524-0650-001 regression guard). Returns 1 on match, else 0.
+
+    - Match whole word: the term must be bounded by non-letter characters on
+      both sides (a Unicode letter is `[^\\W\\d_]`), i.e. it matches only as a
+      standalone word, never inside a longer word.
+    - Match case off: case-insensitive (Unicode-aware via `re.IGNORECASE` /
+      `str.lower`); on: exact letter case.
+    """
+    if haystack is None or not needle:
+        return 0
+    if whole_word:
+        flags = 0 if case_sensitive else re.IGNORECASE
+        pattern = r"(?<![^\W\d_])" + re.escape(needle) + r"(?![^\W\d_])"
+        return 1 if re.search(pattern, haystack, flags) else 0
+    if case_sensitive:
+        return 1 if needle in haystack else 0
+    return 1 if needle.lower() in haystack.lower() else 0
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS folder (
@@ -88,6 +115,8 @@ def _connect() -> sqlite3.Connection:
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
     conn.execute("PRAGMA journal_mode = WAL")
+    # Per-keyword Match case / Match whole word matching (CR-260524-1315-001).
+    conn.create_function("alm_kw_match", 4, _kw_match, deterministic=True)
     return conn
 
 
