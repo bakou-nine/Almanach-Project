@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from . import models, scheduler
+from .urls import clean_html_text
 
 
 def humanise_delta(then: Optional[datetime]) -> str:
@@ -246,6 +247,21 @@ def build_feed_view(
     else:
         title = "Latest news"
         active_count = sum(1 for s in models.list_sources() if not s["muted"])
+        # CR-260525-0745-002: a single-branch sidebar selection now flows through
+        # the content filter (no scope_folder_id). Preserve the friendly feed
+        # title — name the lone selected source/folder when it is the only active
+        # predicate. Any multi-select or extra filter keeps the generic title.
+        only_content = not (from_date or to_date or norm_keywords)
+        if only_content and folder_ids and len(folder_ids) == 1 and not source_ids:
+            f = models.get_folder(folder_ids[0])
+            if f:
+                title = f["name"]
+                active_count = None
+        elif only_content and source_ids and len(source_ids) == 1 and not folder_ids:
+            s = models.get_source(source_ids[0])
+            if s:
+                title = s["display_name"]
+                active_count = 1
 
     has_filters = any(
         [
@@ -264,7 +280,10 @@ def build_feed_view(
                 "id": a["id"],
                 "url": a["url"],
                 "title": a["title"],
-                "summary": a.get("summary"),
+                # BUG-260525-0745-001: clean any stored raw-HTML summary at
+                # render so existing rows display plain text too (idempotent on
+                # rows ingested after the ingestion-side fix).
+                "summary": clean_html_text(a.get("summary")),
                 "source_name": a["source_name"],
                 "source_colour": a["source_colour"],
                 "published_at": a["published_at"],

@@ -25,6 +25,26 @@ STATIC_DIR = BASE_DIR / "static"
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
 
+def _asset_version(rel_path: str) -> str:
+    """Cache-busting token for a static asset, derived from its mtime.
+
+    Templates append this as `?v=` to /static URLs. Whenever a CSS/JS file
+    changes on disk its mtime — and therefore its URL — changes, so the browser
+    is forced to fetch fresh bytes on the next *normal* reload. The `no-cache`
+    middleware below only forces revalidation; a browser holding a still-"fresh"
+    heuristic cache entry can skip that and serve stale assets. A changed URL
+    cannot be served from cache at all, which is what actually guarantees code
+    edits reach the browser.
+    """
+    try:
+        return str(int((STATIC_DIR / rel_path).stat().st_mtime))
+    except OSError:
+        return "0"
+
+
+templates.env.globals["asset_version"] = _asset_version
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     db.initialise()
@@ -37,6 +57,22 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Almanach", lifespan=lifespan)
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
+
+
+@app.middleware("http")
+async def revalidate_static(request: Request, call_next):
+    """Serve static assets with `Cache-Control: no-cache`.
+
+    StaticFiles emits ETag + Last-Modified but no Cache-Control, so browsers
+    apply heuristic caching and a plain reload can keep serving a stale
+    style.css / app.js after an edit. `no-cache` forces revalidation on every
+    load (304 when unchanged via the ETag, fresh bytes when changed), so code
+    edits always reach the browser.
+    """
+    response = await call_next(request)
+    if request.url.path.startswith("/static/"):
+        response.headers["Cache-Control"] = "no-cache"
+    return response
 
 
 # ---------- pages ----------

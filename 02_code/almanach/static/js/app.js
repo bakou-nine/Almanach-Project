@@ -93,6 +93,9 @@
     bindFolders();
     bindDragDrop();
     updateLastSyncLabel();
+    // CR-260525-0745-002: re-apply the sidebar selection visuals after a rebuild
+    // (the content selection lives in client state, not the server-rendered HTML).
+    paintSidebarSelection();
   }
 
   async function updateLastSyncLabel() {
@@ -171,6 +174,14 @@
   }
 
   function readFeedCursor() {
+    // BUG-260525-0654-001: every (re)render starts from a clean scroll state —
+    // no in-flight fetch, spinner hidden. A spinner left visible by a prior
+    // batch must never carry over into a fresh feed, and the inline spinner is
+    // driven by JS state here (not only by the template `hidden` attribute), so
+    // its lifecycle is explicit on each render.
+    state.feedLoading = false;
+    const spinner = $("#feed-spinner");
+    if (spinner) spinner.hidden = true;
     const list = $("#article-list");
     if (!list) {
       state.feedNextAfter = null;
@@ -180,7 +191,9 @@
     state.feedNextAfter = list.getAttribute("data-next-after") || null;
     state.feedHasMore = list.getAttribute("data-has-more") === "1";
     const end = $("#feed-end-marker");
-    if (end) end.hidden = state.feedHasMore;
+    // End-of-feed marker shows only at the end of a NON-empty feed; an empty
+    // feed shows the empty-state instead (no marker, no spinner).
+    if (end) end.hidden = state.feedHasMore || !list.querySelector(".article");
   }
 
   async function loadMoreFeed() {
@@ -276,45 +289,98 @@
     const row = ev.currentTarget;
     if (row.classList.contains("muted")) return;
     const id = row.getAttribute("data-source-id");
-    state.activeSourceId = id || null;
-    // CR-260523-1501-001 AC-260523-1501-003: source / folder / All-sources
-    // selection is mutually exclusive — clear any active folder scope.
-    state.scopeFolderId = null;
-    state.scopeFolderName = null;
-    refreshFeed();
-    $$("#source-list .source-item").forEach(r => r.classList.remove("active"));
-    $$("#source-list .folder-row.active").forEach(r => r.classList.remove("active"));
-    row.classList.add("active");
+    // CR-260525-0745-002: a sidebar click drives the right-pane content filter.
+    // "All sources" clears the whole selection; a real source row selects that
+    // source — plain click replaces the selection, shift-click toggles it
+    // cumulatively.
+    if (!id || row.classList.contains("all-sources")) {
+      selectSidebarBranch({ kind: "all" }, false);
+    } else {
+      selectSidebarBranch({ kind: "source", id: id }, ev.shiftKey);
+    }
   }
 
   function onFolderTitleClick(ev) {
-    // CR-260523-1501-001: clicking a Group/Subgroup title scopes the feed
-    // to articles whose source belongs to that folder's subtree. Clicking
-    // the active title again clears the scope.
-    ev.stopPropagation();
+    // CR-260525-0745-002: clicking a Group/Subgroup title selects that branch
+    // in the content filter — plain click replaces the selection with the
+    // branch's descendant sources; shift-click toggles the branch in/out
+    // cumulatively. Supersedes the single-scope toggle (CR-260523-1501-001):
+    // feed scoping now flows through the filter selection.
+    if (ev && typeof ev.stopPropagation === "function") ev.stopPropagation();
     const nameEl = ev.currentTarget;
     const row = nameEl.closest(".folder-row");
     if (!row) return;
     const id = nameEl.getAttribute("data-folder-id");
-    const name = (row.getAttribute("data-folder-name") || "").trim();
-    const isActive = row.classList.contains("active");
-    if (isActive) {
-      state.scopeFolderId = null;
-      state.scopeFolderName = null;
-    } else {
-      state.scopeFolderId = id;
-      state.scopeFolderName = name;
-      state.activeSourceId = null;
+    selectSidebarBranch({ kind: "folder", id: id }, !!ev.shiftKey);
+  }
+
+  // CR-260525-0745-002: drive the content-filter selection from a sidebar
+  // click. `target` is {kind:"all"} | {kind:"source",id} | {kind:"folder",id}.
+  // `additive` (shift-click) toggles the branch in/out cumulatively; a plain
+  // click replaces the selection with exactly the clicked branch. The sidebar
+  // rows and the filter dropdown share one effective-source-set model, so both
+  // mirror the same selection.
+  async function selectSidebarBranch(target, additive) {
+    await ensureFilterTreeLoaded();
+    if (!state.filterTreeIndex) buildFilterTreeIndex();
+    const idx = state.filterTreeIndex;
+
+    // Feed scoping now flows through the filter selection — clear the legacy
+    // single-scope vars so they never double-filter.
+    state.activeSourceId = null;
+    state.scopeFolderId = null;
+    state.scopeFolderName = null;
+
+    if (target.kind === "all") {
+      state.filter.sourceIds = [];
+      state.filter.folderIds = [];
+      refreshFeed();
+      paintSidebarSelection();
+      return;
     }
-    $$("#source-list .source-item").forEach(r => r.classList.remove("active"));
-    $$("#source-list .folder-row.active").forEach(r => r.classList.remove("active"));
-    if (state.scopeFolderId) {
-      row.classList.add("active");
+
+    // The set of source ids the clicked branch represents.
+    const branch = target.kind === "folder"
+      ? (idx.descendantSourceIds[target.id] || []).slice()
+      : [target.id];
+
+    if (additive) {
+      const sel = contentSelGetSelectedSources();
+      const allOn = branch.length > 0 && branch.every(sid => sel.has(sid));
+      if (allOn) branch.forEach(sid => sel.delete(sid));
+      else branch.forEach(sid => sel.add(sid));
+      contentSelSetSelection(sel);
     } else {
-      const all = $("#source-list .source-item.all-sources");
-      if (all) all.classList.add("active");
+      contentSelSetSelection(new Set(branch));
     }
     refreshFeed();
+    paintSidebarSelection();
+  }
+
+  // CR-260525-0745-002: mirror the effective filter selection onto the sidebar
+  // rows. A source row is active when its source is in the effective set; a
+  // folder row is active when every descendant source is selected; "All
+  // sources" is active when nothing is selected. Re-applied after each sidebar
+  // re-render so the visual state survives a rebuild.
+  function paintSidebarSelection() {
+    if (!state.filterTreeIndex) return;
+    const idx = state.filterTreeIndex;
+    const sel = contentSelGetSelectedSources();
+    const empty = sel.size === 0;
+    $$("#source-list .source-item").forEach(r => {
+      if (r.classList.contains("all-sources")) {
+        r.classList.toggle("active", empty);
+        return;
+      }
+      const sid = r.getAttribute("data-source-id");
+      r.classList.toggle("active", !!sid && sel.has(sid));
+    });
+    $$("#source-list .folder-row").forEach(r => {
+      const fid = r.getAttribute("data-folder-id");
+      const desc = idx.descendantSourceIds[fid] || [];
+      const allOn = desc.length > 0 && desc.every(s => sel.has(s));
+      r.classList.toggle("active", allOn);
+    });
   }
 
   // ----- add-source modal -----
@@ -901,9 +967,12 @@
       nameEl.addEventListener("click", (ev) => {
         if (ev.target.closest(".folder-name-input")) return;
         if (clickTimer) return;  // dblclick about to fire — let it through
+        // CR-260525-0745-002: capture Shift before the disambiguation timer
+        // fires, so shift-click multi-select reaches onFolderTitleClick.
+        const shiftKey = ev.shiftKey;
         clickTimer = setTimeout(() => {
           clickTimer = null;
-          onFolderTitleClick({ currentTarget: nameEl, stopPropagation: () => {} });
+          onFolderTitleClick({ currentTarget: nameEl, stopPropagation: () => {}, shiftKey: shiftKey });
         }, 240);
       });
       nameEl.addEventListener("dblclick", (ev) => {
@@ -2021,6 +2090,7 @@
       state.filter.folderIds = [];
       renderContentSelectList();
       repaintFilterBar();
+      paintSidebarSelection();
     };
     $("#content-select-done").onclick = () => {
       closeContentSelectPopover();
@@ -2046,10 +2116,89 @@
         if (n.kind === "source") idx["source:" + n.id] = n.name;
       });
       state.filterTreeNameById = idx;
+      buildFilterTreeIndex();
     } catch (e) {
       state.filterTree = [];
       state.filterTreeNameById = {};
+      buildFilterTreeIndex();
     }
+  }
+
+  // CR-260525-0730-001: precompute the tree relationships needed to make the
+  // content-selection dropdown a proper tree-checkbox (cascade + parent
+  // tri-state). The server tree is a flat list with parent_id per node.
+  function buildFilterTreeIndex() {
+    const tree = state.filterTree || [];
+    const parentFolderOf = {};         // nodeId -> parent folder id (or null)
+    const childFoldersOf = {};         // folderId|null -> [child folder ids]
+    const directSourcesOf = {};        // folderId|null -> [direct source ids]
+    const folderOrder = [];
+    const allSourceIds = [];
+    tree.forEach(n => {
+      if (n.kind === "ungrouped_header") return;
+      const p = n.parent_id || null;
+      parentFolderOf[n.id] = p;
+      if (n.kind === "folder") {
+        folderOrder.push(n.id);
+        (childFoldersOf[p] = childFoldersOf[p] || []).push(n.id);
+      } else if (n.kind === "source") {
+        allSourceIds.push(n.id);
+        (directSourcesOf[p] = directSourcesOf[p] || []).push(n.id);
+      }
+    });
+    const descendantSourceIds = {};    // folderId -> [all source ids in subtree]
+    const compute = (fid) => {
+      if (descendantSourceIds[fid]) return descendantSourceIds[fid];
+      let acc = (directSourcesOf[fid] || []).slice();
+      (childFoldersOf[fid] || []).forEach(cf => { acc = acc.concat(compute(cf)); });
+      descendantSourceIds[fid] = acc;
+      return acc;
+    };
+    folderOrder.forEach(compute);
+    state.filterTreeIndex = { parentFolderOf, descendantSourceIds, folderOrder, allSourceIds };
+  }
+
+  // Effective set of selected SOURCE ids = explicit sources + every source
+  // beneath a selected folder. The single source of truth for display state.
+  function contentSelGetSelectedSources() {
+    if (!state.filterTreeIndex) buildFilterTreeIndex();
+    const idx = state.filterTreeIndex;
+    const set = new Set(state.filter.sourceIds || []);
+    (state.filter.folderIds || []).forEach(fid => {
+      (idx.descendantSourceIds[fid] || []).forEach(sid => set.add(sid));
+    });
+    return set;
+  }
+
+  // Normalise a set of selected source ids back into the minimal covering
+  // {folderIds, sourceIds} pair: a fully-selected folder collapses to a single
+  // folder id (one chip) and its descendants drop out; partially-selected
+  // folders contribute their selected leaves individually. Feed-predicate
+  // result is identical (folders expand to their sources server-side).
+  function contentSelSetSelection(selSet) {
+    if (!state.filterTreeIndex) buildFilterTreeIndex();
+    const idx = state.filterTreeIndex;
+    const fully = {};
+    idx.folderOrder.forEach(fid => {
+      const desc = idx.descendantSourceIds[fid] || [];
+      fully[fid] = desc.length > 0 && desc.every(sid => selSet.has(sid));
+    });
+    const folderIds = [];
+    idx.folderOrder.forEach(fid => {
+      if (!fully[fid]) return;
+      const p = idx.parentFolderOf[fid];
+      if (p && fully[p]) return;       // covered by a fully-selected ancestor
+      folderIds.push(fid);
+    });
+    const sourceIds = [];
+    idx.allSourceIds.forEach(sid => {
+      if (!selSet.has(sid)) return;
+      const p = idx.parentFolderOf[sid];
+      if (p && fully[p]) return;        // covered by a folder chip
+      sourceIds.push(sid);
+    });
+    state.filter.folderIds = folderIds;
+    state.filter.sourceIds = sourceIds;
   }
 
   function renderContentSelectList() {
@@ -2060,6 +2209,9 @@
       list.innerHTML = '<div class="content-select-empty">No sources to filter yet.</div>';
       return;
     }
+    if (!state.filterTreeIndex) buildFilterTreeIndex();
+    const idx = state.filterTreeIndex;
+    const selSources = contentSelGetSelectedSources();
     state.filterTree.forEach(node => {
       const row = document.createElement("div");
       row.className = "content-select-row";
@@ -2088,11 +2240,17 @@
       name.className = "content-select-row-name";
       name.textContent = node.name;
       row.appendChild(name);
-      // Mark selected state.
-      const selectedKey = node.kind === "folder"
-        ? state.filter.folderIds.includes(node.id)
-        : state.filter.sourceIds.includes(node.id);
-      if (selectedKey) row.classList.add("is-selected");
+      // Tree-checkbox display state (CR-260525-0730-001). A source is checked
+      // when in the effective set; a folder reflects its descendant sources:
+      // all checked -> checked, some -> indeterminate, none -> empty.
+      if (node.kind === "folder") {
+        const desc = idx.descendantSourceIds[node.id] || [];
+        const selCount = desc.reduce((c, sid) => c + (selSources.has(sid) ? 1 : 0), 0);
+        if (desc.length > 0 && selCount === desc.length) row.classList.add("is-selected");
+        else if (selCount > 0) row.classList.add("is-indeterminate");
+      } else if (selSources.has(node.id)) {
+        row.classList.add("is-selected");
+      }
       row.addEventListener("click", (ev) => {
         ev.stopPropagation();
         toggleContentSelectRow(node);
@@ -2100,21 +2258,30 @@
         // (AC-260523-1500-004).
         renderContentSelectList();
         repaintFilterBar();
+        // CR-260525-0745-002: keep the sidebar selection visuals in sync.
+        paintSidebarSelection();
       });
       list.appendChild(row);
     });
   }
 
+  // CR-260525-0730-001: ticking a Group/Subgroup cascades the checked state to
+  // every descendant; unticking clears them. Operate on the effective source
+  // set, then normalise back to {folderIds, sourceIds}.
   function toggleContentSelectRow(node) {
+    if (!state.filterTreeIndex) buildFilterTreeIndex();
+    const idx = state.filterTreeIndex;
+    const sel = contentSelGetSelectedSources();
     if (node.kind === "folder") {
-      const i = state.filter.folderIds.indexOf(node.id);
-      if (i >= 0) state.filter.folderIds.splice(i, 1);
-      else state.filter.folderIds.push(node.id);
+      const desc = idx.descendantSourceIds[node.id] || [];
+      const allOn = desc.length > 0 && desc.every(sid => sel.has(sid));
+      if (allOn) desc.forEach(sid => sel.delete(sid));
+      else desc.forEach(sid => sel.add(sid));
     } else if (node.kind === "source") {
-      const i = state.filter.sourceIds.indexOf(node.id);
-      if (i >= 0) state.filter.sourceIds.splice(i, 1);
-      else state.filter.sourceIds.push(node.id);
+      if (sel.has(node.id)) sel.delete(node.id);
+      else sel.add(node.id);
     }
+    contentSelSetSelection(sel);
   }
 
   function onContentSelectSearch(ev) {

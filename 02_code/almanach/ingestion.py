@@ -8,7 +8,7 @@ import feedparser
 import httpx
 
 from . import config, models
-from .urls import origin_of
+from .urls import clean_html_text, origin_of
 
 log = logging.getLogger(__name__)
 
@@ -37,10 +37,10 @@ def _entry_summary(entry) -> Optional[str]:
     for attr in ("summary", "description", "subtitle"):
         v = getattr(entry, attr, None)
         if v:
-            text = str(v).strip()
+            # BUG-260525-0745-001: strip HTML + unescape entities BEFORE
+            # truncating, so we never store a fragment cut mid-tag/entity.
+            text = clean_html_text(v, MAX_SUMMARY_CHARS)
             if text:
-                if len(text) > MAX_SUMMARY_CHARS:
-                    text = text[:MAX_SUMMARY_CHARS].rstrip() + "…"
                 return text
     return None
 

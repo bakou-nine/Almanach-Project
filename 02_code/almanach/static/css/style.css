@@ -40,7 +40,9 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 20px;
+  /* CR-260525-0745-001: thinner top stripe — reduced vertical padding frees
+     space for the panes below. Title + last-sync stay legible/functional. */
+  padding: 7px 20px;
   border-bottom: 0.5px solid var(--border-light);
   background: var(--bg-page);
   flex-shrink: 0;
@@ -528,24 +530,27 @@ body.is-resizing-pane * {
   background: var(--bg-page);
 }
 
+/* CR-260525-0745-001: compact "Latest news" header block — shorter title and
+   tighter spacing put more article rows on screen, keeping the title + the
+   "{N} articles · {M} active sources" subtitle legible. */
 .feed-header {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  padding-bottom: 10px;
-  margin-bottom: 2px;
+  padding-bottom: 6px;
+  margin-bottom: 0;
 }
 
 .feed-title h2 {
   margin: 0;
-  font-size: 19px;
+  font-size: 16px;
   font-weight: 600;
   letter-spacing: -0.01em;
   color: var(--text-primary);
 }
 
 .feed-meta {
-  margin: 3px 0 0;
+  margin: 2px 0 0;
   font-size: 11.5px;
   color: var(--text-secondary);
 }
@@ -637,6 +642,10 @@ body.is-resizing-pane * {
   padding: 18px 0 24px;
   color: var(--text-tertiary);
 }
+/* BUG-260525-0654-001: an author `display` rule overrides the UA `[hidden]`
+   rule at equal specificity, so the spinner stayed visible at end-of-feed.
+   Honour the `hidden` attribute explicitly — JS toggles spinner.hidden. */
+.feed-scroll-spinner[hidden] { display: none; }
 .feed-scroll-spinner i { font-size: 20px; animation: ds-spin 0.9s linear infinite; }
 
 .feed-end-marker {
@@ -1219,8 +1228,9 @@ body.is-resizing-pane * {
   color: var(--text-primary);
 }
 .content-select-row:hover { background: var(--bg-secondary); }
-.content-select-row.is-selected { background: var(--bg-info); color: var(--text-info); }
-.content-select-row.is-selected .content-select-row-name { font-weight: 500; }
+/* BUG-260525-0654-002: selection is conveyed by the checkbox state ALONE
+   (see .is-selected .content-select-row-check below). No row-background tint,
+   text recolour, or weight change — those were a confusing second signal. */
 .content-select-row.is-hidden { display: none; }
 .content-select-row-check {
   width: 14px;
@@ -1231,13 +1241,23 @@ body.is-resizing-pane * {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  color: var(--text-primary);
 }
-.content-select-row.is-selected .content-select-row-check {
-  border-color: var(--text-info);
-  background: var(--text-info);
-  color: var(--bg-primary);
+/* BUG-260525-0654-002: the check mark IS the toggle — hidden when unticked,
+   shown when ticked. No blue fill/border; the valid/invalid colour was the
+   confusing second signal. Tick/untick is conveyed by the check alone. */
+.content-select-row-check i { font-size: 11px; line-height: 1; visibility: hidden; }
+.content-select-row.is-selected .content-select-row-check i { visibility: visible; }
+/* CR-260525-0730-001: parent rows whose children are only partly selected show
+   an indeterminate dash inside the SAME checkbox — tri-state stays a
+   checkbox-only signal, no row-background tint (AC-260525-0654-002). */
+.content-select-row.is-indeterminate .content-select-row-check::after {
+  content: "";
+  width: 8px;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--text-primary);
 }
-.content-select-row-check i { font-size: 11px; line-height: 1; }
 .content-select-row[data-kind="folder"] { font-weight: 600; }
 .content-select-row[data-kind="folder"][data-depth="2"] { font-weight: 500; }
 .content-select-row[data-kind="folder"][data-depth="3"],

@@ -2,7 +2,7 @@ file: project-active.yaml
 status_filter:
 - OPEN
 - SOLVED
-exported_at: '2026-05-24T17:58:34.897446+00:00'
+exported_at: '2026-05-25T07:29:14.835765+00:00'
 project_charters:
 - id: PC-260512-2041-001
   project_id: PR-260512-2041-001
@@ -521,7 +521,8 @@ project_charters:
       - US-260522-2230-003
       - US-260523-1906-001
       - US-260523-1906-002
-      updated_at: '2026-05-24T14:51:29.800626'
+      - US-260525-0745-001
+      updated_at: '2026-05-25T05:02:23.291040'
       updated_by: HUMAN
       approved_by_human: true
       cancellation_reason: null
@@ -565,137 +566,836 @@ project_charters:
         target_id: AC-260524-1500-003
       - type: FULFILLED_BY
         target_id: AC-260524-1500-004
-      stories: []
+      stories:
+      - id: US-260523-1906-001
+        project_id: PR-260512-2041-001
+        type: USER_STORY
+        created_at: '2026-05-23T19:06:00'
+        created_by: CLAUDE_CODE
+        cancelled_at: null
+        locked: false
+        title: Feed Filter Bar
+        status: OPEN
+        parent_id: FT-260522-2230-001
+        children_ids: []
+        updated_at: '2026-05-25T05:02:23.299591'
+        updated_by: CLAUDE_CODE
+        approved_by_human: true
+        cancellation_reason: null
+        story_statement: As a reader, I want a filter bar at the top of the feed that
+          lets me constrain articles by date range, so that I see only the articles
+          relevant to my current focus.
+        tags: []
+        body: 'Hosts the filter-bar UI introduced by CR-260523-1500-001 — sibling
+          story under
+
+          FT-260522-2230-001, kept separate from US-260522-2230-003 to stay within
+          §3.6 AC
+
+          thresholds. The bar sits above the continuous-scroll feed and applies an
+          additive
+
+          (AND) predicate to the feed query: an explicit date range (max 1-year span)
+          or a
+
+          1d / 1w / 1m shortcut, a cumulative Group / Subgroup / Source multi-select,
+          plus
+
+          one or more keyword chips that combine via an Any/All toggle (CR-260524-0644-001);
+
+          each keyword may be added case-sensitive and/or whole-word via options chosen
+          at
+
+          add time, with an explicit Add button supplementing Enter (CR-260524-1315-001).
+
+          Active filters surface as removable chips with a Clear-all; an empty intersection
+
+          shows a filter-specific empty state. Cross-filter composition with the sidebar
+
+          scope (US-260523-1906-002) is asserted at feature level by AC-260523-1501-004.
+
+
+          **Data model fields touched:**
+
+
+          - `Article.published_at` (read — date predicate)
+
+          - `Article.source_id`, `Source.group_id`, `Source.subgroup_id` (read — content
+          predicate)
+
+
+          **Spec reference:** CR-260523-1500-001 §Change Summary; DATA_MODEL.md §3
+
+          (`idx_article_published_at`). Filter-bar wireframe pending §5.1.2.
+
+          '
+        acceptance_criteria: null
+        relations:
+        - type: CONFIRMED_BY
+          target_id: BUG-260525-0654-002
+        - type: CONFIRMED_BY
+          target_id: CR-260524-0644-001
+        - type: CONFIRMED_BY
+          target_id: CR-260524-1315-001
+        - type: FULFILLED_BY
+          target_id: AC-260523-1500-001
+        - type: FULFILLED_BY
+          target_id: AC-260523-1500-002
+        - type: FULFILLED_BY
+          target_id: AC-260523-1500-003
+        - type: FULFILLED_BY
+          target_id: AC-260523-1500-004
+        - type: FULFILLED_BY
+          target_id: AC-260523-1500-005
+        - type: FULFILLED_BY
+          target_id: AC-260523-1500-006
+        - type: FULFILLED_BY
+          target_id: AC-260523-1500-007
+        - type: FULFILLED_BY
+          target_id: AC-260524-0650-001
+        - type: FULFILLED_BY
+          target_id: AC-260524-0650-002
+        - type: FULFILLED_BY
+          target_id: AC-260524-0650-003
+        - type: FULFILLED_BY
+          target_id: AC-260524-0730-001
+        - type: FULFILLED_BY
+          target_id: AC-260524-1315-001
+        - type: FULFILLED_BY
+          target_id: AC-260524-1315-002
+        - type: FULFILLED_BY
+          target_id: AC-260524-1315-003
+        - type: FULFILLED_BY
+          target_id: AC-260524-1336-001
+        - type: FULFILLED_BY
+          target_id: AC-260525-0654-002
+      - id: US-260525-0745-001
+        project_id: PR-260512-2041-001
+        type: USER_STORY
+        created_at: '2026-05-25T07:45:00'
+        created_by: CLAUDE_CODE
+        cancelled_at: null
+        locked: false
+        title: Sidebar Selection Drives the Feed Filter
+        status: SOLVED
+        parent_id: FT-260522-2230-001
+        children_ids: []
+        updated_at: '2026-05-25T08:15:00.000000'
+        updated_by: CLAUDE_CODE
+        approved_by_human: true
+        cancellation_reason: null
+        story_statement: As a reader, I want clicking and shift-clicking sources,
+          so that I can build a multi-source filter directly from the sidebar.
+        tags: []
+        body: "Adds two-way coupling between the sidebar selection and the right-pane\n\
+          content-selection filter (US-260523-1906-001 dropdown). A plain click on\
+          \ a\nGroup / Subgroup / Source title ticks the matching filter entries (and\n\
+          unticks the rest) so the filter mirrors the sidebar selection; this extends\n\
+          the feed-scope behaviour of US-260523-1906-002 (which only scoped the feed)\n\
+          to also drive the filter UI. Shift-click adds rows cumulatively\n(multi-select);\
+          \ shift-clicking an already-selected row removes it. Clicking\na parent\
+          \ (Group) propagates the checked state to all its descendant sources\nin\
+          \ the filter, after which the user may untick individual descendants\nwithout\
+          \ losing the rest. Sits alongside US-260523-1906-001 (filter bar) and\n\
+          US-260523-1906-002 (sidebar scope) under FT-260522-2230-001; introduced\
+          \ by\nCR-260525-0745-002.\n\n**Data model fields touched:**\n\n- `Source.group_id`,\
+          \ `Source.subgroup_id`, `Article.source_id` (read — map\n  a sidebar selection\
+          \ to its member sources and the filter predicate)\n\n**Spec reference:**\
+          \ CR-260525-0745-002 §Change Summary; existing filter bar\n(US-260523-1906-001)\
+          \ and sidebar scope (US-260523-1906-002). Wireframe\npending §5.1.2.\n"
+        acceptance_criteria: null
+        relations:
+        - type: CONFIRMED_BY
+          target_id: CR-260525-0745-002
+        - type: FULFILLED_BY
+          target_id: AC-260525-0745-020
+        - type: FULFILLED_BY
+          target_id: AC-260525-0745-021
+        - type: FULFILLED_BY
+          target_id: AC-260525-0745-022
+        - type: FULFILLED_BY
+          target_id: AC-260525-0745-023
 epics: []
 orphans: []
 tests: []
-bugs: []
-change_requests:
-- id: CR-260524-1421-001
+bugs:
+- id: BUG-260525-0745-001
   project_id: PR-260512-2041-001
-  type: CR
-  created_at: '2026-05-24T14:21:22.304967'
-  created_by: HUMAN
+  type: BUG
+  created_at: '2026-05-25T07:45:00'
+  created_by: CLAUDE_CODE
   cancelled_at: null
   locked: false
-  title: Design revamp
+  title: Feed article rows do not render in a uniform standard format — duplicate
+    colour pastille, garbled body text, and only the first batch uses the correct
+    card layout
   status: SOLVED
-  priority: MED
-  updated_at: '2026-05-24T17:52:06.352779'
-  updated_by: HUMAN
+  priority: HIGH
+  updated_at: '2026-05-25T08:15:00.000000'
+  updated_by: CLAUDE_CODE
   approved_by_human: true
   cancellation_reason: null
   tags: []
-  body: "# CR — Design revamp\n\n## Change Summary\n\nCosmetic re-skin of the Feed\
-    \ Reading Experience (EP-260512-2230-004) to the target\nmockup 01_Docs/04_content/images/design\
-    \ revamp.png. Confirmed scope: cosmetic re-skin\nplus one keyword-control simplification\
-    \ — layout and matching logic preserved.\nVisible changes:\n- Header: dark rounded-square\
-    \ app mark + green sync-status dot before the\n  \"Last sync · …\" text.\n- Filter\
-    \ bar: WHEN / SOURCES / KEYWORD unified into one rounded bordered toolbar; the\n\
-    \  1d/1w/1m/Custom shortcuts become a joined segmented control with the active\
-    \ window\n  shown filled.\n- Keyword cluster restyled to sit in the toolbar. The\
-    \ per-keyword Match case / Match\n  whole word buttons are replaced by a single\
-    \ blue \"Exact match\" toggle inline with the\n  input and Add button (good.png):\
-    \ Exact match on = whole-word match (case-insensitive), off =\n  loose case-insensitive\
-    \ substring. Other CR-260524-1315-001 behaviour is preserved\n  (Enter/Add, removable\
-    \ chips, Match any/all toggle); committed chips now show a\n  single \"Exact match\"\
-    \ badge.\nSidebar unchanged; \"New group\" stays as the header folder-plus icon\
-    \ (confirmed).\n\n## Affected Requirement Objects\n\n- FT-260522-2050-002 (Header\
-    \ Bar Last-Sync Indicator) — header mark + green dot.\n- FT-260522-2230-001 (Continuous-Scroll\
-    \ Feed) — filter toolbar, segmented WHEN,\n  keyword restyle (single Exact match\
-    \ toggle), feed-pane visual fidelity.\n(= this CR's CONFIRMS set; both reopened\
-    \ to OPEN per §5.2.2.)\n\n## Design Changes\n\nCSS-led in 02_code/almanach/static/css/style.css,\
-    \ reusing :root tokens (a new\n--accent-green token added for the status dot)\
-    \ — no raw values in new rules:\n.app-header mark + status dot; .filter-row restyled\
-    \ as a single rounded/bordered\ntoolbar with labelled segments; .date shortcuts\
-    \ wrapped in a .segmented joined\ncontrol; keyword cluster condensed. The per-keyword\
-    \ Match case / Match whole word\nbuttons are removed in favour of a single .keyword-exact-toggle\
-    \ (blue switch per\ngood.png; the prior yellow --accent-highlight token and the\
-    \ .keyword-opt-btn /\n.kw-opt-label / .keyword-pending rules are removed). app.js:\
-    \ a sticky\nstate.filter.exactMode flag; a word commits immediately on Enter/Add\
-    \ with\nwholeWord = exactMode, matchCase forced off (keyword_opt \"01\" when on,\
-    \ already supported by\ndb._kw_match), so the loose default path is unchanged;\
-    \ the committed chip shows one\n\"Exact match\" badge. Markup hooks: templates/index.html\
-    \ (header mark + dot) and\ntemplates/_feed.html (WHEN buttons wrapped in .segmented;\
-    \ Exact toggle added to the\nkeyword group). Keyword input ids/classes consumed\
-    \ elsewhere are unchanged.\n\n## Data Model Changes\n\n(none)\n\n## Supersede\
-    \ / Versioning\n\n(none) — the Exact match toggle is a presentation change over\
-    \ CR-260524-1315-001's two\nmutually-exclusive options; the underlying per-keyword\
-    \ match flags and db._kw_match\nare unchanged, so no AC is superseded. The single-Exact-match-toggle\
-    \ assertion lives in\nAC-260524-1500-003.\n\n## Scope Impact\n\nRe-skin plus a\
-    \ keyword-control simplification (two option buttons → one Exact match\ntoggle).\
-    \ Behaviour note: the UI no longer offers case-only or whole-only matching\nindependently\
-    \ — Exact match bundles whole-word (case-insensitive), off is loose substring;\
-    \ the backend\nstill supports every combination. No design system exists in this\
-    \ project (single\nstyle.css with :root tokens), so the GR 14 §6.7 design-system\
-    \ pre-flight steps are\nN/A; the §6.7 visual-confirmation gate still applies on\
-    \ index.html. Reopens\nFT-260522-2050-002 and FT-260522-2230-001 (and EP-260512-2230-004\
-    \ closure) until UAT\nre-passes the new AC. No data model, no API, no new matching\
-    \ behaviour.\n"
+  body: "# BUG — Feed article-row rendering not uniform\n\n## Defect Summary\nIn the\
+    \ right-pane \"Latest news\" feed (FT-260522-2230-001), article rows\nviolate\
+    \ the standard card contract (AC-260522-2231-001 layout truth: single\ncolour-dot\
+    \ · source · relative time / bold title / two-line summary). Three\nobservable\
+    \ faults, per TEST-260525-0700-001 §1 (human, 2026-05-25): (a) each\nrow shows\
+    \ TWO colour pastilles instead of one — the single dot should match\nthe source's\
+    \ sidebar colour\n(01_Docs/04_content/images/pastille colours.png); (b) parts\
+    \ of the\nbody/summary render incorrectly (garbled / broken fragments) on some\
+    \ articles\n(01_Docs/04_content/images/body not rendered correclty.png); (c) only\
+    \ the\nfirst portion of the list renders in the correct standard format — rows\n\
+    further down (scroll-appended batches) diverge\n(01_Docs/04_content/images/standard\
+    \ format.png,\n01_Docs/04_content/images/compact news and reduce title lenght.png).\
+    \ Expected:\nevery row, including continuous-scroll appended batches, renders\
+    \ identically\nin the single-dot standard card layout.\n\n---\n\n## Affected Requirements\
+    \ (CONFIRMS targets)\n- `FT-260522-2230-001` — Continuous-Scroll Feed — failing\
+    \ the feed-card\n  standard-format contract (AC-260522-2231-001, AC-260523-0900-030)\
+    \ across\n  initial render AND scroll-appended batches.\n\n---\n\n## Technical\
+    \ Approach\n\n**Files / functions to change:**\n- `02_code/almanach/templates/`\
+    \ (feed / article-card partial) — single\n  colour-dot markup; one shared card\
+    \ template for initial + appended rows.\n- `02_code/almanach/static/js/app.js`\
+    \ — scroll-append path must reuse the\n  same card template as the server-rendered\
+    \ initial batch.\n- `02_code/almanach/app.py` — `/feed-partial` fragment must\
+    \ emit markup\n  identical to first render.\n- `02_code/almanach/static/css/style.css`\
+    \ — remove the second pastille;\n  ensure summary/body text is not truncated/garbled.\n\
+    \n**Root cause:**\nTo confirm at fix time — likely the scroll-append fragment\
+    \ uses a different\n(legacy) card template than the initial server render, and\
+    \ a second\nstatus/colour pastille is emitted alongside the source colour-dot.\n\
+    \n**Fix outline:**\nUnify the article-card template so initial render and `after=`\
+    \ append produce\nidentical markup; emit exactly one colour-dot bound to `Source.colour`;\
+    \ verify\nsummary/body text renders cleanly.\n\n---\n"
   acceptance_criteria: null
   relations:
-  - type: CONFIRMED_BY
-    target_id: TEST-260524-1512-001
-  - type: CONFIRMED_BY
-    target_id: TEST-260524-1714-001
+  - type: CONFIRMS
+    target_id: FT-260522-2230-001
+  - type: FULFILLED_BY
+    target_id: AC-260525-0745-001
+  - type: FULFILLED_BY
+    target_id: AC-260525-0745-002
+  - type: FULFILLED_BY
+    target_id: AC-260525-0745-003
+change_requests:
+- id: CR-260525-0745-001
+  project_id: PR-260512-2041-001
+  type: CR
+  created_at: '2026-05-25T07:45:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: Tighten feed chrome — reduce the "Latest news" feed-header block and the
+    top app header stripe so more articles fit on screen
+  status: SOLVED
+  priority: MED
+  updated_at: '2026-05-25T08:15:00.000000'
+  updated_by: CLAUDE_CODE
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: "# CR — Feed-chrome compaction (feed header + top stripe)\n\n## Change Summary\n\
+    Follow-on to the shipped density CRs (CR-260523-0900-002 article cards,\nCR-260523-0900-003\
+    \ sidebar rows), which left the page chrome untouched. Per\nTEST-260525-0700-001\
+    \ §1d–§1e (human, 2026-05-25), two chrome blocks still\nwaste vertical space:\
+    \ the large \"Latest news\" feed-pane header (title +\n\"{N} articles · {M} active\
+    \ sources\" subtitle) and the top app header stripe.\nReduce both heights so more\
+    \ article rows are visible per screen, preserving\ntheir content and layout. Refs:\n\
+    01_Docs/04_content/images/compact news and reduce title lenght.png,\n01_Docs/04_content/images/reduce\
+    \ lenght of stripe on top.png.\n\n---\n\n## Affected Requirement Objects\n| ID\
+    \ — Title | Action | Status transition |\n| :--- | :--- | :--- |\n| `FT-260522-2230-001`\
+    \ — Continuous-Scroll Feed | modified (feed-header block height) | OPEN → OPEN\
+    \ |\n| `FT-260522-2050-002` — Header Bar Last-Sync Indicator | modified (top stripe\
+    \ height) | OPEN → OPEN |\n\n---\n\n## Design Changes\nReduced vertical metrics\
+    \ for the feed-header block and the top header stripe;\nno layout/content elements\
+    \ removed. Wireframe refresh pending §5.1.2.\n\n## Data Model Changes\n(none)\n\
+    \n## Supersede / Versioning\n(none) — the header-size portion of the screenshot\
+    \ reference in\nAC-260522-2231-001 is intentionally tightened by this CR; the\
+    \ closed AC is\nnot edited (minimum-impact).\n\n## Scope Impact Assessment\n-\
+    \ **Features affected:** FT-260522-2230-001, FT-260522-2050-002\n- **Features\
+    \ blocked:** (none)\n- **Features unblocked:** (none)\n- **Regression risk:**\
+    \ low — CSS spacing/typography only; last-sync text,\n  refresh button, and article-count\
+    \ subtitle must remain legible/functional.\n- **Breaking changes:** (none)\n\n\
+    ---\n"
+  acceptance_criteria: null
+  relations:
   - type: CONFIRMS
     target_id: FT-260522-2050-002
   - type: CONFIRMS
     target_id: FT-260522-2230-001
   - type: FULFILLED_BY
-    target_id: AC-260524-1500-001
+    target_id: AC-260525-0745-010
   - type: FULFILLED_BY
-    target_id: AC-260524-1500-002
-  - type: FULFILLED_BY
-    target_id: AC-260524-1500-003
-  - type: FULFILLED_BY
-    target_id: AC-260524-1500-004
-acceptance_criteria:
-- id: AC-260524-1500-003
+    target_id: AC-260525-0745-011
+- id: CR-260525-0745-002
   project_id: PR-260512-2041-001
-  type: AC
-  created_at: '2026-05-24T15:00:00'
+  type: CR
+  created_at: '2026-05-25T07:45:00'
   created_by: CLAUDE_CODE
   cancelled_at: null
   locked: false
-  title: The keyword control sits within the new toolbar with a single Exact match
-    toggle replacing the two Match case / Match whole word buttons; add via Enter
-    or Add, Exact match on commits a whole-word (case-insensitive) keyword shown with
-    an Exact match chip badge, off commits a loose match, and the Match any/all toggle
-    appears with two or more active keywords.
-  status: OPEN
-  result: FAIL
+  title: Sidebar selection (single + shift multi-select) drives and mirrors the right-pane
+    content filter, with parent→descendant propagation and toggle-deselect
+  status: SOLVED
   priority: MED
-  updated_at: '2026-05-24T17:52:06.380892'
+  updated_at: '2026-05-25T08:15:00.000000'
   updated_by: CLAUDE_CODE
   approved_by_human: true
   cancellation_reason: null
   tags: []
-  body: "## Description\n\nGoal: restyle the keyword cluster into the new toolbar\
-    \ with a single Exact match toggle in\nplace of the two Match case / Match whole\
-    \ word buttons (CR-260524-1421-001, per\ngood.png). Outcome: a single blue Exact\
-    \ match switch sits inline with the keyword input and\nthe Add button; Exact match\
-    \ on adds a whole-word (case-insensitive) keyword, off adds a loose\ncase-insensitive\
-    \ match. Enter/Add, removable chips, and the Match any/all toggle from\nCR-260524-1315-001\
-    \ are preserved.\n\n## Test Instructions\n\n1. Open the app at / in a browser.\n\
-    \n2. In the KEYWORD segment of the toolbar, confirm a single toggle labelled \"\
-    Exact match\"\n   sits between the keyword input and the Add button (no separate\
-    \ Match case / Match\n   whole word buttons, nothing highlighted yellow).\n\n\
-    3. With Exact match off, type a word and press Enter; confirm it is added as a\
-    \ removable\n   chip with no Exact match badge.\n\n4. Turn the Exact match toggle\
-    \ on (it shows blue/filled), type a second word, then click\n   Add; confirm the\
-    \ new chip shows an \"Exact match\" badge.\n\n5. Confirm a Match any / Match all\
-    \ toggle appears now that two keywords are active.\n\n6. Switch between Match\
-    \ any and Match all and confirm the visible feed result set\n   updates.\n\n7.\
-    \ Remove each keyword chip via its × and confirm the Match any/all toggle\n  \
-    \ disappears once fewer than two keywords remain.\n"
+  body: "# CR — Sidebar-driven filter selection\n\n## Change Summary\nPer TEST-260525-0700-001\
+    \ §2–§3 (human, 2026-05-25), the sidebar selection and\nthe right-pane content\
+    \ filter are disconnected: clicking a title on the left\ndoes not flag the matching\
+    \ content in the filter\n(01_Docs/04_content/images/bug as left pane selection\
+    \ is not propagated in the right pane filter.png),\nand there is no way to build\
+    \ a multi-source selection from the sidebar\n(01_Docs/04_content/images/multiple\
+    \ titles and sources selection with the filter pressing shift and clicking on\
+    \  multiple ones.png).\nThis CR adds new behaviour: a sidebar click drives the\
+    \ filter selection;\nshift-click enables cumulative multi-select with toggle-deselect;\
+    \ clicking a\nparent propagates to descendants, which the user can then individually\
+    \ untick.\nNew behaviour → hosted by the new story US-260525-0745-001 (keeps\n\
+    US-260523-1906-001 under its §3.6 AC threshold).\n\n---\n\n## Affected Requirement\
+    \ Objects\n| ID — Title | Action | Status transition |\n| :--- | :--- | :--- |\n\
+    | `US-260525-0745-001` — Sidebar Selection Drives the Feed Filter | added | (new)\
+    \ → OPEN |\n\n---\n\n## Design Changes\nNew interaction (no new screen): sidebar\
+    \ rows gain selected/multi-selected\nvisual state mirrored into the filter dropdown\
+    \ checkboxes. Wireframe pending\n§5.1.2.\n\n## Data Model Changes\n(none) — selection\
+    \ state is client-side; predicate reuses existing\n`Source.group_id` / `Source.subgroup_id`\
+    \ / `Article.source_id` reads.\n\n## Supersede / Versioning\n(none)\n\n## Scope\
+    \ Impact Assessment\n- **Features affected:** FT-260522-2230-001 (new child story)\n\
+    - **Features blocked:** (none)\n- **Features unblocked:** (none)\n- **Regression\
+    \ risk:** medium — must not break existing sidebar feed-scope\n  (US-260523-1906-002)\
+    \ or the filter bar's own controls (US-260523-1906-001);\n  the single-active-row\
+    \ scope contract must stay coherent with multi-select.\n- **Breaking changes:**\
+    \ (none)\n\n---\n"
+  acceptance_criteria: null
+  relations:
+  - type: CONFIRMS
+    target_id: US-260525-0745-001
+  - type: FULFILLED_BY
+    target_id: AC-260525-0745-020
+  - type: FULFILLED_BY
+    target_id: AC-260525-0745-021
+  - type: FULFILLED_BY
+    target_id: AC-260525-0745-022
+  - type: FULFILLED_BY
+    target_id: AC-260525-0745-023
+acceptance_criteria:
+- id: AC-260525-0745-001
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-25T07:45:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: Each feed article row shows exactly one colour dot, coloured to match its
+    source's sidebar colour — no second pastille.
+  status: OPEN
+  result: null
+  priority: HIGH
+  updated_at: '2026-05-25T07:29:01.219335'
+  updated_by: CLAUDE_CODE
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: '## Description
+
+
+    Asserts the single-indicator contract for feed cards (FT-260522-2230-001;
+
+    layout truth AC-260522-2231-001). Each article row carries one colour dot
+
+    matching the source''s sidebar colour — the duplicate pastille reported in
+
+    TEST-260525-0700-001 §1a is gone.
+
+
+    ## Test Instructions
+
+
+    1. Open the right-pane "Latest news" feed with articles from at least two differently-coloured
+    sidebar sources.
+
+
+    2. Inspect any article row and confirm exactly ONE colour dot precedes the source
+    name (no second pastille or indicator).
+
+
+    3. Confirm that dot''s colour matches the same source''s colour dot in the left
+    sidebar.
+
+
+    4. Scroll through several rows from different sources and confirm every row shows
+    a single, source-matching dot.
+
+    '
   acceptance_criteria: null
   relations:
   - type: FULFILLS
-    target_id: CR-260524-1421-001
+    target_id: BUG-260525-0745-001
   - type: FULFILLS
     target_id: FT-260522-2230-001
+- id: AC-260525-0745-002
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-25T07:45:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: Every article summary/body in the feed renders as clean, complete text —
+    no garbled or broken fragments.
+  status: OPEN
+  result: null
+  priority: HIGH
+  updated_at: '2026-05-25T07:29:01.223335'
+  updated_by: CLAUDE_CODE
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: '## Description
+
+
+    Asserts correct text rendering of the article summary/body across the feed
+
+    (FT-260522-2230-001), fixing the garbled output reported in
+
+    TEST-260525-0700-001 §1b.
+
+
+    ## Test Instructions
+
+
+    1. Open the feed and scroll through at least 20 articles from a mix of sources.
+
+
+    2. Confirm each card''s summary/body text is readable and complete — no broken
+    markup, stray characters, or fragments cut off mid-word.
+
+
+    3. Compare against 01_Docs/04_content/images/body not rendered correclty.png and
+    confirm the rendering fault shown there no longer occurs.
+
+    '
+  acceptance_criteria: null
+  relations:
   - type: FULFILLS
-    target_id: TEST-260524-1512-001
+    target_id: BUG-260525-0745-001
   - type: FULFILLS
-    target_id: TEST-260524-1714-001
+    target_id: FT-260522-2230-001
+- id: AC-260525-0745-003
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-25T07:45:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: All feed article rows, including batches appended on scroll, render in the
+    identical standard card layout — no divergence after the first batch.
+  status: OPEN
+  result: null
+  priority: HIGH
+  updated_at: '2026-05-25T07:29:01.226651'
+  updated_by: CLAUDE_CODE
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: '## Description
+
+
+    Asserts visual uniformity between the initial server-rendered batch and the
+
+    continuous-scroll appended batches (FT-260522-2230-001), fixing the
+
+    "only the first part of the list is in the right format" fault reported in
+
+    TEST-260525-0700-001 §1c.
+
+
+    ## Test Instructions
+
+
+    1. Open the feed and note the layout of the first batch (colour-dot · source ·
+    time / bold title / two-line summary).
+
+
+    2. Scroll to the bottom to trigger continuous-scroll loading of further batches.
+
+
+    3. Confirm appended rows render in the exact same standard layout as the first
+    batch — no compact/legacy variant or structural difference.
+
+
+    4. Continue scrolling through at least two more appended batches and confirm the
+    layout stays uniform throughout.
+
+    '
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: BUG-260525-0745-001
+  - type: FULFILLS
+    target_id: FT-260522-2230-001
+- id: AC-260525-0745-010
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-25T07:45:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: The "Latest news" feed-header block occupies reduced vertical height while
+    keeping its title and "{N} articles · {M} active sources" subtitle legible.
+  status: OPEN
+  result: null
+  priority: MED
+  updated_at: '2026-05-25T07:29:01.229652'
+  updated_by: CLAUDE_CODE
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: '## Description
+
+
+    Verifies the feed-header compaction half of CR-260525-0745-001
+
+    (TEST-260525-0700-001 §1d) — the "Latest news" header block is shorter,
+
+    freeing vertical space for article rows, without losing its title or count
+
+    subtitle.
+
+
+    ## Test Instructions
+
+
+    1. Open the feed pane and locate the "Latest news" header block at the top.
+
+
+    2. Confirm the header block is visibly shorter than before, leaving more room
+    for article rows below.
+
+
+    3. Confirm the title and the "{N} articles · {M} active sources" subtitle are
+    both still present and legible.
+
+
+    4. Confirm at least one more article row is visible on screen than before the
+    change at the same window height.
+
+    '
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: CR-260525-0745-001
+  - type: FULFILLS
+    target_id: FT-260522-2230-001
+- id: AC-260525-0745-011
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-25T07:45:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: The top app header stripe is reduced in height, enlarging the content area
+    below, with the last-sync indicator and refresh control still visible and functional.
+  status: OPEN
+  result: null
+  priority: MED
+  updated_at: '2026-05-25T07:29:01.234483'
+  updated_by: CLAUDE_CODE
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: '## Description
+
+
+    Verifies the top-stripe compaction half of CR-260525-0745-001
+
+    (TEST-260525-0700-001 §1e) — the app header stripe is thinner, giving more
+
+    room to the panes, while the last-sync indicator and refresh button keep
+
+    working (FT-260522-2050-002).
+
+
+    ## Test Instructions
+
+
+    1. Open the app and locate the top header stripe.
+
+
+    2. Confirm the stripe is visibly thinner than before, giving more vertical space
+    to the panes below.
+
+
+    3. Confirm the "last sync · N min ago" indicator and the manual refresh button
+    remain visible and usable in the thinner stripe.
+
+
+    4. Click refresh and confirm it still triggers a refresh and the last-sync text
+    updates.
+
+    '
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: CR-260525-0745-001
+  - type: FULFILLS
+    target_id: FT-260522-2050-002
+- id: AC-260525-0745-020
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-25T07:45:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: Clicking a Group, Subgroup, or Source title in the sidebar ticks the matching
+    entries in the right-pane content filter and unticks the rest, so the filter mirrors
+    the sidebar selection.
+  status: OPEN
+  result: null
+  priority: MED
+  updated_at: '2026-05-25T07:29:01.234483'
+  updated_by: CLAUDE_CODE
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: '## Description
+
+
+    Core sync assertion for US-260525-0745-001 / CR-260525-0745-002
+
+    (TEST-260525-0700-001 §2) — a single sidebar click sets the content filter
+
+    selection to exactly that branch''s sources.
+
+
+    ## Test Instructions
+
+
+    1. Open the feed with the content-selection filter available in the filter bar.
+
+
+    2. Click a single Source title in the sidebar.
+
+
+    3. Open the content-selection filter dropdown and confirm only that source is
+    ticked (all others unticked).
+
+
+    4. Click a Group title in the sidebar, reopen the filter, and confirm the group''s
+    sources are ticked and unrelated sources are not.
+
+    '
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: CR-260525-0745-002
+  - type: FULFILLS
+    target_id: US-260525-0745-001
+- id: AC-260525-0745-021
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-25T07:45:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: Shift-clicking sidebar rows adds each to the selection cumulatively and the
+    filter reflects all of them; shift-clicking an already-selected row removes just
+    that one.
+  status: OPEN
+  result: null
+  priority: MED
+  updated_at: '2026-05-25T07:29:01.234483'
+  updated_by: CLAUDE_CODE
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: '## Description
+
+
+    Multi-select + toggle-deselect assertion for US-260525-0745-001 /
+
+    CR-260525-0745-002 (TEST-260525-0700-001 §3).
+
+
+    ## Test Instructions
+
+
+    1. Click one Source in the sidebar to select it.
+
+
+    2. Hold Shift and click a second and third Source; confirm all three appear selected
+    in the sidebar and ticked in the content filter.
+
+
+    3. Hold Shift and click one of the already-selected sources again; confirm only
+    that one is deselected (unticked) and the others stay selected.
+
+
+    4. Confirm the feed updates to show articles for exactly the currently-selected
+    set.
+
+    '
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: CR-260525-0745-002
+  - type: FULFILLS
+    target_id: US-260525-0745-001
+- id: AC-260525-0745-022
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-25T07:45:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: Clicking a Group title propagates the checked state to all its descendant
+    sources in the filter, and the user can then untick individual descendants without
+    losing the rest.
+  status: OPEN
+  result: null
+  priority: MED
+  updated_at: '2026-05-25T07:29:01.234483'
+  updated_by: CLAUDE_CODE
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: '## Description
+
+
+    Parent→descendant propagation with individual override for
+
+    US-260525-0745-001 / CR-260525-0745-002 (TEST-260525-0700-001 §3, "continue
+
+    applying propagation rules ... then unclick individual ones").
+
+
+    ## Test Instructions
+
+
+    1. Click a Group that contains multiple sources (directly or via subgroups).
+
+
+    2. Open the content filter and confirm every descendant source under that group
+    is ticked.
+
+
+    3. Untick one descendant source in the filter (or shift-click it in the sidebar);
+    confirm only that one is removed and the others remain ticked.
+
+
+    4. Confirm the feed reflects the remaining selected descendants.
+
+    '
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: CR-260525-0745-002
+  - type: FULFILLS
+    target_id: US-260525-0745-001
+- id: AC-260525-0745-023
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-25T07:45:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: Selecting a sidebar branch whose sources have no matching articles shows
+    the filter-specific empty state while the filter still reflects the selection.
+  status: OPEN
+  result: null
+  priority: MED
+  updated_at: '2026-05-25T07:29:01.249396'
+  updated_by: CLAUDE_CODE
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: '## Description
+
+
+    Error/empty-state guard (§3.8.2) for the interactive sync story
+
+    US-260525-0745-001 / CR-260525-0745-002 — a selection that yields no articles
+
+    must surface the filter-specific empty state, not a blank pane.
+
+
+    ## Test Instructions
+
+
+    1. Select a Group/Source (or combination) that currently yields no articles in
+    the feed.
+
+
+    2. Confirm the feed shows the filter-specific empty-state message (not a blank
+    pane and not the global empty state).
+
+
+    3. Confirm the content filter still shows the selected entries as ticked.
+
+
+    4. Shift-click another source that has articles into the selection and confirm
+    the empty state is replaced by the now-matching articles.
+
+    '
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: CR-260525-0745-002
+  - type: FULFILLS
+    target_id: US-260525-0745-001
+- id: AC-260525-0654-002
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-25T06:54:30.724023'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: In the content-selection dropdown a row's selection is shown only by its
+    checkbox state, with no blue row-background highlight on click.
+  status: OPEN
+  result: FAIL
+  priority: LOW
+  updated_at: '2026-05-25T05:33:08.975901'
+  updated_by: HUMAN
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: '## Description
+
+
+    Verifies the content-selection dropdown (US-260523-1906-001) conveys selection
+    solely through the checkbox checked/unchecked state - no extra blue row-background
+    highlight is painted on click, so the visual matches the actual selection decision
+    (complements AC-260523-1500-004).
+
+
+    ## Test Instructions
+
+
+    1. Open the content-selection dropdown in the feed filter bar.
+
+
+    2. Click an unselected row; confirm its checkbox becomes checked and NO blue row-background
+    highlight is applied.
+
+
+    3. Click the same row again; confirm the checkbox becomes unchecked and the row
+    returns to its normal (un-highlighted) background.
+
+
+    4. With several rows selected, confirm the only visual difference between selected
+    and unselected rows is the checkbox state (no blue band on any row).
+
+    '
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: BUG-260525-0654-002
+  - type: FULFILLS
+    target_id: TEST-260525-0532-001
+  - type: FULFILLS
+    target_id: TEST-260525-0552-002
+  - type: FULFILLS
+    target_id: TEST-260525-0614-001
+  - type: FULFILLS
+    target_id: US-260523-1906-001

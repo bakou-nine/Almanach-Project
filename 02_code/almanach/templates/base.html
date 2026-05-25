@@ -5,10 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}Almanach{% endblock %}</title>
   <link href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.47.0/tabler-icons.min.css" rel="stylesheet">
-  <link rel="stylesheet" href="/static/css/style.css">
+  {# ?v= mtime token busts the browser cache whenever the file changes. The
+     `is defined` guard keeps the page rendering if a stale server process is
+     still running without the asset_version global (pre-relaunch window). #}
+  <link rel="stylesheet" href="/static/css/style.css{% if asset_version is defined %}?v={{ asset_version('css/style.css') }}{% endif %}">
 </head>
 <body>
   {% block body %}{% endblock %}
-  <script src="/static/js/app.js" defer></script>
+  <script src="/static/js/app.js{% if asset_version is defined %}?v={{ asset_version('js/app.js') }}{% endif %}" defer></script>
 </body>
 </html>

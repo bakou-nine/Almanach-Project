@@ -1,15 +1,16 @@
 file: project-delta.yaml
-generated_at: '2026-05-24T17:58:34.897446+00:00'
-delta_since: '2026-05-24T17:31:59.178877'
+generated_at: '2026-05-25T07:29:14.835765+00:00'
+delta_since: '2026-05-25T07:16:13.879254'
 delta_since_event: YAML_IMPORT
 changes:
-  created:
-  - id: TEST-260524-1757-001
-    type: TEST
-    title: various bugs
+  created: []
   edited: []
   status_changed: []
-  cancelled: []
+  cancelled:
+  - id: TEST-260525-0700-001
+    type: TEST
+    title: multiple bugs
+    cancellation_reason: null
   reinstated: []
   links_changed:
     created: []

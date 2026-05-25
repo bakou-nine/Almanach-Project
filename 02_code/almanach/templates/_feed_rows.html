@@ -10,7 +10,9 @@
            data-folder-id="{{ a.folder_id or '' }}"
            draggable="true">
     <div class="article-meta">
-      {% if a.is_unread %}<span class="badge-new"></span>{% endif %}
+      {# BUG-260525-0745-001: a single source-coloured dot is the only pastille.
+         The former blue `.badge-new` unread dot is removed (it was the second
+         pastille); unread state stays conveyed by row opacity/weight (.article.read). #}
       <span class="source-dot" style="background:{{ a.source_colour }};"></span>
       <span class="article-source">{{ a.source_name }}</span>
       <span class="article-sep">·</span>

@@ -1,7 +1,7 @@
 file: project-closed.yaml
 status_filter:
 - CLOSED
-exported_at: '2026-05-24T17:58:34.897446+00:00'
+exported_at: '2026-05-25T07:29:14.835765+00:00'
 project_charters: []
 epics:
 - id: EP-260512-2230-001
@@ -2150,7 +2150,7 @@ orphans:
   status: CLOSED
   parent_id: FT-260522-2230-001
   children_ids: []
-  updated_at: '2026-05-23T13:30:32.976144'
+  updated_at: '2026-05-25T05:52:22.076545'
   updated_by: HUMAN
   approved_by_human: true
   cancellation_reason: null
@@ -2186,6 +2186,8 @@ orphans:
   acceptance_criteria: null
   relations:
   - type: CONFIRMED_BY
+    target_id: BUG-260525-0654-001
+  - type: CONFIRMED_BY
     target_id: CR-260522-2101-001
   - type: CONFIRMED_BY
     target_id: CR-260523-0900-001
@@ -2205,6 +2207,8 @@ orphans:
     target_id: AC-260523-0900-031
   - type: FULFILLED_BY
     target_id: AC-260523-0900-033
+  - type: FULFILLED_BY
+    target_id: AC-260525-0654-001
 - id: FT-260523-0900-001
   project_id: PR-260512-2041-001
   type: FEATURE
@@ -2250,100 +2254,6 @@ orphans:
     target_id: AC-260523-0900-052
   - type: FULFILLED_BY
     target_id: AC-260523-0900-053
-- id: US-260523-1906-001
-  project_id: PR-260512-2041-001
-  type: USER_STORY
-  created_at: '2026-05-23T19:06:00'
-  created_by: CLAUDE_CODE
-  cancelled_at: null
-  locked: false
-  title: Feed Filter Bar
-  status: CLOSED
-  parent_id: FT-260522-2230-001
-  children_ids: []
-  updated_at: '2026-05-24T13:57:13.367768'
-  updated_by: HUMAN
-  approved_by_human: true
-  cancellation_reason: null
-  story_statement: As a reader, I want a filter bar at the top of the feed that lets
-    me constrain articles by date range, so that I see only the articles relevant
-    to my current focus.
-  tags: []
-  body: 'Hosts the filter-bar UI introduced by CR-260523-1500-001 — sibling story
-    under
-
-    FT-260522-2230-001, kept separate from US-260522-2230-003 to stay within §3.6
-    AC
-
-    thresholds. The bar sits above the continuous-scroll feed and applies an additive
-
-    (AND) predicate to the feed query: an explicit date range (max 1-year span) or
-    a
-
-    1d / 1w / 1m shortcut, a cumulative Group / Subgroup / Source multi-select, plus
-
-    one or more keyword chips that combine via an Any/All toggle (CR-260524-0644-001);
-
-    each keyword may be added case-sensitive and/or whole-word via options chosen
-    at
-
-    add time, with an explicit Add button supplementing Enter (CR-260524-1315-001).
-
-    Active filters surface as removable chips with a Clear-all; an empty intersection
-
-    shows a filter-specific empty state. Cross-filter composition with the sidebar
-
-    scope (US-260523-1906-002) is asserted at feature level by AC-260523-1501-004.
-
-
-    **Data model fields touched:**
-
-
-    - `Article.published_at` (read — date predicate)
-
-    - `Article.source_id`, `Source.group_id`, `Source.subgroup_id` (read — content
-    predicate)
-
-
-    **Spec reference:** CR-260523-1500-001 §Change Summary; DATA_MODEL.md §3
-
-    (`idx_article_published_at`). Filter-bar wireframe pending §5.1.2.
-
-    '
-  acceptance_criteria: null
-  relations:
-  - type: CONFIRMED_BY
-    target_id: CR-260524-0644-001
-  - type: CONFIRMED_BY
-    target_id: CR-260524-1315-001
-  - type: FULFILLED_BY
-    target_id: AC-260523-1500-001
-  - type: FULFILLED_BY
-    target_id: AC-260523-1500-002
-  - type: FULFILLED_BY
-    target_id: AC-260523-1500-003
-  - type: FULFILLED_BY
-    target_id: AC-260523-1500-004
-  - type: FULFILLED_BY
-    target_id: AC-260523-1500-005
-  - type: FULFILLED_BY
-    target_id: AC-260523-1500-006
-  - type: FULFILLED_BY
-    target_id: AC-260523-1500-007
-  - type: FULFILLED_BY
-    target_id: AC-260524-0650-001
-  - type: FULFILLED_BY
-    target_id: AC-260524-0650-002
-  - type: FULFILLED_BY
-    target_id: AC-260524-0650-003
-  - type: FULFILLED_BY
-    target_id: AC-260524-0730-001
-  - type: FULFILLED_BY
-    target_id: AC-260524-1315-001
-  - type: FULFILLED_BY
-    target_id: AC-260524-1315-002
-  - type: FULFILLED_BY
-    target_id: AC-260524-1315-003
 - id: US-260523-1906-002
   project_id: PR-260512-2041-001
   type: USER_STORY
@@ -2594,8 +2504,8 @@ tests:
   locked: false
   title: CR-260524-1421-001 - Test 1
   status: CLOSED
-  result: FAIL
-  updated_at: '2026-05-24T15:13:44.908516'
+  result: PASS
+  updated_at: '2026-05-25T04:44:06.537790'
   updated_by: HUMAN
   approved_by_human: null
   cancellation_reason: null
@@ -2631,8 +2541,8 @@ tests:
   locked: false
   title: CR-260524-1421-001 - Test 2
   status: CLOSED
-  result: PARTIAL
-  updated_at: '2026-05-24T17:18:27.345893'
+  result: PASS
+  updated_at: '2026-05-25T04:44:06.538838'
   updated_by: HUMAN
   approved_by_human: null
   cancellation_reason: null
@@ -2657,6 +2567,133 @@ tests:
     target_id: AC-260524-1500-003
   - type: FULFILLED_BY
     target_id: AC-260524-1500-004
+- id: TEST-260525-0531-001
+  project_id: PR-260512-2041-001
+  type: TEST
+  created_at: '2026-05-25T05:31:25.500873'
+  created_by: HUMAN
+  cancelled_at: null
+  locked: false
+  title: BUG-260525-0654-001 - Test 1
+  status: CLOSED
+  result: PASS
+  updated_at: '2026-05-25T05:52:22.072538'
+  updated_by: HUMAN
+  approved_by_human: null
+  cancellation_reason: null
+  tags: []
+  body: 'still not working......
+
+
+    ![loading bug](01_docs/04_content/images/loading bug.png)'
+  acceptance_criteria: null
+  relations:
+  - type: CONFIRMS
+    target_id: BUG-260525-0654-001
+  - type: FULFILLED_BY
+    target_id: AC-260525-0654-001
+- id: TEST-260525-0532-001
+  project_id: PR-260512-2041-001
+  type: TEST
+  created_at: '2026-05-25T05:32:09.684003'
+  created_by: HUMAN
+  cancelled_at: null
+  locked: false
+  title: BUG-260525-0654-002 - Test 1
+  status: CLOSED
+  result: FAIL
+  updated_at: '2026-05-25T05:33:13.690529'
+  updated_by: HUMAN
+  approved_by_human: null
+  cancellation_reason: null
+  tags: []
+  body: 'still not working.....
+
+
+
+    still highliting in blue instead of ticking unticking elements of the list ![blue
+    highlight bug](01_docs/04_content/images/blue highlight bug.png)'
+  acceptance_criteria: null
+  relations:
+  - type: CONFIRMS
+    target_id: BUG-260525-0654-002
+  - type: FULFILLED_BY
+    target_id: AC-260525-0654-002
+- id: TEST-260525-0552-001
+  project_id: PR-260512-2041-001
+  type: TEST
+  created_at: '2026-05-25T05:52:19.851978'
+  created_by: HUMAN
+  cancelled_at: null
+  locked: false
+  title: BUG-260525-0654-001 - Test 2
+  status: CLOSED
+  result: PASS
+  updated_at: '2026-05-25T05:52:22.073559'
+  updated_by: HUMAN
+  approved_by_human: null
+  cancellation_reason: null
+  tags: []
+  body: ''
+  acceptance_criteria: null
+  relations:
+  - type: CONFIRMS
+    target_id: BUG-260525-0654-001
+  - type: FULFILLED_BY
+    target_id: AC-260525-0654-001
+- id: TEST-260525-0552-002
+  project_id: PR-260512-2041-001
+  type: TEST
+  created_at: '2026-05-25T05:52:30.316590'
+  created_by: HUMAN
+  cancelled_at: null
+  locked: false
+  title: BUG-260525-0654-002 - Test 2
+  status: CLOSED
+  result: FAIL
+  updated_at: '2026-05-25T05:54:00.523873'
+  updated_by: HUMAN
+  approved_by_human: null
+  cancellation_reason: null
+  tags: []
+  body: 'so the requirement is to have the flag or the unflag,  nothing more, you
+    still do it wrongly ![useless double logic](01_docs/04_content/images/useless
+    double logic.png)
+
+
+    what is the value of keeping all list flagged and when i click just to kjeep the
+    flag and colour in blue,. I just want you to let the user flag/unglag that is
+    all'
+  acceptance_criteria: null
+  relations:
+  - type: CONFIRMS
+    target_id: BUG-260525-0654-002
+  - type: FULFILLED_BY
+    target_id: AC-260525-0654-002
+- id: TEST-260525-0614-001
+  project_id: PR-260512-2041-001
+  type: TEST
+  created_at: '2026-05-25T06:14:32.545368'
+  created_by: HUMAN
+  cancelled_at: null
+  locked: false
+  title: BUG-260525-0654-002 - Test 3
+  status: CLOSED
+  result: FAIL
+  updated_at: '2026-05-25T06:16:00.072962'
+  updated_by: HUMAN
+  approved_by_human: null
+  cancellation_reason: null
+  tags: []
+  body: "tick now works but the logic does not: \n\n![tick does not propagate](01_docs/04_content/images/tick\
+    \ does not propagate.png)\n\ntick should propagate if i tick the highest level\
+    \ of item, the tick should propagate to all children"
+  acceptance_criteria: null
+  relations:
+  - type: CONFIRMS
+    target_id: BUG-260525-0654-002
+  - type: FULFILLED_BY
+    target_id: AC-260525-0654-002
 bugs:
 - id: BUG-260517-1128-001
   project_id: PR-260512-2041-001
@@ -3199,6 +3236,175 @@ bugs:
     target_id: AC-260523-0900-012
   - type: FULFILLED_BY
     target_id: AC-260523-0900-013
+- id: BUG-260525-0654-001
+  project_id: PR-260512-2041-001
+  type: BUG
+  created_at: '2026-05-25T06:54:30.724023'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: End-of-feed loading spinner persists after the last batch
+  status: CLOSED
+  priority: LOW
+  updated_at: '2026-05-25T05:52:22.071549'
+  updated_by: HUMAN
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: '# BUG - End-of-feed loading spinner persists after the last batch
+
+
+    ## Defect Summary
+
+
+    In the continuous-scroll feed (US-260522-2230-003) the inline loading spinner
+    stays visible at the bottom of the list after end-of-feed is reached - it renders
+    alongside the "end of feed" marker, implying a fetch is still in flight when none
+    is. Per the US body the spinner must show ONLY while a batch fetch is in flight;
+    once a short/empty batch sets the end-of-feed state it must be hidden, leaving
+    only the end-of-feed marker. Reported by HUMAN via TEST-260524-1757-001 #1.
+
+
+    ![fake load bug](01_docs/04_content/images/fake load bug.png)
+
+
+    ---
+
+
+    ## Affected Requirements (CONFIRMS targets)
+
+    - `US-260522-2230-003` - Continuous-Scroll Feed - failing AC: AC-260525-0654-001
+
+
+    ---
+
+
+    ## Technical Approach
+
+
+    **Files / functions to change:**
+
+    - `02_code/filum/frontend/` continuous-scroll client JS (scroll/append + end-of-feed
+    handler) and the feed-partial spinner markup.
+
+
+    **Root cause:**
+
+    The spinner element is not hidden/removed when the end-of-feed state is set; its
+    visibility is toggled on fetch-start but never reset on the short/empty-batch
+    terminal condition.
+
+
+    **Fix outline:**
+
+    When a returned batch is smaller than `size` (end-of-feed), hide/remove the inline
+    spinner in the same step that sets the end-of-feed flag and stops further requests,
+    so only the end-of-feed marker remains. Re-show the spinner only when a new in-flight
+    fetch starts (cursor reset via source/scope change or manual refresh).
+
+
+    ---
+
+    '
+  acceptance_criteria: null
+  relations:
+  - type: CONFIRMED_BY
+    target_id: TEST-260525-0531-001
+  - type: CONFIRMED_BY
+    target_id: TEST-260525-0552-001
+  - type: CONFIRMS
+    target_id: US-260522-2230-003
+  - type: FULFILLED_BY
+    target_id: AC-260525-0654-001
+- id: BUG-260525-0654-002
+  project_id: PR-260512-2041-001
+  type: BUG
+  created_at: '2026-05-25T06:54:30.724023'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: Content-selection dropdown rows show a stray blue highlight on click in addition
+    to the checkbox
+  status: CLOSED
+  priority: LOW
+  updated_at: '2026-05-25T06:41:05.220155'
+  updated_by: HUMAN
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: '# BUG - Stray blue highlight in the content-selection dropdown
+
+
+    ## Defect Summary
+
+
+    In the feed filter bar''s content-selection dropdown (US-260523-1906-001, AC-260523-1500-004)
+    every row shows a permanent check mark while selection is signalled by blue (a
+    row-background tint plus a blue checkbox fill). Selection must be conveyed by
+    the check mark ALONE - shown when ticked, hidden when unticked - with NO blue
+    anywhere; the permanent tick + blue valid/invalid wash is the confusing double
+    logic. Reported by HUMAN via TEST-260525-0532-001 and TEST-260525-0552-002.
+
+
+    ![no correspondance between content clicked on left pane with filter in tright
+    pane](01_docs/04_content/images/no correspondance between content clicked on left
+    pane with filter in tright pane.png)
+
+
+    ---
+
+
+    ## Affected Requirements (CONFIRMS targets)
+
+    - `US-260523-1906-001` - Feed Filter Bar - failing AC: AC-260525-0654-002
+
+
+    ---
+
+
+    ## Technical Approach
+
+
+    **Files / functions to change:**
+
+    - `02_code/almanach/static/css/style.css` - `.content-select-row-check` rules
+    (check-icon visibility toggle; removed the blue row-background tint and blue checkbox
+    fill). JS unchanged (`app.js renderContentSelectList`). Tokens only.
+
+
+    **Root cause:**
+
+    Two overlaid signals. (1) The check icon (`<i class="ti ti-check">`) is rendered
+    in every row''s box unconditionally, so the tick shows even on unticked rows.
+    (2) Selection was conveyed by blue - a `.is-selected` row-background tint AND
+    a blue checkbox fill (`background: var(--text-info)`) - not by presence/absence
+    of the tick. Net: permanent tick + blue valid/invalid wash = confusing double
+    logic.
+
+
+    **Fix outline:**
+
+    Make the tick the sole toggle: hide the check icon by default (`.content-select-row-check
+    i { visibility: hidden }`), show it only on `.is-selected` rows. Remove ALL blue
+    from the dropdown rows - no row-background tint, no blue checkbox fill/border.
+    Unticked = empty box; ticked = box + dark check.
+
+
+    ---
+
+    '
+  acceptance_criteria: null
+  relations:
+  - type: CONFIRMED_BY
+    target_id: TEST-260525-0532-001
+  - type: CONFIRMED_BY
+    target_id: TEST-260525-0552-002
+  - type: CONFIRMED_BY
+    target_id: TEST-260525-0614-001
+  - type: CONFIRMS
+    target_id: US-260523-1906-001
+  - type: FULFILLED_BY
+    target_id: AC-260525-0654-002
 change_requests:
 - id: CR-260522-2101-001
   project_id: PR-260512-2041-001
@@ -4503,6 +4709,131 @@ change_requests:
     target_id: AC-260524-1315-003
   - type: FULFILLED_BY
     target_id: AC-260524-1336-001
+- id: CR-260524-1421-001
+  project_id: PR-260512-2041-001
+  type: CR
+  created_at: '2026-05-24T14:21:22.304967'
+  created_by: HUMAN
+  cancelled_at: null
+  locked: false
+  title: Design revamp
+  status: CLOSED
+  priority: MED
+  updated_at: '2026-05-25T04:44:06.530127'
+  updated_by: HUMAN
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: "# CR — Design revamp\n\n## Change Summary\n\nCosmetic re-skin of the Feed\
+    \ Reading Experience (EP-260512-2230-004) to the target\nmockup 01_Docs/04_content/images/design\
+    \ revamp.png. Confirmed scope: cosmetic re-skin\nplus one keyword-control simplification\
+    \ — layout and matching logic preserved.\nVisible changes:\n- Header: dark rounded-square\
+    \ app mark + green sync-status dot before the\n  \"Last sync · …\" text.\n- Filter\
+    \ bar: WHEN / SOURCES / KEYWORD unified into one rounded bordered toolbar; the\n\
+    \  1d/1w/1m/Custom shortcuts become a joined segmented control with the active\
+    \ window\n  shown filled.\n- Keyword cluster restyled to sit in the toolbar. The\
+    \ per-keyword Match case / Match\n  whole word buttons are replaced by a single\
+    \ blue \"Exact match\" toggle inline with the\n  input and Add button (good.png):\
+    \ Exact match on = whole-word match (case-insensitive), off =\n  loose case-insensitive\
+    \ substring. Other CR-260524-1315-001 behaviour is preserved\n  (Enter/Add, removable\
+    \ chips, Match any/all toggle); committed chips now show a\n  single \"Exact match\"\
+    \ badge.\nSidebar unchanged; \"New group\" stays as the header folder-plus icon\
+    \ (confirmed).\n\n## Affected Requirement Objects\n\n- FT-260522-2050-002 (Header\
+    \ Bar Last-Sync Indicator) — header mark + green dot.\n- FT-260522-2230-001 (Continuous-Scroll\
+    \ Feed) — filter toolbar, segmented WHEN,\n  keyword restyle (single Exact match\
+    \ toggle), feed-pane visual fidelity.\n(= this CR's CONFIRMS set; both reopened\
+    \ to OPEN per §5.2.2.)\n\n## Design Changes\n\nCSS-led in 02_code/almanach/static/css/style.css,\
+    \ reusing :root tokens (a new\n--accent-green token added for the status dot)\
+    \ — no raw values in new rules:\n.app-header mark + status dot; .filter-row restyled\
+    \ as a single rounded/bordered\ntoolbar with labelled segments; .date shortcuts\
+    \ wrapped in a .segmented joined\ncontrol; keyword cluster condensed. The per-keyword\
+    \ Match case / Match whole word\nbuttons are removed in favour of a single .keyword-exact-toggle\
+    \ (blue switch per\ngood.png; the prior yellow --accent-highlight token and the\
+    \ .keyword-opt-btn /\n.kw-opt-label / .keyword-pending rules are removed). app.js:\
+    \ a sticky\nstate.filter.exactMode flag; a word commits immediately on Enter/Add\
+    \ with\nwholeWord = exactMode, matchCase forced off (keyword_opt \"01\" when on,\
+    \ already supported by\ndb._kw_match), so the loose default path is unchanged;\
+    \ the committed chip shows one\n\"Exact match\" badge. Markup hooks: templates/index.html\
+    \ (header mark + dot) and\ntemplates/_feed.html (WHEN buttons wrapped in .segmented;\
+    \ Exact toggle added to the\nkeyword group). Keyword input ids/classes consumed\
+    \ elsewhere are unchanged.\n\n## Data Model Changes\n\n(none)\n\n## Supersede\
+    \ / Versioning\n\n(none) — the Exact match toggle is a presentation change over\
+    \ CR-260524-1315-001's two\nmutually-exclusive options; the underlying per-keyword\
+    \ match flags and db._kw_match\nare unchanged, so no AC is superseded. The single-Exact-match-toggle\
+    \ assertion lives in\nAC-260524-1500-003.\n\n## Scope Impact\n\nRe-skin plus a\
+    \ keyword-control simplification (two option buttons → one Exact match\ntoggle).\
+    \ Behaviour note: the UI no longer offers case-only or whole-only matching\nindependently\
+    \ — Exact match bundles whole-word (case-insensitive), off is loose substring;\
+    \ the backend\nstill supports every combination. No design system exists in this\
+    \ project (single\nstyle.css with :root tokens), so the GR 14 §6.7 design-system\
+    \ pre-flight steps are\nN/A; the §6.7 visual-confirmation gate still applies on\
+    \ index.html. Reopens\nFT-260522-2050-002 and FT-260522-2230-001 (and EP-260512-2230-004\
+    \ closure) until UAT\nre-passes the new AC. No data model, no API, no new matching\
+    \ behaviour.\n"
+  acceptance_criteria: null
+  relations:
+  - type: CONFIRMED_BY
+    target_id: TEST-260524-1512-001
+  - type: CONFIRMED_BY
+    target_id: TEST-260524-1714-001
+  - type: CONFIRMS
+    target_id: FT-260522-2050-002
+  - type: CONFIRMS
+    target_id: FT-260522-2230-001
+  - type: FULFILLED_BY
+    target_id: AC-260524-1500-001
+  - type: FULFILLED_BY
+    target_id: AC-260524-1500-002
+  - type: FULFILLED_BY
+    target_id: AC-260524-1500-003
+  - type: FULFILLED_BY
+    target_id: AC-260524-1500-004
+- id: CR-260525-0730-001
+  project_id: PR-260512-2041-001
+  type: CR
+  created_at: '2026-05-25T07:30:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: Content-selection dropdown — ticking a Group/Subgroup cascades the checked
+    state to all descendant rows (tree-checkbox with parent tri-state)
+  status: CLOSED
+  priority: LOW
+  updated_at: '2026-05-25T06:50:40.106792'
+  updated_by: HUMAN
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: "# CR — Content-selection dropdown cascade selection\n\n## Change Summary\n\
+    \nPer HUMAN feedback (TEST-260525-0614-001, BUG-260525-0654-002 Test 3): with\
+    \ the\nblue highlight removed and the checkbox now the sole selection signal\n\
+    (AC-260525-0654-002), ticking a Group/Subgroup must visibly cascade to its\ndescendants.\
+    \ Today `app.js toggleContentSelectRow` toggles only the clicked\nnode's id; folders\
+    \ resolve to their sources server-side for the feed predicate\n(AC-260523-1500-004\
+    \ step 8, PASS), but the child checkboxes never update, so the\ncheckbox state\
+    \ no longer reflects what is selected. This CR makes the dropdown a\nproper tree-checkbox:\
+    \ ticking a Group/Subgroup checks every descendant, unticking\nclears them, and\
+    \ a parent reflects its children (all → checked, some →\nindeterminate, none →\
+    \ empty). Feed predicate semantics unchanged.\n\n---\n\n## Affected Requirement\
+    \ Objects\n\n| ID — Title | Action | Status transition |\n| :--- | :--- | :---\
+    \ |\n| `US-260523-1906-001` — Feed Filter Bar | modified (CONFIRMS target) | OPEN\
+    \ → OPEN |\n| `AC-260523-1500-004` — content-selection dropdown selection | modified\
+    \ (cascade + parent tri-state added; FULFILLS gains this CR per §3.7) | CLOSED\
+    \ → OPEN |\n\n---\n\n## Design Changes\n\n(none) — behaviour refinement to the\
+    \ existing dropdown; no new wireframe.\n\n## Data Model Changes\n\n(none) — pure\
+    \ frontend; `Source.group_id` / `Source.subgroup_id` already drive\nthe folder\
+    \ → source resolution.\n\n## Supersede / Versioning\n\n(none) — AC-260523-1500-004\
+    \ refined in place, not superseded.\n\n## Scope Impact Assessment\n\n- **Features\
+    \ affected:** FT-260522-2230-001 → US-260523-1906-001 only.\n- **Features blocked:**\
+    \ (none)\n- **Features unblocked:** (none)\n- **Regression risk:** low — confined\
+    \ to `renderContentSelectList` /\n  `toggleContentSelectRow` selection-state logic;\
+    \ feed query untouched.\n- **Breaking changes:** (none)\n\n---\n"
+  acceptance_criteria: null
+  relations:
+  - type: CONFIRMS
+    target_id: US-260523-1906-001
+  - type: FULFILLED_BY
+    target_id: AC-260523-1500-004
 acceptance_criteria:
 - id: AC-260512-2245-001
   project_id: PR-260512-2041-001
@@ -8643,58 +8974,73 @@ acceptance_criteria:
   created_by: CLAUDE_CODE
   cancelled_at: null
   locked: false
-  title: The content-selection control opens a dropdown listing every news source
-    grouped by Group → Subgroup → Source; clicking a row toggles its selection and
-    the dropdown stays open across multiple toggles.
+  title: In the content-selection dropdown, ticking a Group or Subgroup row checks
+    all its descendant rows (and unticking clears them), a parent row reflects its
+    children as checked / indeterminate / empty, and the dropdown stays open across
+    toggles.
   status: CLOSED
   result: PASS
   priority: HIGH
-  updated_at: '2026-05-24T06:05:56.567275'
+  updated_at: '2026-05-25T06:50:40.106792'
   updated_by: HUMAN
   approved_by_human: true
   cancellation_reason: null
   tags: []
   body: '## Description
 
-    Content-selection filter — multi-select dropdown. Mirrors the sidebar tree (Group
-    → Subgroup → Source). Each row has a toggle affordance; clicking selects (checked
-    visual state), clicking again deselects. Selecting a Group or Subgroup row implicitly
-    includes every Source beneath it. The dropdown stays open across multiple toggles
-    so the user can build a multi-select in one gesture; it closes on click-outside
-    or via an explicit Done affordance. Selection state persists when the dropdown
-    is re-opened.
+
+    Content-selection multi-select dropdown (US-260523-1906-001), mirroring the
+
+    sidebar Group → Subgroup → Source tree. Selection behaves as a tree-checkbox:
+
+    ticking a Group/Subgroup checks every descendant row, unticking clears them, and
+
+    a parent shows checked when all children are checked, indeterminate when only
+
+    some are, and empty when none are. Individual Source rows toggle on their own.
+
+    The checkbox state is the sole selection signal — no blue (AC-260525-0654-002).
+
+    The dropdown stays open across toggles and selection persists on re-open. Feed
+
+    predicate unchanged: checked Groups/Subgroups/Sources narrow the feed to their
+
+    articles (AND-combined with the other filters).
 
 
     ## Test Instructions
 
 
-    1. Open the content-selection dropdown.
+    1. Open the content-selection dropdown; confirm rows render as Group → Subgroup
+    → Source in sidebar order.
 
-    2. Verify the list is rendered as Group → Subgroup → Source rows in sidebar order.
 
-    3. Click a Source row. Verify it enters a selected (checked) visual state and
-    the dropdown stays open.
+    2. Tick a Group that has several Sources (expected: the Group AND every Subgroup/Source
+    beneath it become checked, with no blue anywhere).
 
-    4. Click two more Source rows. Verify all three are now selected and the dropdown
-    is still open.
 
-    5. Click one of the selected rows. Verify it deselects (and the other two stay
-    selected).
+    3. Untick that same Group (expected: the Group and all its descendants clear to
+    empty boxes).
 
-    6. Click outside the dropdown. Verify the dropdown closes and the feed re-renders
-    to show only articles from the selected sources.
 
-    7. Re-open the dropdown. Verify the prior selection state is preserved.
+    4. Tick a single Source under a Group, leaving its siblings unticked (expected:
+    the parent Group/Subgroup shows an indeterminate / partial state, not a full check).
 
-    8. Select a Group row containing multiple Sources. Verify every Source beneath
-    the Group is implicitly included in the feed predicate (the feed shows articles
-    from all of them).
+
+    5. Tick the remaining sibling Sources so all children of that parent are checked
+    (expected: the parent flips from indeterminate to fully checked automatically).
+
+
+    6. Click Done / outside, then re-open the dropdown (expected: the prior tree state
+    is preserved and the feed shows only articles from the checked sources).
 
     '
   acceptance_criteria: null
   relations:
   - type: FULFILLS
     target_id: CR-260523-1500-001
+  - type: FULFILLS
+    target_id: CR-260525-0730-001
   - type: FULFILLS
     target_id: US-260523-1906-001
 - id: AC-260523-1500-005
@@ -10506,6 +10852,54 @@ acceptance_criteria:
     target_id: TEST-260524-1512-001
   - type: FULFILLS
     target_id: TEST-260524-1714-001
+- id: AC-260524-1500-003
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-24T15:00:00'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: The keyword control sits within the new toolbar with a single Exact match
+    toggle replacing the two Match case / Match whole word buttons; add via Enter
+    or Add, Exact match on commits a whole-word (case-insensitive) keyword shown with
+    an Exact match chip badge, off commits a loose match, and the Match any/all toggle
+    appears with two or more active keywords.
+  status: CLOSED
+  result: PASS
+  priority: MED
+  updated_at: '2026-05-25T04:44:06.521100'
+  updated_by: HUMAN
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: "## Description\n\nGoal: restyle the keyword cluster into the new toolbar\
+    \ with a single Exact match toggle in\nplace of the two Match case / Match whole\
+    \ word buttons (CR-260524-1421-001, per\ngood.png). Outcome: a single blue Exact\
+    \ match switch sits inline with the keyword input and\nthe Add button; Exact match\
+    \ on adds a whole-word (case-insensitive) keyword, off adds a loose\ncase-insensitive\
+    \ match. Enter/Add, removable chips, and the Match any/all toggle from\nCR-260524-1315-001\
+    \ are preserved.\n\n## Test Instructions\n\n1. Open the app at / in a browser.\n\
+    \n2. In the KEYWORD segment of the toolbar, confirm a single toggle labelled \"\
+    Exact match\"\n   sits between the keyword input and the Add button (no separate\
+    \ Match case / Match\n   whole word buttons, nothing highlighted yellow).\n\n\
+    3. With Exact match off, type a word and press Enter; confirm it is added as a\
+    \ removable\n   chip with no Exact match badge.\n\n4. Turn the Exact match toggle\
+    \ on (it shows blue/filled), type a second word, then click\n   Add; confirm the\
+    \ new chip shows an \"Exact match\" badge.\n\n5. Confirm a Match any / Match all\
+    \ toggle appears now that two keywords are active.\n\n6. Switch between Match\
+    \ any and Match all and confirm the visible feed result set\n   updates.\n\n7.\
+    \ Remove each keyword chip via its × and confirm the Match any/all toggle\n  \
+    \ disappears once fewer than two keywords remain.\n"
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: CR-260524-1421-001
+  - type: FULFILLS
+    target_id: FT-260522-2230-001
+  - type: FULFILLS
+    target_id: TEST-260524-1512-001
+  - type: FULFILLS
+    target_id: TEST-260524-1714-001
 - id: AC-260524-1500-004
   project_id: PR-260512-2041-001
   type: AC
@@ -10664,3 +11058,58 @@ acceptance_criteria:
     target_id: TEST-260524-1323-001
   - type: FULFILLS
     target_id: US-260523-1906-001
+- id: AC-260525-0654-001
+  project_id: PR-260512-2041-001
+  type: AC
+  created_at: '2026-05-25T06:54:30.724023'
+  created_by: CLAUDE_CODE
+  cancelled_at: null
+  locked: false
+  title: When the feed reaches end-of-feed, the inline loading spinner is hidden and
+    only the end-of-feed marker remains.
+  status: CLOSED
+  result: PASS
+  priority: LOW
+  updated_at: '2026-05-25T05:52:22.066716'
+  updated_by: HUMAN
+  approved_by_human: true
+  cancellation_reason: null
+  tags: []
+  body: '## Description
+
+
+    Verifies the continuous-scroll spinner lifecycle (US-260522-2230-003): the inline
+    spinner appears only while a batch is actively loading and is removed once the
+    end-of-feed state is reached, so the user is not misled into thinking more content
+    is loading.
+
+
+    ## Test Instructions
+
+
+    1. Open the app and scroll to the bottom of the feed until no more articles load
+    (end-of-feed).
+
+
+    2. Confirm the bottom of the list shows only the end-of-feed marker and NO loading
+    spinner.
+
+
+    3. At end-of-feed, scroll up a little and back down; confirm no spinner reappears.
+
+
+    4. Switch the active source/scope (or press manual refresh) to reset the cursor,
+    then scroll down mid-feed; confirm the spinner shows briefly only while the next
+    batch loads and disappears once the batch has appended.
+
+    '
+  acceptance_criteria: null
+  relations:
+  - type: FULFILLS
+    target_id: BUG-260525-0654-001
+  - type: FULFILLS
+    target_id: TEST-260525-0531-001
+  - type: FULFILLS
+    target_id: TEST-260525-0552-001
+  - type: FULFILLS
+    target_id: US-260522-2230-003

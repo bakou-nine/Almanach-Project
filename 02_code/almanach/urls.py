@@ -1,6 +1,32 @@
 from __future__ import annotations
 
+import html
+import re
+from typing import Optional
 from urllib.parse import urlparse, urlunparse
+
+# BUG-260525-0745-001: RSS <description>/<summary> often carries HTML markup
+# (and entities), and ingestion truncates it — sometimes mid-tag/entity. Rendered
+# auto-escaped, that surfaces as garbled fragments in the feed. `clean_html_text`
+# strips tags + unescapes entities + drops any dangling tag left by truncation,
+# yielding plain readable text. Applied at render (fixes already-stored rows) and
+# at ingestion (clean going forward); idempotent on already-clean text.
+_HTML_TAG_RE = re.compile(r"<[^>]*>")
+_DANGLING_TAG_RE = re.compile(r"<[^>]*$")
+_WS_RE = re.compile(r"\s+")
+
+
+def clean_html_text(raw: Optional[str], max_chars: Optional[int] = None) -> Optional[str]:
+    if not raw:
+        return raw
+    text = str(raw).replace("<![CDATA[", "").replace("]]>", "")
+    text = _DANGLING_TAG_RE.sub("", text)   # drop a trailing tag cut by truncation
+    text = _HTML_TAG_RE.sub("", text)       # strip complete tags
+    text = html.unescape(text)              # &amp; &#8217; … -> real chars
+    text = _WS_RE.sub(" ", text).strip()
+    if max_chars and len(text) > max_chars:
+        text = text[:max_chars].rstrip() + "…"
+    return text or None
 
 
 def canonical_source_url(raw: str) -> str:

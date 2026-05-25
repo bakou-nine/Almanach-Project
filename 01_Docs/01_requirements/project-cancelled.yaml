@@ -1,7 +1,7 @@
 file: project-cancelled.yaml
 status_filter:
 - CANCELLED
-exported_at: '2026-05-24T17:58:34.897446+00:00'
+exported_at: '2026-05-25T07:29:14.835765+00:00'
 project_charters: []
 epics:
 - id: EP-260512-2230-002
@@ -214,7 +214,105 @@ orphans:
     target_id: AC-260523-1501-003
   - type: FULFILLED_BY
     target_id: AC-260523-1501-005
-tests: []
+tests:
+- id: TEST-260524-1757-001
+  project_id: PR-260512-2041-001
+  type: TEST
+  created_at: '2026-05-24T17:57:56.661886'
+  created_by: HUMAN
+  cancelled_at: '2026-05-25T05:02:44.912120'
+  locked: true
+  title: various bugs
+  status: CANCELLED
+  result: null
+  updated_at: '2026-05-25T05:02:44.912120'
+  updated_by: HUMAN
+  approved_by_human: null
+  cancellation_reason: null
+  tags: []
+  body: '1. I do not like this loading icon with end of feed knowing nothing is loading
+    anymore, it is confusing and let us thing something is loading while nothing is
+    happening.![fake load bug](01_docs/04_content/images/fake load bug.png)
+
+
+    2. i see a double bug in filter when selecting group titles or simply single sources.
+
+    a. bug 1: in the drop down menu with list of selectable objects, i should not
+    see any blue highlting what i selected, it whould be either marked or unmarked.
+    that is all. All are already marked here and when i click bluie wrongly higholight
+    swhat i click, but the x should appear or disapper only when i click to decide
+    what remains on the filer.
+
+    b. the left pane also determines a filter content when clicking on 1 title or
+    a single source of news, this should change the list of content diplayed on the
+    right pane as all contents contained inside selected title or lower level should
+    be considered in scope, and what is not should be out of scope.  ![no correspondance
+    between content clicked on left pane with filter in tright pane](01_docs/04_content/images/no
+    correspondance between content clicked on left pane with filter in tright pane.png)
+
+    '
+  acceptance_criteria: null
+  relations: []
+- id: TEST-260525-0700-001
+  project_id: PR-260512-2041-001
+  type: TEST
+  created_at: '2026-05-25T07:00:57.614876'
+  created_by: HUMAN
+  cancelled_at: '2026-05-25T07:29:12.494106'
+  locked: true
+  title: multiple bugs
+  status: CANCELLED
+  result: null
+  updated_at: '2026-05-25T07:29:12.494106'
+  updated_by: HUMAN
+  approved_by_human: null
+  cancellation_reason: null
+  tags: []
+  body: '1. Uniformization of news display.
+
+    a. defect: i see two pastilles in front of each news, i want only one which should
+    have the same colour as it news source urls from the left pane. ![pastille colours](01_docs/04_content/images/pastille
+    colours.png)
+
+    b. most of time parts of the body are not rendered correclty in some news as highlited
+    here: ![body not rendered correclty](01_docs/04_content/images/body not rendered
+    correclty.png)
+
+    c. standard format: standard format should be as the one highlighted in this screenshot
+    (except the pastille as i just reported the bug) ![standard format](01_docs/04_content/images/standard
+    format.png)
+
+    This format should be uniform and replicated across all displyed news. i  don
+    not understand why only the first part of the list is in thes format and the rest
+    is  nnot.. Criteria is== uniformization
+
+    d. news more compact: in the right pane, news should ne more compact and th space
+    taken by the big title on the top is too big, should be reducesso more news can
+    be diplayed on the same screen ![compact news and reduce title lenght](01_docs/04_content/images/compact
+    news and reduce title lenght.png)
+
+    c. the line on top of the screen should also take less space so there is more
+    space for the rest of the content below: ![reduce lenght of stripe on top](01_docs/04_content/images/reduce
+    lenght of stripe on top.png)
+
+
+    2. when clicking on a title on the left pane, the filter on the right should automatically
+    flag only the content that is touched on the left pane ![bug as left pane selection
+    is not propagated in the right pane filter](01_docs/04_content/images/bug as left
+    pane selection is not propagated in the right pane filter.png)
+
+
+    3. pressing button shift, user should be able to select multiple news or titles
+    from the left pane and they should also be reflected in the filter ![multiple
+    titles and sources selection with the filter pressing shift and clicking on  multiple
+    ones](01_docs/04_content/images/multiple titles and sources selection with the
+    filter pressing shift and clicking on  multiple ones.png)
+
+    Then still pressing shift, if i click again it will simply deselect. continue
+    applying propagation rules when clicking on father title, it propagates to siblings,
+    then user can decide to unclick individual ones as he wishes'
+  acceptance_criteria: null
+  relations: []
 bugs:
 - id: BUG-260524-0650-001
   project_id: PR-260512-2041-001
