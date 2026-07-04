@@ -5,16 +5,38 @@
                                  Ungrouped overflow.
 #}
 
+{# Rating badges (FT — Source Ratings, US-260525-1200-005). Two compact pills:
+   reliability (shield) + impact (bolt), each coloured by level (high/medium/low)
+   and showing the level's initial. JS re-renders this same markup in place on a
+   rating change (AC-260525-1200-060). #}
+{% macro rating_badges(rel, imp) %}
+  <span class="rating-badges">
+    <span class="rating-badge rating-rel rating-{{ rel }}" title="Reliability: {{ rel }}">
+      <i class="ti ti-shield-half-filled"></i>{{ rel[0]|upper }}
+    </span>
+    <span class="rating-badge rating-imp rating-{{ imp }}" title="Impact: {{ imp }}">
+      <i class="ti ti-bolt"></i>{{ imp[0]|upper }}
+    </span>
+  </span>
+{% endmacro %}
+
 {% macro source_row(s) %}
+  {# CR-260704-0800-002: rows are keyboard-focusable (tabindex) and expose a
+     button role; Enter/Space activation + arrow traversal live in app.js. #}
   <div class="source-item{% if s.muted %} muted{% endif %}{% if active_source_id == s.id %} active{% endif %}"
        data-source-id="{{ s.id }}"
        data-muted="{{ '1' if s.muted else '0' }}"
        data-display-name="{{ s.display_name|e }}"
        data-folder-id="{{ s.folder_id or '' }}"
        data-position="{{ s.position }}"
+       data-reliability="{{ s.reliability }}"
+       data-impact="{{ s.impact }}"
+       tabindex="0" role="button"
+       aria-label="{{ s.display_name|e }}"
        draggable="true">
     <span class="source-dot" style="background:{{ s.colour }};"></span>
     <span class="source-name">{{ s.display_name }}</span>
+    {{ rating_badges(s.reliability, s.impact) }}
     {% if s.muted %}
       <i class="ti ti-eye-off muted-icon" aria-label="muted"></i>
     {% else %}
@@ -35,6 +57,9 @@
        data-muted="{{ '1' if f.muted else '0' }}"
        data-position="{{ f.position }}"
        style="--depth: {{ f.depth }};"
+       tabindex="0" role="button"
+       aria-label="Folder {{ f.name|e }}"
+       aria-expanded="{{ 'false' if f.collapsed else 'true' }}"
        draggable="true">
     <button class="chevron" data-folder-id="{{ f.id }}"
             type="button" aria-label="Toggle folder">
@@ -74,7 +99,8 @@
 {% endmacro %}
 
 <div class="source-item all-sources {% if not active_source_id and not active_folder_id %}active{% endif %}"
-     data-source-id="">
+     data-source-id=""
+     tabindex="0" role="button" aria-label="All sources">
   <i class="ti ti-stack-2" style="font-size:14px; color:var(--text-info);"></i>
   <span class="source-name">All sources</span>
   <span class="source-count highlight">{{ sidebar.total_unread }}</span>
@@ -102,3 +128,40 @@
     {{ source_row(s) }}
   {% endfor %}
 {% endif %}
+
+{# PROJECTS section (FT-260704-1620-001, handoff screen 3): below Sources,
+   divider-separated. "+" creates a project and enters inline rename (JS);
+   rows show folder icon + name + count pill, hover swaps the pill for
+   rename/delete actions. Clicking a row opens the project view. #}
+<div class="projects-section" id="projects-section">
+  <div class="projects-divider"></div>
+  <div class="sidebar-header projects-header">
+    <span class="sidebar-title">Projects</span>
+    <button class="icon-btn" id="new-project-btn" title="New project" aria-label="New project">
+      <i class="ti ti-plus"></i>
+    </button>
+  </div>
+  {% if not sidebar.projects %}
+    <div class="projects-empty-hint">No projects yet. Click + to start one, then save articles into it.</div>
+  {% endif %}
+  {% for p in sidebar.projects %}
+    <div class="project-row"
+         data-project-id="{{ p.id }}"
+         data-project-name="{{ p.name|e }}"
+         data-count="{{ p.count }}"
+         tabindex="0" role="button"
+         aria-label="Project {{ p.name|e }}">
+      <i class="ti ti-folder project-icon" aria-hidden="true"></i>
+      <span class="project-name">{{ p.name }}</span>
+      <span class="project-count">{{ p.count }}</span>
+      <span class="project-actions">
+        <button class="icon-btn project-rename-btn" type="button" title="Rename" aria-label="Rename project">
+          <i class="ti ti-pencil"></i>
+        </button>
+        <button class="icon-btn project-delete-btn" type="button" title="Delete project" aria-label="Delete project">
+          <i class="ti ti-trash"></i>
+        </button>
+      </span>
+    </div>
+  {% endfor %}
+</div>

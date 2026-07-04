@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Almanach — Groups</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+<template id="__bundler_thumbnail" data-bg-color="#faf7f1">
+  <svg viewBox="0 0 1200 800" xmlns="http://www.w3.org/2000/svg">
+    <rect width="1200" height="800" fill="#faf7f1"/>
+    <!-- sidebar -->
+    <rect x="0" y="0" width="320" height="800" fill="#f6f3eb"/>
+    <rect x="0" y="0" width="320" height="56" fill="#faf7f1"/>
+    <rect x="20" y="22" width="80" height="12" rx="3" fill="#7a7166" opacity="0.5"/>
+    <!-- group: AI -->
+    <circle cx="32" cy="92" r="3" fill="#7a7166" opacity="0.6"/>
+    <rect x="44" y="86" width="60" height="12" rx="3" fill="#1a1814"/>
+    <!-- subgroup: Newsletters -->
+    <rect x="58" y="118" width="100" height="10" rx="3" fill="#3a352d"/>
+    <!-- sources -->
+    <circle cx="76" cy="148" r="5" fill="#f59e0b"/>
+    <rect x="90" y="143" width="120" height="10" rx="3" fill="#3a352d" opacity="0.85"/>
+    <circle cx="76" cy="174" r="5" fill="#f97316"/>
+    <rect x="90" y="169" width="160" height="10" rx="3" fill="#3a352d" opacity="0.85"/>
+    <circle cx="76" cy="200" r="5" fill="#ef4444"/>
+    <rect x="90" y="195" width="100" height="10" rx="3" fill="#3a352d" opacity="0.85"/>
+    <!-- subgroup: Research -->
+    <rect x="58" y="232" width="80" height="10" rx="3" fill="#3a352d"/>
+    <circle cx="76" cy="262" r="5" fill="#10b981"/>
+    <rect x="90" y="257" width="140" height="10" rx="3" fill="#3a352d" opacity="0.85"/>
+    <!-- group: Industry -->
+    <circle cx="32" cy="312" r="3" fill="#7a7166" opacity="0.6"/>
+    <rect x="44" y="306" width="90" height="12" rx="3" fill="#1a1814"/>
+    <circle cx="60" cy="342" r="5" fill="#3b82f6"/>
+    <rect x="74" y="337" width="130" height="10" rx="3" fill="#3a352d" opacity="0.85"/>
+    <!-- main column header -->
+    <rect x="368" y="40" width="200" height="20" rx="4" fill="#1a1814"/>
+    <rect x="368" y="72" width="320" height="10" rx="3" fill="#7a7166" opacity="0.5"/>
+    <!-- article cards -->
+    <line x1="368" y1="120" x2="900" y2="120" stroke="#e7e1d4" stroke-width="1"/>
+    <circle cx="380" cy="146" r="4" fill="#ef4444"/>
+    <rect x="394" y="142" width="220" height="9" rx="3" fill="#7a7166" opacity="0.55"/>
+    <rect x="368" y="166" width="480" height="14" rx="3" fill="#1a1814"/>
+    <rect x="368" y="186" width="420" height="9" rx="3" fill="#3a352d" opacity="0.7"/>
+    <rect x="368" y="200" width="380" height="9" rx="3" fill="#3a352d" opacity="0.7"/>
+
+    <line x1="368" y1="244" x2="900" y2="244" stroke="#e7e1d4" stroke-width="1"/>
+    <circle cx="380" cy="270" r="4" fill="#3b82f6"/>
+    <rect x="394" y="266" width="180" height="9" rx="3" fill="#7a7166" opacity="0.55"/>
+    <rect x="368" y="290" width="440" height="14" rx="3" fill="#1a1814"/>
+    <rect x="368" y="310" width="360" height="9" rx="3" fill="#3a352d" opacity="0.7"/>
+
+    <line x1="368" y1="354" x2="900" y2="354" stroke="#e7e1d4" stroke-width="1"/>
+    <circle cx="380" cy="380" r="4" fill="#10b981"/>
+    <rect x="394" y="376" width="150" height="9" rx="3" fill="#7a7166" opacity="0.55"/>
+    <rect x="368" y="400" width="500" height="14" rx="3" fill="#1a1814"/>
+
+    <!-- drag indicator hint -->
+    <rect x="44" y="372" width="220" height="32" rx="6" fill="none" stroke="#1f6feb" stroke-width="2" stroke-dasharray="4 3"/>
+    <circle cx="64" cy="388" r="5" fill="#a855f7"/>
+    <rect x="78" y="383" width="120" height="10" rx="3" fill="#3a352d" opacity="0.85"/>
+  </svg>
+</template>
+<div id="root"></div>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<script src="data.js"></script>
+<script type="text/babel" src="tweaks-panel.jsx"></script>
+<script type="text/babel" src="io.jsx"></script>
+<script type="text/babel" src="sidebar.jsx"></script>
+<script type="text/babel" src="projects.jsx"></script>
+<script type="text/babel" src="filter-bar.jsx"></script>
+<script type="text/babel" src="feed.jsx"></script>
+<script type="text/babel" src="app.jsx"></script>
+</body>
+</html>

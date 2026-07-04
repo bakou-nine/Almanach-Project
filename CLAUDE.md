@@ -18,7 +18,7 @@ Each rule is the imperative; the linked § holds the operational detail.
 8. **WBS must match real granularity, and no object may be overloaded** — see §3.6 (level definitions, placement challenges, overload thresholds; covers EP/FT/US AND BUG/CR/TEST). Misplaced or over-threshold → flag and propose a restructure/split. Trigger scope: (a) requirements work (§5.1.1), (b) bug fixing when the user confirms requirements must change (§5.2.1), (c) any user request to review/assess the WBS, (d) Session-Start audit (§4.6). NOT during active development (§5.1.3) or mid-bug-fix (§5.2.3).
 9. **Low verbosity throughout.** All files Claude authors — yaml bodies (incl. BUG/CR/TEST §3.8) and AC — are for Claude-Code consumption: direct, dense, no filler/repetition/padding. Reference §numbers and IDs instead of re-describing.
 10. **Status propagates upward at the SOLVED threshold (PC/EP/FT/US only).** After setting a USER_STORY, FEATURE, or EPIC child to SOLVED, if ALL the parent's `children_ids` resolve to SOLVED → move the parent to SOLVED; repeat recursively (US→FT→EP→PC). Fires only on the SOLVED transition (not OPEN/CLOSED/CANCELLED/DRAFT). Does NOT apply to BUG/CR/TEST (BUG/CR closure → §5.2.3 step 6; TEST status is coupled to its `result`, DATA_MODEL.md §3.2). Distinct from GR 7 (which governs content/scope, not status).
-11. **CLAUDE.md and `01_docs/CLAUDE_template.md` must mirror byte-for-byte.** Every edit to either file is replicated to the other in the same write cycle — same content, formatting, headings, line endings. Drift is a protocol violation. When Claude edits one, it MUST edit the other in the same response (never as a follow-up). After every edit, verify with `diff -q CLAUDE.md 01_docs/CLAUDE_template.md` (no output expected).
+11. **CLAUDE.md + `03_AI Protocol/` are the protocol's single source of truth — no `CLAUDE_template.md` mirror.** The working protocol is this `CLAUDE.md` plus the `03_AI Protocol/*.md` reference files it points to; the former byte-for-byte `01_docs/CLAUDE_template.md` mirror is **retired (not needed in Almanach)**. Any edit that relocates or changes a §-section MUST update the pointer/summary in `CLAUDE.md` AND the full detail in the matching `03_AI Protocol/` file in the SAME write cycle — a pointer and its target drifting apart is a protocol violation.
 12. **Minimum-impact edits.** Edit only the files (and within them, only the sections/objects/AC) actually impacted; never touch a file just because it appears in a "propagation list" — re-read each candidate and skip it if unaffected (incl. §5.2.4 step 3). **In-scope-object completion is NOT optional:** the current task's in-scope object (the BUG/CR fixed in §5.2.3/§5.2.4, the host authored in §5.1.1/§5.2.2, the AC adjusted under §5.2.4 step 3) MUST be completed to its §3.8 template — minimum-impact never overrides its required sections (Defect/Change Summary, Affected Requirements/Objects, Technical Approach, ≥1 CONFIRMS, ≥1 FULFILLED_BY→AC). GR 13(a) covers the authoring. Citing GR 12 to skip required template sections on the in-scope object violates this rule.
 13. **Implementation does NOT validate AC.** In the dev cycles of §5.1.3/§5.2.3/§5.2.4 Claude MUST NOT write `AC.result`, change `AC.status`, cancel an AC, or remove AC from a host's `FULFILLED_BY`. Dev-side role = write code + bump host status (OPEN→SOLVED). Three exceptions: (a) **Authoring** — create new AC when authoring a host (§5.1.1) or a BUG/CR body (§5.2.2); (b) **Verdict propagation** — write per-AC `result` when mirroring the human's latest-TEST verdicts in §5.2.3 step 2 / §5.2.4 step 2 (so Filum's cascade fires); (c) **Mid-fix scope change** — the user invokes the §5.2.4 step 3 exception. Outside these, AC are immutable to Claude. This removes the "may/optionally write" loopholes in §5.2.3 step 5 and §5.2.4 step 5c — always leave AC.result/AC.status as-is at the end of an implementation cycle.
 14. **Frontend changes go through the design system, and previews must always work.** All visual primitives live under `02_code/filum/frontend/static/css/design-system/` and `templates/_design-system/` (§6; full reference UI_SPEC.md §19). Imports flow downward only; never import upward, never duplicate atom/molecule logic in a page, never hardcode raw color/spacing/typography/radius/shadow — always `var(--ds-*)`. A new atom/molecule/organism needs user approval (§6.4). The §6.7 pre-flight (steps 1–6) is mandatory before any `02_code/filum/frontend/**` write in §5.1.3/§5.2.3/§5.2.4; the §6.7 post-edit static checks (step 7) AND visual-confirmation gate (step 8) are mandatory after. An edit is not "complete" until the user hard-refreshes the affected `*-preview.html` files and confirms they render. Defaulting to "probably browser cache" before hunting a real fault is a violation.
@@ -33,9 +33,8 @@ Each rule is the imperative; the linked § holds the operational detail.
 
 ```
 Filum-Project/
-├── CLAUDE.md                     ← this file (mirror of 01_docs/CLAUDE_template.md per GR 11)
+├── CLAUDE.md                     ← working protocol (detail externalized to 03_AI Protocol/ — GR 11)
 ├── 01_docs/
-│   ├── CLAUDE_template.md        ← byte-for-byte mirror of CLAUDE.md
 │   ├── 01_requirements/          ← 6 yaml files (see §3)
 │   ├── 02_dev_documentation/     ← DATA_MODEL.md, AUDIT_MODEL.md, UI_SPEC.md
 │   ├── 03_design/01_wireframes/
@@ -551,3 +550,64 @@ BUGs use §5.2.3. CRs do NOT pass through §5.1.3 — their dev runs here with u
 Governs every change to `02_code/filum/frontend/**`. **Full detail (atomic hierarchy/inventory §6.1, import contract §6.2, naming §6.3, adding a component §6.4, edit-propagation §6.5, preview coverage §6.6, mandatory pre-flight + post-edit gates §6.7) lives in `03_AI Protocol/frontend-design-system.md`.** **MANDATORY: before writing/editing ANY `02_code/filum/frontend/**` file (in §5.1.3/§5.2.3/§5.2.4), read `03_AI Protocol/frontend-design-system.md` + UI_SPEC.md §19 and run §6.7 steps 1–8.**
 
 Always-on rules (GR 14): all visual primitives live under `static/css/design-system/` + `templates/_design-system/`; imports flow downward only (tokens→atoms→molecules→organisms→templates→pages) — never upward, sibling, or circular; never duplicate atom/molecule logic in a page; never hardcode raw color/spacing/typography/radius/shadow — always `var(--ds-*)`; a new atom/molecule/organism needs user approval (§6.4). After any frontend edit, run the §6.7 static checks (step 7) AND the visual-confirmation gate (step 8) across the **entire** preview tree (every `*-preview.html`, root `preview.html`, `design-system-showcase.html` via `/design-system`, `index.html` via `/`); never declare the edit complete until the user hard-refreshes the affected previews + showcase + index.html and confirms they render — cache is the LAST hypothesis, not the first. This gate confirms appearance only and never withholds/defers/reverses SOLVED (GR 17).
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<!-- END OF FILUM OPERATING PROTOCOL  ·  ALMANACH APPLICATION ADDENDA BELOW     -->
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+
+---
+
+# ALMANACH — Application-Specific Addenda
+
+> Everything below this line pertains ONLY to the Almanach application's own
+> content/data layer. It is SEPARATE from the Filum operating protocol above
+> (§1–§6) and must never be mixed with it. Full detail lives in the
+> `03_AI Protocol/ALMANACH-*.md` files (each carries `ALMANACH` in its title).
+> These addenda are not part of the Filum requirements protocol.
+
+## A1. ALMANACH Source Curation & Rating
+
+**Trigger:** the user asks Claude to write/add news sources (e.g. "write new
+sources", "add sources to my Almanach library", "refresh my AI sources").
+
+**Summary:** research + vet AI-news sources, assign each an initial `reliability`
++ `impact` rating (`high|medium|low`), write them into the Almanach portability
+YAML under a single parent folder (default `AI news proposal`; honour any name the
+user gives, e.g. `AI proposal 2`), then drive the import so the app stages them for
+in-app review/adjust. Writes ONLY Almanach portability/launcher files — never the
+Filum `project-*.yaml` requirements files.
+
+**Import activation — a YAML never imports itself; a running app must consume it.**
+Writing the YAML is NOT the import. For sources to actually appear, ALL must hold
+(full chain + troubleshooting in the process doc §9–§10):
+
+1. **Right file, right place.** The library YAML must sit in the app's DATA DIR
+   (`ALMANACH_DATA_DIR`; default = the project's `04_Almanach Library` folder) as
+   `almanach-library.yaml`. Equivalent: edit the bundled
+   `02_code/almanach/data/default_library.yaml` (first-run seed, always read from
+   the repo). Same `almanach-portability/v1` shape either way; keep both parents
+   identical so both code paths agree.
+2. **Perfect, validated YAML** (parse OK; schema; ratings `high|medium|low`; one
+   parent → tracks → categories → sources, `url` only).
+3. **Flag for import:** `<data dir>/almanach-sync.yaml` `status: import`.
+4. **Run the app against that data dir** — the default data dir is now
+   `04_Almanach Library` (`config.data_dir()`), so ANY launch method (shortcut, IDE,
+   `python -m almanach`, or `02_code/run.bat` / `02_code/run.ps1`) reads from there;
+   `ALMANACH_DATA_DIR` still overrides when set. The watcher consumes on
+   `status: import`, stages the library, then flips the sync back to `status: ready`
+   (the Filum handshake). ⚠ A running app is locked to the data dir it started with,
+   so after any data-dir/config change it needs ONE restart; thereafter the watcher
+   picks up new imports live (the "Review proposed (N)" badge updates, no restart).
+5. **Where it shows:** the header **"Review proposed (N)"** badge / `/review`
+   (staging zone) — NOT the live sidebar. Nothing goes live until the user
+   approves; ratings stay editable.
+6. **Claude prepares the files; cannot trigger the running app.** Claude CAN write
+   files 1–3 into the data dir (now `04_Almanach Library`, inside the mounted project
+   folder), but cannot run or signal a live process from its sandbox, and the sandbox
+   code copy may be stale — never simulate the import there. The user (or a launch
+   Claude guides) does step 4. Nothing showing → check the console
+   `ALMANACH_DATA_DIR = …` line and the `sync watcher … staging` log.
+
+**Detail:** `03_AI Protocol/ALMANACH-source-curation.md` (§9 activation, §10 troubleshooting).
+**Data contract:** `DATA_MODEL.md` §Portability, §Sync control, §Staging.
+**Launcher:** `02_code/run.bat` / `02_code/run.ps1` (data dir = `04_Almanach Library` at project root; self-bootstrapping).

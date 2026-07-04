@@ -73,6 +73,8 @@ def build_sidebar_view(
                 "unread": 0 if s["muted"] else unread_map.get(s["id"], 0),
                 "folder_id": s.get("folder_id"),
                 "position": s.get("position") or 0,
+                "reliability": s.get("reliability") or "medium",
+                "impact": s.get("impact") or "medium",
             }
         )
 
@@ -139,6 +141,9 @@ def build_sidebar_view(
 
     return {
         "sources": rows,
+        # Media Content Projects (FT-260704-1620-001): PROJECTS section below
+        # Sources; each entry carries its saved-article count pill.
+        "projects": models.list_projects(),
         "tree_mode": tree_mode,
         "roots": roots,
         "ungrouped_sources": ungrouped_sources,
@@ -163,6 +168,8 @@ def build_feed_view(
     scope_folder_id: Optional[str] = None,
     keywords: Optional[list[dict]] = None,
     keyword_mode: str = "any",
+    reliability_min: Optional[str] = None,
+    sort: Optional[str] = None,
 ) -> dict:
     """Build the feed payload.
 
@@ -190,6 +197,9 @@ def build_feed_view(
         combine with each other (AC-260524-0650-004).
     """
     keyword_mode = "all" if keyword_mode == "all" else "any"
+    if reliability_min not in (None, "high", "medium", "low"):
+        reliability_min = None
+    sort = "impact" if sort == "impact" else None
     norm_keywords: list[dict] = []
     _seen: set[str] = set()
     for _kw in keywords or []:
@@ -218,6 +228,8 @@ def build_feed_view(
         scope_folder_id=scope_folder_id,
         keywords=norm_keywords,
         keyword_mode=keyword_mode,
+        reliability_min=reliability_min,
+        sort=sort,
     )
     total = models.count_articles(
         source_id=source_id,
@@ -228,6 +240,7 @@ def build_feed_view(
         scope_folder_id=scope_folder_id,
         keywords=norm_keywords,
         keyword_mode=keyword_mode,
+        reliability_min=reliability_min,
     )
     next_after = articles[-1]["published_at"] if articles else None
     has_more = len(articles) >= page_size
@@ -270,28 +283,11 @@ def build_feed_view(
             source_ids,
             folder_ids,
             norm_keywords,
+            reliability_min,
         ]
     )
 
-    items: list[dict] = []
-    for a in articles:
-        items.append(
-            {
-                "id": a["id"],
-                "url": a["url"],
-                "title": a["title"],
-                # BUG-260525-0745-001: clean any stored raw-HTML summary at
-                # render so existing rows display plain text too (idempotent on
-                # rows ingested after the ingestion-side fix).
-                "summary": clean_html_text(a.get("summary")),
-                "source_name": a["source_name"],
-                "source_colour": a["source_colour"],
-                "published_at": a["published_at"],
-                "relative_time": _humanise_delta(_parse_iso(a["published_at"])),
-                "is_unread": a["read_at"] is None,
-                "folder_id": a.get("folder_id"),
-            }
-        )
+    items = _shape_article_items(articles)
     # Banner visibility — first-run only, mirrors sidebar.banner_visible logic
     # so /feed-partial can render the banner without needing a sidebar payload.
     tree_mode = models.count_folders() > 0
@@ -313,11 +309,60 @@ def build_feed_view(
         "filter_folder_ids": folder_ids or [],
         "filter_keywords": norm_keywords,
         "filter_keyword_mode": keyword_mode,
+        "filter_reliability": reliability_min,
+        "filter_sort": sort,
         "page_size": page_size,
         "after": after,
         "next_after": next_after,
         "has_more": has_more,
         "banner_visible": banner_visible,
+    }
+
+
+def _shape_article_items(articles: list[dict]) -> list[dict]:
+    """Article rows → render payload (shared by the news feed and the project
+    view, FT-260704-1620-001). Each item carries its project memberships for
+    the folder tags + bookmark fill state."""
+    memberships = models.projects_for_articles([a["id"] for a in articles])
+    items: list[dict] = []
+    for a in articles:
+        items.append(
+            {
+                "id": a["id"],
+                "url": a["url"],
+                "title": a["title"],
+                # BUG-260525-0745-001: clean any stored raw-HTML summary at
+                # render so existing rows display plain text too (idempotent on
+                # rows ingested after the ingestion-side fix).
+                "summary": clean_html_text(a.get("summary")),
+                "source_name": a["source_name"],
+                "source_colour": a["source_colour"],
+                "published_at": a["published_at"],
+                "relative_time": _humanise_delta(_parse_iso(a["published_at"])),
+                "is_unread": a["read_at"] is None,
+                "folder_id": a.get("folder_id"),
+                "projects": memberships.get(a["id"], []),
+            }
+        )
+    return items
+
+
+def build_project_feed_view(project_id: str) -> Optional[dict]:
+    """Feed payload for the project view (US-260704-1620-004): every saved
+    article of one project, standard rows, no filter bar / no scroll cursor.
+    Returns None when the project no longer exists."""
+    project = models.get_project(project_id)
+    if project is None:
+        return None
+    items = _shape_article_items(models.list_project_articles(project_id))
+    return {
+        "project": {"id": project["id"], "name": project["name"]},
+        "title": project["name"],
+        "articles": items,
+        "total_articles": len(items),
+        "next_after": None,
+        "has_more": False,
+        "banner_visible": False,
     }
 
 

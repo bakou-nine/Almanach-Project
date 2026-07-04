@@ -1,22 +1,80 @@
 from __future__ import annotations
 
 import logging
+import re
 import sqlite3
-import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Iterable, Optional
 
-from .db import get_connection, transaction
+from .db import get_connection, new_id, now_iso, transaction
+
+# Staging CRUD lives in staging.py (CR-260704-0800-003); re-exported here so
+# every existing `models.*` call site keeps working unchanged.
+from .staging import (  # noqa: F401 — facade re-export
+    clear_staging,
+    count_staging,
+    delete_staging,
+    get_staging,
+    insert_staging,
+    list_staging,
+    replace_staging,
+)
 
 log = logging.getLogger(__name__)
 
 
-def now_iso() -> str:
-    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f")
+# Canonical timestamp shape every article row must use — naive UTC, 'T'
+# separator, microseconds (BUG-260704-0735-002). String comparison over this
+# format equals chronological comparison, which the feed ORDER BY, the
+# infinite-scroll `after` cursor, and the from/to date filters all rely on.
+_CANONICAL_TS_RE = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}$")
 
 
-def new_id() -> str:
-    return str(uuid.uuid4())
+def normalise_timestamp(raw: Optional[str]) -> Optional[str]:
+    """Coerce an ISO-8601-ish timestamp (offset-aware, 'Z'-suffixed, date-only,
+    or already canonical) to the canonical naive-UTC format. Returns None when
+    unparseable (BUG-260704-0735-002)."""
+    if not raw:
+        return None
+    text = str(raw).strip()
+    if _CANONICAL_TS_RE.match(text):
+        return text
+    try:
+        dt = datetime.fromisoformat(text.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if dt.tzinfo is not None:
+        dt = dt.astimezone(timezone.utc).replace(tzinfo=None)
+    return dt.strftime("%Y-%m-%dT%H:%M:%S.%f")
+
+
+def migrate_published_at_formats() -> int:
+    """One-off normalisation of article.published_at rows stored before
+    BUG-260704-0735-002 (raw sitemap text with offsets, date-only lastmod).
+    Gated by a settings flag so the full-table scan runs once per database.
+    Returns the number of rows rewritten; unparseable values are left as-is."""
+    cur = get_connection().cursor()
+    cur.execute("SELECT value FROM settings WHERE key = 'published_at_normalised'")
+    row = cur.fetchone()
+    if row is not None and row["value"] == "1":
+        return 0
+    cur.execute("SELECT id, published_at FROM article")
+    fixes: list[tuple[str, str]] = []
+    for r in cur.fetchall():
+        norm = normalise_timestamp(r["published_at"])
+        if norm is not None and norm != r["published_at"]:
+            fixes.append((norm, r["id"]))
+    with transaction() as conn:
+        conn.executemany(
+            "UPDATE article SET published_at = ? WHERE id = ?", fixes
+        )
+        conn.execute(
+            "INSERT INTO settings(key, value) VALUES ('published_at_normalised', '1') "
+            "ON CONFLICT(key) DO UPDATE SET value = '1'"
+        )
+    if fixes:
+        log.info("normalised published_at on %d article rows", len(fixes))
+    return len(fixes)
 
 
 # ---------- Source ----------
@@ -27,7 +85,7 @@ def list_sources() -> list[dict]:
     cur.execute(
         "SELECT id, url, feed_url, discovery_method, display_name, colour, muted, "
         "created_at, last_polled_at, last_error, consecutive_failure_count, "
-        "folder_id, position "
+        "folder_id, position, reliability, impact "
         "FROM source ORDER BY position ASC, created_at ASC"
     )
     return [dict(r) for r in cur.fetchall()]
@@ -47,6 +105,17 @@ def find_source_by_canonical_url(canonical_url: str) -> Optional[dict]:
     return dict(row) if row else None
 
 
+# Curation rating enum (FT — Source Ratings, DATA_MODEL.md §1.1). Application
+# enforced (mirrors the discovery_method pattern). Rank used by the feed filter
+# (reliability threshold) and sort (impact ordering).
+RATING_VALUES = ("high", "medium", "low")
+RATING_RANK = {"high": 3, "medium": 2, "low": 1}
+
+
+def is_valid_rating(value: Optional[str]) -> bool:
+    return value in RATING_VALUES
+
+
 def insert_source(
     *,
     url: str,
@@ -54,16 +123,55 @@ def insert_source(
     discovery_method: str,
     display_name: str,
     colour: str,
+    reliability: str = "medium",
+    impact: str = "medium",
 ) -> dict:
     sid = new_id()
     created = now_iso()
+    rel = reliability if is_valid_rating(reliability) else "medium"
+    imp = impact if is_valid_rating(impact) else "medium"
     with transaction() as conn:
         conn.execute(
             "INSERT INTO source (id, url, feed_url, discovery_method, display_name, "
-            "colour, muted, created_at) VALUES (?, ?, ?, ?, ?, ?, 0, ?)",
-            (sid, url, feed_url, discovery_method, display_name, colour, created),
+            "colour, muted, created_at, reliability, impact) "
+            "VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?, ?)",
+            (sid, url, feed_url, discovery_method, display_name, colour, created,
+             rel, imp),
         )
     return get_source(sid)  # type: ignore[return-value]
+
+
+def set_source_ratings(
+    source_id: str,
+    *,
+    reliability: Optional[str] = None,
+    impact: Optional[str] = None,
+) -> bool:
+    """Set a source's reliability and/or impact (FT — Source Ratings).
+
+    Each value, when provided, must be one of RATING_VALUES; an invalid value
+    raises ValueError. Omitted ratings are left unchanged.
+    """
+    sets: list[str] = []
+    params: list = []
+    if reliability is not None:
+        if not is_valid_rating(reliability):
+            raise ValueError("reliability must be high, medium, or low")
+        sets.append("reliability = ?")
+        params.append(reliability)
+    if impact is not None:
+        if not is_valid_rating(impact):
+            raise ValueError("impact must be high, medium, or low")
+        sets.append("impact = ?")
+        params.append(impact)
+    if not sets:
+        return False
+    params.append(source_id)
+    with transaction() as conn:
+        cur = conn.execute(
+            f"UPDATE source SET {', '.join(sets)} WHERE id = ?", params
+        )
+    return cur.rowcount > 0
 
 
 def update_display_name(source_id: str, display_name: str) -> bool:
@@ -186,6 +294,7 @@ def _build_article_query(
     scope_folder_id: Optional[str],
     keywords: Optional[list[dict]],
     keyword_mode: str,
+    reliability_min: Optional[str],
     trailing: str,
 ) -> tuple[str, list]:
     """Compose the article SELECT used by list_articles / count_articles.
@@ -303,6 +412,14 @@ def _build_article_query(
         if kw_parts:
             joiner = " AND " if keyword_mode == "all" else " OR "
             where.append("(" + joiner.join(kw_parts) + ")")
+    if reliability_min is not None and reliability_min in RATING_RANK:
+        # Threshold filter (FT — Source Ratings, US-260525-1200-007): keep only
+        # articles whose source's reliability rank is >= the selected level
+        # (high > medium > low). `high` therefore yields high-only.
+        where.append(
+            "(CASE s.reliability WHEN 'high' THEN 3 WHEN 'medium' THEN 2 ELSE 1 END) >= ?"
+        )
+        where_params.append(RATING_RANK[reliability_min])
     if after is not None:
         where.append("a.published_at < ?")
         where_params.append(after)
@@ -332,8 +449,22 @@ def list_articles(
     scope_folder_id: Optional[str] = None,
     keywords: Optional[list[dict]] = None,
     keyword_mode: str = "any",
+    reliability_min: Optional[str] = None,
+    sort: Optional[str] = None,
 ) -> list[dict]:
-    """List articles newest-first, optionally filtered by source / cursor / filters."""
+    """List articles newest-first, optionally filtered by source / cursor / filters.
+
+    `reliability_min` (FT — Source Ratings) keeps only sources whose reliability
+    rank is >= the selected level. `sort="impact"` orders high-impact sources
+    first (then newest-first within an impact tier).
+    """
+    if sort == "impact":
+        trailing = (
+            "ORDER BY (CASE s.impact WHEN 'high' THEN 3 WHEN 'medium' THEN 2 "
+            "ELSE 1 END) DESC, a.published_at DESC LIMIT ? OFFSET ?"
+        )
+    else:
+        trailing = "ORDER BY a.published_at DESC LIMIT ? OFFSET ?"
     sql, params = _build_article_query(
         select_clause=(
             "SELECT a.*, s.display_name AS source_name, "
@@ -349,7 +480,8 @@ def list_articles(
         scope_folder_id=scope_folder_id,
         keywords=keywords,
         keyword_mode=keyword_mode,
-        trailing="ORDER BY a.published_at DESC LIMIT ? OFFSET ?",
+        reliability_min=reliability_min,
+        trailing=trailing,
     )
     params = params + [limit, offset]
     cur = get_connection().cursor()
@@ -368,6 +500,7 @@ def count_articles(
     scope_folder_id: Optional[str] = None,
     keywords: Optional[list[dict]] = None,
     keyword_mode: str = "any",
+    reliability_min: Optional[str] = None,
 ) -> int:
     sql, params = _build_article_query(
         select_clause="SELECT COUNT(*) AS n",
@@ -381,6 +514,7 @@ def count_articles(
         scope_folder_id=scope_folder_id,
         keywords=keywords,
         keyword_mode=keyword_mode,
+        reliability_min=reliability_min,
         trailing="",
     )
     cur = get_connection().cursor()
@@ -457,12 +591,17 @@ def prune_old_articles(retention_days: int) -> int:
     """Delete articles whose fetched_at is older than the retention window.
 
     Returns the number of rows deleted. Uses fetched_at (not published_at) per
-    DATA_MODEL.md §5.
+    DATA_MODEL.md §5. The cutoff is computed in Python in the same canonical
+    naive-UTC 'T'-separated format fetched_at is written in — SQLite's
+    datetime('now') uses a space separator, which skewed the string comparison
+    (BUG-260704-0735-002).
     """
+    cutoff = (
+        datetime.now(timezone.utc) - timedelta(days=retention_days)
+    ).strftime("%Y-%m-%dT%H:%M:%S.%f")
     with transaction() as conn:
         cur = conn.execute(
-            "DELETE FROM article WHERE fetched_at < datetime('now', ?)",
-            (f"-{retention_days} days",),
+            "DELETE FROM article WHERE fetched_at < ?", (cutoff,)
         )
     return cur.rowcount
 
@@ -952,6 +1091,175 @@ def set_sidebar_width_px(value: int) -> int:
             (str(clamped),),
         )
     return clamped
+
+
+def find_child_folder_by_name(parent_id: Optional[str], name: str) -> Optional[dict]:
+    """Return the folder named `name` directly under `parent_id` (NULL = root)."""
+    cur = get_connection().cursor()
+    if parent_id is None:
+        cur.execute(
+            "SELECT * FROM folder WHERE parent_id IS NULL AND name = ? LIMIT 1",
+            (name,),
+        )
+    else:
+        cur.execute(
+            "SELECT * FROM folder WHERE parent_id = ? AND name = ? LIMIT 1",
+            (parent_id, name),
+        )
+    row = cur.fetchone()
+    return dict(row) if row else None
+
+
+def get_or_create_folder_path(names: list[str]) -> Optional[str]:
+    """Resolve a folder path (list of names, root → leaf) to a live folder id,
+    creating any missing folders along the way. Returns the leaf folder id, or
+    None for an empty path (Ungrouped). Used by import approval to materialise a
+    staged source's ancestor folders (US-260525-1200-004)."""
+    parent_id: Optional[str] = None
+    for name in names:
+        clean = (name or "").strip()
+        if not clean:
+            continue
+        existing = find_child_folder_by_name(parent_id, clean)
+        if existing is not None:
+            parent_id = existing["id"]
+        else:
+            created = insert_folder(clean, parent_id=parent_id)
+            parent_id = created["id"]
+    return parent_id
+
+
+# ---------- Media Content Projects (FT-260704-1620-001) ----------
+# DATA_MODEL.md §1.6/§1.7/§2.5. Cascades are junction-only in both directions.
+
+
+def list_projects() -> list[dict]:
+    """Projects with saved-article counts, in position order (sidebar rows +
+    save-popover list)."""
+    cur = get_connection().cursor()
+    cur.execute(
+        "SELECT p.id, p.name, p.position, p.created_at, "
+        "COUNT(pa.article_id) AS count "
+        "FROM project p LEFT JOIN project_article pa ON pa.project_id = p.id "
+        "GROUP BY p.id ORDER BY p.position ASC, p.created_at ASC"
+    )
+    return [dict(r) for r in cur.fetchall()]
+
+
+def get_project(project_id: str) -> Optional[dict]:
+    cur = get_connection().cursor()
+    cur.execute(
+        "SELECT p.*, (SELECT COUNT(*) FROM project_article pa "
+        "WHERE pa.project_id = p.id) AS count "
+        "FROM project p WHERE p.id = ?",
+        (project_id,),
+    )
+    row = cur.fetchone()
+    return dict(row) if row else None
+
+
+def insert_project(name: str, *, article_id: Optional[str] = None) -> dict:
+    """Create a project (position = end of list); optionally save `article_id`
+    into it in the same transaction (popover inline-create,
+    AC-260704-1620-010)."""
+    pid = new_id()
+    created = now_iso()
+    with transaction() as conn:
+        row = conn.execute(
+            "SELECT COALESCE(MAX(position), 0) + 1 AS p FROM project"
+        ).fetchone()
+        conn.execute(
+            "INSERT INTO project (id, name, position, created_at) "
+            "VALUES (?, ?, ?, ?)",
+            (pid, name, row["p"], created),
+        )
+        if article_id is not None:
+            conn.execute(
+                "INSERT OR IGNORE INTO project_article "
+                "(project_id, article_id, added_at) VALUES (?, ?, ?)",
+                (pid, article_id, created),
+            )
+    return get_project(pid)  # type: ignore[return-value]
+
+
+def rename_project(project_id: str, name: str) -> bool:
+    with transaction() as conn:
+        cur = conn.execute(
+            "UPDATE project SET name = ? WHERE id = ?", (name, project_id)
+        )
+    return cur.rowcount > 0
+
+
+def delete_project(project_id: str) -> bool:
+    """Delete a project + its membership rows only — articles are never
+    deleted by project deletion (AC-260704-1620-004). Explicit junction DELETE
+    mirrors delete_source's belt-and-braces cascade."""
+    with transaction() as conn:
+        conn.execute(
+            "DELETE FROM project_article WHERE project_id = ?", (project_id,)
+        )
+        cur = conn.execute("DELETE FROM project WHERE id = ?", (project_id,))
+    return cur.rowcount > 0
+
+
+def set_project_membership(project_id: str, article_id: str, saved: bool) -> bool:
+    """Save/unsave an article in a project. Idempotent both ways (§1.7 PK)."""
+    with transaction() as conn:
+        if saved:
+            cur = conn.execute(
+                "INSERT OR IGNORE INTO project_article "
+                "(project_id, article_id, added_at) VALUES (?, ?, ?)",
+                (project_id, article_id, now_iso()),
+            )
+        else:
+            cur = conn.execute(
+                "DELETE FROM project_article "
+                "WHERE project_id = ? AND article_id = ?",
+                (project_id, article_id),
+            )
+    return cur.rowcount > 0
+
+
+def projects_for_articles(article_ids: list[str]) -> dict[str, list[dict]]:
+    """Map article_id → [{id, name}] of the projects holding it (folder tags +
+    bookmark fill state on feed rows)."""
+    if not article_ids:
+        return {}
+    placeholders = ",".join("?" * len(article_ids))
+    cur = get_connection().cursor()
+    cur.execute(
+        f"SELECT pa.article_id, p.id, p.name FROM project_article pa "
+        f"JOIN project p ON p.id = pa.project_id "
+        f"WHERE pa.article_id IN ({placeholders}) "
+        f"ORDER BY p.position ASC, p.created_at ASC",
+        article_ids,
+    )
+    out: dict[str, list[dict]] = {}
+    for r in cur.fetchall():
+        out.setdefault(r["article_id"], []).append({"id": r["id"], "name": r["name"]})
+    return out
+
+
+def list_project_articles(project_id: str) -> list[dict]:
+    """Saved articles of a project in save order, joined with their source for
+    row rendering. Mute cascades do NOT apply here (DATA_MODEL.md §2.5)."""
+    cur = get_connection().cursor()
+    cur.execute(
+        "SELECT a.*, s.display_name AS source_name, s.colour AS source_colour "
+        "FROM project_article pa "
+        "JOIN article a ON a.id = pa.article_id "
+        "JOIN source s ON s.id = a.source_id "
+        "WHERE pa.project_id = ? "
+        # rowid tie-break: back-to-back saves can share an added_at timestamp
+        # (Windows clock granularity) — insertion order must still hold.
+        "ORDER BY pa.added_at ASC, pa.rowid ASC",
+        (project_id,),
+    )
+    return [dict(r) for r in cur.fetchall()]
+
+
+# Import staging (EP — Data Portability, DATA_MODEL.md §11) lives in
+# staging.py — re-exported at the top of this module (CR-260704-0800-003).
 
 
 def latest_poll_at() -> Optional[datetime]:

@@ -4,7 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}Almanach{% endblock %}</title>
-  <link href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.47.0/tabler-icons.min.css" rel="stylesheet">
+  {# CR-260704-0800-004: icon font bundled locally (static/vendor/tabler-icons)
+     so every glyph renders offline — no CDN dependency. Same mtime ?v= token
+     as the app's own assets. #}
+  <link rel="stylesheet" href="/static/vendor/tabler-icons/tabler-icons.min.css{% if asset_version is defined %}?v={{ asset_version('vendor/tabler-icons/tabler-icons.min.css') }}{% endif %}">
   {# ?v= mtime token busts the browser cache whenever the file changes. The
      `is defined` guard keeps the page rendering if a stale server process is
      still running without the asset_version global (pre-relaunch window). #}

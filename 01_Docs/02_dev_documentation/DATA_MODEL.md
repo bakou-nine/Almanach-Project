@@ -32,6 +32,8 @@ tree, depth ≤ 5). Mutated by FT04.
 | `last_polled_at` | TEXT (ISO8601) | nullable | Updated by EP03 at the end of every successful poll cycle. NULL on a never-polled source. |
 | `last_error` | TEXT | nullable | Human-readable error message from EP03's most recent failed poll. Cleared (set to NULL) on the next successful poll. |
 | `consecutive_failure_count` | INTEGER | not null, default 0 | Incremented on every poll failure. Reset to 0 on success. EP03 may use this to back off or surface the source as broken in the UI (future). |
+| `reliability` | TEXT | not null, enum, default `'medium'` | Curation rating — how established / trustworthy the source is: `high` \| `medium` \| `low`. Set by the ALMANACH source-curation process (CLAUDE.md §A1) at import; user-editable via the row ⋮ menu (FT — Source Ratings). Drives the feed filter / sort. |
+| `impact` | TEXT | not null, enum, default `'medium'` | Curation rating — how unique / strong the source's news is and how well it serves the user's purpose: `high` \| `medium` \| `low`. User-editable. Drives the feed filter / sort. |
 
 ### §1.2 Article
 
@@ -80,6 +82,31 @@ two-table `Group` + `Subgroup` model with a single self-referential table).
 two-level Group + Subgroup model is collapsed into the recursive Folder
 table above. See §7 for the iteration-3 migration that walks the
 transition.
+
+### §1.6 Project (FT-260704-1620-001 — Media Content Projects)
+
+A named collection of saved articles ("save for a project"). Flat — no
+nesting, no folder membership. Rendered in the sidebar PROJECTS section.
+
+| Field | Type | Constraints | Notes |
+| :--- | :--- | :--- | :--- |
+| `id` | TEXT PK | not null | UUID v4. |
+| `name` | TEXT | not null | Sidebar label. 1–60 chars after trim (mirrors `Folder.name`); empty commit reverts (AC-260704-1620-008). Inline rename per handoff screen 3. |
+| `position` | REAL | not null, default 0 | Sort order among projects (ascending, creation order by default). |
+| `created_at` | TEXT (ISO8601) | not null | Set on insert. |
+
+### §1.7 ProjectArticle (junction) — FT-260704-1620-001
+
+N:M membership of Articles in Projects.
+
+| Field | Type | Constraints | Notes |
+| :--- | :--- | :--- | :--- |
+| `project_id` | TEXT FK | not null, → `project.id`, `ON DELETE CASCADE` | Deleting a project removes only membership rows (AC-260704-1620-004). |
+| `article_id` | TEXT FK | not null, → `article.id`, `ON DELETE CASCADE` | Article deletion (retention §5, source removal §2.1) silently drops membership. |
+| `added_at` | TEXT (ISO8601) | not null | Set on insert. |
+
+Primary key: `(project_id, article_id)` — an article is in a project at
+most once; saving is idempotent.
 
 ---
 
@@ -165,6 +192,17 @@ Application-enforced (server-side) on every POST /folders + PATCH
   siblings. The server accepts any real value; renormalisation is a
   future, opportunistic concern (not blocking).
 
+### §2.5 Project ↔ Article (N:M via `project_article`) — FT-260704-1620-001
+
+An Article can belong to any number of Projects and vice versa, through
+the §1.7 junction. Cascades are junction-only in both directions: deleting
+a Project never deletes Articles (AC-260704-1620-004); deleting an Article
+(source removal §2.1, retention §5) never deletes Projects — the affected
+membership rows disappear and project counts shrink accordingly. Feed
+visibility rules (§2.3 cascade-mute) do NOT apply inside a project view:
+a saved article stays listed in its projects regardless of source/folder
+mute state.
+
 ---
 
 ## §3. Indexes
@@ -178,6 +216,8 @@ Application-enforced (server-side) on every POST /folders + PATCH
 | `idx_article_read_at_null` | article | `(read_at) WHERE read_at IS NULL` | Unread-count aggregation for FT03 sidebar counts and the "All sources" sum. Partial index keeps it small even at high article volume. |
 | `idx_source_folder_id` | source | `folder_id` | Recursive tree rendering — fetch sources per folder (FT05 / US-260522-2116-003). |
 | `idx_folder_parent_id` | folder | `parent_id` | Recursive tree walk — fetch children per folder; supports cascade walks for delete + drag + depth recomputation. |
+| `idx_project_article_project_id` | project_article | `project_id` | Project view listing + sidebar count pills (FT-260704-1620-001). |
+| `idx_project_article_article_id` | project_article | `article_id` | Per-row folder tags + bookmark fill state in the feed (FT-260704-1620-001). |
 
 ---
 
@@ -292,6 +332,22 @@ No source or article row is rewritten or deleted. Folder-row count after
 migration equals (group rows + subgroup rows) before migration. Verified
 by AC-260522-2117-007 and AC-260522-2400-002.
 
+**Source ratings migration (FT — Source Ratings):** additive.
+
+- `ALTER TABLE source ADD COLUMN reliability TEXT NOT NULL DEFAULT 'medium'` (idempotent — skipped when present; existing rows backfill `'medium'`).
+- `ALTER TABLE source ADD COLUMN impact TEXT NOT NULL DEFAULT 'medium'` (same).
+- Allowed values `('high','medium','low')` enforced application-side (optional SQL CHECK), mirroring the `discovery_method` pattern.
+
+**Import-staging migration (EP — Data Portability):** create the `import_staging` table (§11) + its index if missing. Additive; no existing row is touched.
+
+**Media Content Projects migration (FT-260704-1620-001):** additive, idempotent (skipped when the tables exist).
+
+- `CREATE TABLE project (id, name, position, created_at)` per §1.6.
+- `CREATE TABLE project_article (project_id, article_id, added_at, PRIMARY KEY (project_id, article_id))` per §1.7, FKs `ON DELETE CASCADE` both ways (`PRAGMA foreign_keys = ON` required, as §2.1).
+- Create §3 indexes `idx_project_article_project_id`, `idx_project_article_article_id`.
+
+No existing table or row is touched.
+
 Subsequent migrations are versioned (`schema_version` column in `settings` or a
 dedicated `migrations` table — to be specified when EP05 stories are authored).
 
@@ -305,6 +361,111 @@ The following will be added when the relevant epic gets its story tier:
   Referenced by EP03 and EP02. Skeleton to be authored alongside EP03 stories.
 - **§Source.discovery_method enum constraints** — exact SQL check constraint or
   application-level enforcement. To be decided when FT01 stories are authored.
+
+---
+
+## §9. Import / Export — portability format (`almanach-portability/v1`)
+
+Moves the source library (folders + sources + ratings) in and out as a single YAML
+file. Mirrors the Filum DB↔YAML mechanism: export writes the file, a sync flag
+(§10) requests import, import stages changes (§11) for human review in the app.
+
+- **Single file**, not status-partitioned (sources have no draft/active/closed
+  lifecycle). Carries an envelope + versioned schema.
+- **Shape:** top-level `meta` (`schema: almanach-portability/v1`, `exported_at`,
+  `generated_by`) and `folders` — a recursive tree (`name`, `children`,
+  `sources`). Each source carries `url` (homepage, required), `reliability`,
+  `impact`. `feed_url` / `discovery_method` / `display_name` / `colour` are NOT
+  stored — resolved at import via the discovery waterfall (§1.1), exactly as the
+  add-source flow does.
+- **First-run seed:** bundled `02_code/almanach/data/default_library.yaml` loads
+  when the DB has no sources (folder-aware). The curated set nests under an
+  `AI news proposal` parent → `Specialized` / `General` → category folders; the
+  legacy flat seed is unaffected (additive).
+- **Export:** live DB → `<ALMANACH_DATA_DIR>/almanach-library.yaml` (+ sync flag §10).
+- **Versioning:** `v1` = folders + sources + ratings. A future `v2` adds an
+  `articles` block (the news store) additively; v1 readers ignore unknown blocks.
+
+---
+
+## §10. Sync control file (`almanach-sync.yaml`)
+
+Mirrors Filum's `project-sync.yaml`. A small control file in `<ALMANACH_DATA_DIR>`.
+
+| Field | Values | Notes |
+| :--- | :--- | :--- |
+| `status` | `ready` \| `import` | `import` requests ingestion of `almanach-library.yaml`; reset to `ready` after staging. |
+| `export_status` | `new_export` \| `reviewed` \| null | Set `new_export` after an export; cleared on review. |
+| `updated_at` | ISO8601 | last write time. |
+| `updated_by` | `ALMANACH` \| `CLAUDE` | who last wrote. |
+
+A live `watchdog` monitor watches this file (debounced); on `status: import` it
+runs the staged import (§11) then resets to `ready`. The ALMANACH source-curation
+process (CLAUDE.md §A1) sets `status: import` after writing the library YAML.
+
+---
+
+## §11. Staging zone — `import_staging`
+
+Mirrors Filum's two-zone safeguard: **import never writes the live `folder` /
+`source` tables.** Proposed changes land here until the user approves them in the
+Review screen.
+
+| Field | Type | Notes |
+| :--- | :--- | :--- |
+| `id` | TEXT PK | UUID. |
+| `object_kind` | TEXT | `folder` \| `source`. |
+| `change_type` | TEXT | `ADDED` \| `MODIFIED` \| `REMOVED`. |
+| `staged_data` | TEXT (JSON) | full proposed state (incl. `reliability` / `impact` for sources); null for `REMOVED`. |
+| `created_at` | TEXT (ISO8601) | insert time. |
+
+Index `idx_import_staging_kind` on `object_kind`. Re-import replaces existing
+staging rows for the same object. On approval the staged state is applied to the
+live tables (the user may adjust `reliability` / `impact` during review); on
+reject the row is discarded.
+
+---
+
+## §12. Excel source hierarchy import / export (CR-260704-1825-001)
+
+A second, user-owned portability path alongside §9–§11 (YAML + staged review):
+export / template / upload via the header **Sources data** menu, as an Excel
+`.xlsx` workbook (chosen over XML for hand-editability). **Upload REPLACES the
+live `folder` tree + `source` list immediately — no staging, no approval.** This
+is the documented exception to §11's two-zone safeguard; the YAML sync path keeps
+staging mandatory.
+
+Module `almanach/excel_io.py`; endpoints `GET /io/export`, `GET /io/template`,
+`POST /io/import` (raw `.xlsx` bytes as the request body). Media type
+`application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`. Depends on
+`openpyxl`.
+
+Workbook shape — one `Sources` sheet, **one row per source, row order = display
+order**; the template adds a second `How to use` sheet. Columns (matched on
+import by header name, so a user may reorder/omit them):
+
+| Column | Maps to | Notes |
+| :--- | :--- | :--- |
+| `Folder` | `folder` tree | `/`-separated path, e.g. `AI / Generalist-Daily`; blank = ungrouped; ≤5 levels. An empty folder exports as a folder-only row. |
+| `Source name` | `Source.display_name` | defaults to the URL host if blank. |
+| `URL` | `Source.url` (canonicalised) | **required** for a new source. |
+| `Feed URL` | `Source.feed_url` | defaults to the homepage URL if blank. |
+| `Color` | `Source.colour` | palette colour picked if blank. |
+| `Muted` | `Source.muted` | `yes`/`no`. |
+| `Reliability` / `Impact` | `Source.reliability` / `.impact` | invalid → `medium`. |
+| `Article count` | — | export-only (derived); ignored on import. |
+
+Hierarchy = the `Folder` path column (no nesting in the file); folders are
+(re)created from the paths in first-appearance order. There is **no id column** —
+a source's identity is its **URL**.
+
+Replace semantics (single IMMEDIATE transaction — an invalid workbook changes
+nothing): existing sources match by canonical `url` and are **updated in place**
+(articles + read state survive the round-trip); a live source whose URL is absent
+from the sheet is **deleted (articles cascade)**; a new row requires a valid
+`url` (skipped + reported otherwise); changing a row's URL makes it a new
+provider (old one deleted). No discovery dispatch — `Feed URL` is taken as-is, so
+a missing feed may poll with errors until corrected.
 
 ---
 

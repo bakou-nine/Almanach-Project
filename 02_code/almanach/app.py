@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import re
+import sqlite3
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Optional
@@ -13,8 +14,21 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, Field
 
-from . import config, db, discovery, models, scheduler, settings_store, views
-from .urls import canonical_source_url, is_valid_http_url
+from . import (
+    config,
+    db,
+    discovery,
+    excel_io,
+    models,
+    portability,
+    scheduler,
+    seeding,
+    settings_store,
+    views,
+    watcher,
+)
+from .naming import resolve_display_name
+from .urls import canonical_source_url, is_valid_http_url, private_target_reason
 
 log = logging.getLogger(__name__)
 
@@ -48,9 +62,19 @@ templates.env.globals["asset_version"] = _asset_version
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     db.initialise()
-    _seed_if_empty()
+    # BUG-260704-0735-002: one-off (settings-gated) rewrite of pre-fix article
+    # rows whose published_at was stored as raw sitemap text.
+    models.migrate_published_at_formats()
+    # BUG-260704-0735-001 / CR-260704-0800-003: first-run seeding (curated
+    # default library first, then the legacy flat seed — see seeding.py) runs
+    # on a background thread so the server accepts requests immediately;
+    # seeded proposals appear in Review once staging completes
+    # (AC-260704-0735-003).
+    seeding.start_background()
     scheduler.start()
+    watcher.start()
     yield
+    watcher.stop()
     scheduler.stop()
     db.close()
 
@@ -133,6 +157,7 @@ async def index(
             "feed": feed,
             "active_source_id": source,
             "active_folder_id": None,
+            "review_count": models.count_staging(),
         },
     )
 
@@ -178,6 +203,9 @@ async def feed_partial(
     keyword: Optional[list[str]] = Query(None, description="Keyword(s) on title/summary; repeatable (CR-260524-0644-001)"),
     keyword_opt: Optional[list[str]] = Query(None, description="Per-keyword 2-char option code aligned to `keyword` order: char0=Match case, char1=Match whole word ('1'/'0'); defaults '00' (CR-260524-1315-001)"),
     keyword_mode: str = Query("any", description="How multiple keywords combine: 'any' (OR) | 'all' (AND)"),
+    reliability: Optional[str] = Query(None, description="Min source reliability: high|medium|low (FT — Source Ratings)"),
+    sort: Optional[str] = Query(None, description="Feed sort: 'impact' orders high-impact sources first"),
+    project: Optional[str] = Query(None, description="Project id — render the project view instead of the news feed (FT-260704-1620-001)"),
 ) -> HTMLResponse:
     """Feed partial endpoint.
 
@@ -192,6 +220,20 @@ async def feed_partial(
       `from`, `to`, `source_ids`, `folder_ids`, `scope_folder_id`, `keyword`
       (repeatable), `keyword_mode`.
     """
+    # Project view (US-260704-1620-004): one project's saved articles, standard
+    # rows, no filter bar. A deleted project falls through to the normal feed.
+    if project is not None:
+        pv = views.build_project_feed_view(project)
+        if pv is not None:
+            return templates.TemplateResponse(
+                "_feed.html",
+                {
+                    "request": request,
+                    "feed": pv,
+                    "active_source_id": None,
+                    "active_folder_id": None,
+                },
+            )
     if source is not None:
         src = models.get_source(source)
         if src is None or src["muted"]:
@@ -209,6 +251,8 @@ async def feed_partial(
         scope_folder_id=scope_folder_id,
         keywords=_zip_keyword_options(keyword, keyword_opt),
         keyword_mode=keyword_mode,
+        reliability_min=reliability or None,
+        sort=sort or None,
     )
     template = "_feed_rows.html" if rows_only else "_feed.html"
     return templates.TemplateResponse(
@@ -274,6 +318,19 @@ async def create_source(payload: AddSourceIn):
                 "message": "Invalid URL — must start with http:// or https://.",
             },
         )
+    # SSRF guard (CR-260704-0800-001): reject loopback/private/link-local
+    # targets before any fetch. Discovery's HTTP client re-checks every
+    # request, so post-redirect and harvested-link hops are covered too.
+    reason = await run_in_threadpool(private_target_reason, payload.url)
+    if reason:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "error": "private_address",
+                "details": reason,
+                "message": "This address is private or local — only public sites can be added.",
+            },
+        )
     canonical = canonical_source_url(payload.url)
     if models.find_source_by_canonical_url(canonical) is not None:
         raise HTTPException(
@@ -285,7 +342,10 @@ async def create_source(payload: AddSourceIn):
             },
         )
 
-    result = discovery.discover(canonical)
+    # BUG-260704-0735-001: discovery (up to DISCOVERY_TOTAL_BUDGET_S of sync
+    # httpx I/O) and the display-name feed fetch must not run on the event
+    # loop — one slow add would stall every other request.
+    result = await run_in_threadpool(discovery.discover, canonical)
     if not result.success:
         raise HTTPException(
             status_code=422,
@@ -296,15 +356,30 @@ async def create_source(payload: AddSourceIn):
             },
         )
 
-    display_name = _resolve_display_name(result.feed_url, canonical)
-    colour = settings_store.next_palette_colour()
-    src = models.insert_source(
-        url=canonical,
-        feed_url=result.feed_url,
-        discovery_method=result.method,
-        display_name=display_name,
-        colour=colour,
+    display_name = await run_in_threadpool(
+        resolve_display_name, result.feed_url, canonical
     )
+    colour = settings_store.next_palette_colour()
+    try:
+        src = models.insert_source(
+            url=canonical,
+            feed_url=result.feed_url,
+            discovery_method=result.method,
+            display_name=display_name,
+            colour=colour,
+        )
+    except sqlite3.IntegrityError:
+        # BUG-260704-0735-003: two concurrent adds of the same URL can both
+        # pass the dedup check above; the loser hits the UNIQUE(url) constraint
+        # here. Surface the same friendly duplicate response, not a 500.
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "error": "duplicate",
+                "details": "A source with this canonical URL already exists.",
+                "message": "Already added.",
+            },
+        )
     # Kick off a poll for this source so the feed populates immediately.
     scheduler.trigger_manual_poll()
     return {
@@ -345,6 +420,45 @@ async def patch_mute(source_id: str, payload: MuteIn):
         raise HTTPException(status_code=404, detail="source not found")
     models.set_muted(source_id, payload.muted)
     return {"id": source_id, "muted": payload.muted}
+
+
+class RatingsIn(BaseModel):
+    reliability: Optional[str] = None
+    impact: Optional[str] = None
+
+
+@app.patch("/sources/{source_id}/ratings")
+async def patch_ratings(source_id: str, payload: RatingsIn):
+    """Set a source's reliability and/or impact (FT — Source Ratings, US-006).
+
+    Only the three curated values are accepted; anything else → 422.
+    """
+    src = models.get_source(source_id)
+    if src is None:
+        raise HTTPException(status_code=404, detail="source not found")
+    if payload.reliability is None and payload.impact is None:
+        raise HTTPException(status_code=400, detail="no rating supplied")
+    try:
+        models.set_source_ratings(
+            source_id,
+            reliability=payload.reliability,
+            impact=payload.impact,
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "error": "invalid_rating",
+                "details": str(e),
+                "message": "Rating must be high, medium, or low.",
+            },
+        )
+    updated = models.get_source(source_id)
+    return {
+        "id": source_id,
+        "reliability": updated["reliability"],
+        "impact": updated["impact"],
+    }
 
 
 @app.delete("/sources/{source_id}", status_code=204)
@@ -602,6 +716,102 @@ async def patch_article_parent(article_id: str, payload: ArticleParentIn):
     return {"id": article_id, "folder_id": payload.folder_id}
 
 
+# ---------- projects API (FT-260704-1620-001 — Media Content Projects) ----------
+
+
+def _validate_project_name(raw: Optional[str]) -> str:
+    """Trim + length-check a project name (1-60, mirrors folders). 422 on failure."""
+    candidate = (raw or "").strip()
+    if len(candidate) < _NAME_MIN or len(candidate) > _NAME_MAX:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "error": "invalid_name",
+                "details": "project name must be 1-60 characters after trim.",
+                "message": "Project name must be 1-60 characters",
+            },
+        )
+    return candidate
+
+
+def _project_payload(p: dict) -> dict:
+    return {"id": p["id"], "name": p["name"], "count": p["count"]}
+
+
+class ProjectCreateIn(BaseModel):
+    name: Optional[str] = None
+    # Popover inline-create (AC-260704-1620-010): the new project is born
+    # containing this article.
+    article_id: Optional[str] = None
+
+
+class ProjectRenameIn(BaseModel):
+    name: str
+
+
+@app.get("/projects")
+async def list_projects() -> dict:
+    return {"projects": [_project_payload(p) for p in models.list_projects()]}
+
+
+@app.post("/projects", status_code=201)
+async def create_project(payload: ProjectCreateIn):
+    # Sidebar "+" sends no name — the row is created as "New project" and
+    # immediately enters inline rename client-side (AC-260704-1620-005).
+    name = _validate_project_name(payload.name) if payload.name is not None else "New project"
+    if payload.article_id is not None and models.get_article(payload.article_id) is None:
+        raise HTTPException(status_code=404, detail="article not found")
+    project = models.insert_project(name, article_id=payload.article_id)
+    return _project_payload(project)
+
+
+@app.patch("/projects/{project_id}")
+async def patch_project(project_id: str, payload: ProjectRenameIn):
+    if models.get_project(project_id) is None:
+        raise HTTPException(status_code=404, detail="project not found")
+    name = _validate_project_name(payload.name)
+    models.rename_project(project_id, name)
+    return {"id": project_id, "name": name}
+
+
+@app.delete("/projects/{project_id}", status_code=204)
+async def remove_project(project_id: str):
+    if models.get_project(project_id) is None:
+        raise HTTPException(status_code=404, detail="project not found")
+    models.delete_project(project_id)
+    return Response(status_code=204)
+
+
+@app.put("/projects/{project_id}/articles/{article_id}")
+async def save_article_to_project(project_id: str, article_id: str):
+    """Save an article into a project (idempotent, AC-260704-1620-009)."""
+    if models.get_project(project_id) is None:
+        raise HTTPException(status_code=404, detail="project not found")
+    if models.get_article(article_id) is None:
+        raise HTTPException(status_code=404, detail="article not found")
+    models.set_project_membership(project_id, article_id, True)
+    return {
+        "project_id": project_id,
+        "article_id": article_id,
+        "saved": True,
+        "count": models.get_project(project_id)["count"],
+    }
+
+
+@app.delete("/projects/{project_id}/articles/{article_id}")
+async def unsave_article_from_project(project_id: str, article_id: str):
+    """Remove an article from a project — the article itself stays (§2.5)."""
+    if models.get_project(project_id) is None:
+        raise HTTPException(status_code=404, detail="project not found")
+    models.set_project_membership(project_id, article_id, False)
+    return {
+        "project_id": project_id,
+        "article_id": article_id,
+        "saved": False,
+        "count": models.get_project(project_id)["count"],
+    }
+
+
 # ---------- promote / demote (CR-260523-0900-001) ----------
 
 
@@ -670,10 +880,13 @@ async def manual_refresh():
 
     Frontend (US-260522-2050-004) treats this completion as the trigger to
     end the button loading state and update the header last-sync indicator.
+    BUG-260704-0735-001: when a cycle is already in flight the call returns
+    immediately with status "already_running" instead of queueing a threadpool
+    worker behind the lock — repeated clicks can no longer starve the pool.
     """
-    await run_in_threadpool(scheduler.run_manual_poll_blocking)
+    ran = await run_in_threadpool(scheduler.run_manual_poll_blocking)
     return {
-        "status": "completed",
+        "status": "completed" if ran else "already_running",
         "last_sync": views.humanise_delta(scheduler.last_sync_at()),
     }
 
@@ -688,73 +901,144 @@ async def last_sync() -> dict:
     return {"last_sync": views.humanise_delta(scheduler.last_sync_at())}
 
 
-# ---------- helpers ----------
+# ---------- data portability (EP — Data Portability) ----------
 
 
-def _resolve_display_name(feed_url: str, canonical: str) -> str:
-    """Best-effort: fetch the feed and use its <title>; fall back to host."""
-    try:
-        import feedparser
+@app.post("/export")
+async def export_library():
+    """Export the live library to YAML (US-260525-1200-001).
 
-        from . import ingestion as _ing  # avoid circular import at module top
-
-        raw = _ing.fetch_feed_bytes(feed_url, timeout=5)
-        parsed = feedparser.parse(raw)
-        title = (parsed.feed.get("title") if hasattr(parsed, "feed") else None) or ""
-        title = title.strip()
-        if title:
-            return title[:120]
-    except Exception:
-        pass
-    from urllib.parse import urlparse
-
-    host = urlparse(canonical).hostname or canonical
-    if host.startswith("www."):
-        host = host[4:]
-    return host
-
-
-SEED_SOURCES = [
-    "https://www.theverge.com",
-    "https://arstechnica.com",
-    "https://news.ycombinator.com",
-    "https://www.bbc.com/news",
-    "https://www.reuters.com",
-    "https://www.lemonde.fr",
-    "https://www.lesechos.fr",
-    "https://feeds.npr.org/1001/rss.xml",
-    "https://techcrunch.com",
-    "https://www.theguardian.com/international",
-]
-
-
-def _seed_if_empty() -> None:
-    """First-run seed: add up to 10 popular sources if the DB has no sources.
-
-    Each seed is added through the same discovery + persist path used by the
-    UI — failures are tolerated (a seed that no longer publishes a feed is
-    skipped, not fatal).
+    Read-only over the live tables (AC-260525-1200-001). Returns the saved file
+    name on success; surfaces a clear error on failure (AC-260525-1200-011).
     """
-    if models.list_sources():
-        return
-    for raw in SEED_SOURCES:
-        try:
-            canonical = canonical_source_url(raw)
-            if models.find_source_by_canonical_url(canonical):
-                continue
-            result = discovery.discover(canonical)
-            if not result.success:
-                log.info("seed skipped (%s): %s", raw, result.error)
-                continue
-            display_name = _resolve_display_name(result.feed_url, canonical)
-            colour = settings_store.next_palette_colour()
-            models.insert_source(
-                url=canonical,
-                feed_url=result.feed_url,
-                discovery_method=result.method,
-                display_name=display_name,
-                colour=colour,
+    try:
+        path = await run_in_threadpool(portability.export_library)
+    except Exception as e:  # noqa: BLE001 — any I/O failure → clean error
+        log.warning("export failed: %s", e)
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "error": "export_failed",
+                "details": str(e),
+                "message": "Export failed — could not write the library file.",
+            },
+        )
+    return {"status": "ok", "file": path.name, "path": str(path)}
+
+
+@app.get("/review/count")
+async def review_count() -> dict:
+    """Number of staged proposals awaiting review (header badge, AC-...-030)."""
+    return {"count": models.count_staging()}
+
+
+@app.get("/review")
+async def review_list() -> dict:
+    """List staged proposals for the Review screen (US-260525-1200-004)."""
+    items = []
+    for row in models.list_staging():
+        data = row.get("staged_data") or {}
+        items.append(
+            {
+                "id": row["id"],
+                "object_kind": row["object_kind"],
+                "change_type": row["change_type"],
+                "url": data.get("url"),
+                "display_name": data.get("display_name"),
+                "reliability": data.get("reliability"),
+                "impact": data.get("impact"),
+                "folder_path": data.get("folder_path"),
+                "name": data.get("name"),
+            }
+        )
+    return {"count": len(items), "items": items}
+
+
+class ReviewApproveIn(BaseModel):
+    reliability: Optional[str] = None
+    impact: Optional[str] = None
+
+
+@app.post("/review/{staging_id}/approve")
+async def review_approve(staging_id: str, payload: ReviewApproveIn):
+    """Approve a staged proposal — applies it to the live tables, optionally
+    overriding its ratings (AC-260525-1200-040 / -041)."""
+    try:
+        result = await run_in_threadpool(
+            lambda: portability.apply_staging(
+                staging_id,
+                reliability=payload.reliability,
+                impact=payload.impact,
             )
-            log.info("seeded source: %s (%s)", display_name, raw)
-        except Exception as e:
-            log.warning("seed failed for %s: %s", raw, e)
+        )
+    except portability.ApprovalError as e:
+        raise HTTPException(
+            status_code=422,
+            detail={"error": "approve_failed", "message": str(e)},
+        )
+    return {"status": "ok", "result": result, "remaining": models.count_staging()}
+
+
+@app.post("/review/{staging_id}/reject")
+async def review_reject(staging_id: str):
+    """Reject a staged proposal — discards it without going live (AC-...-041)."""
+    ok = portability.reject_staging(staging_id)
+    if not ok:
+        raise HTTPException(status_code=404, detail="staged item not found")
+    return {"status": "ok", "remaining": models.count_staging()}
+
+
+# ---------- Excel source hierarchy import/export (CR-260704-1825-001) ----------
+
+
+@app.get("/io/export")
+async def io_export_xlsx() -> Response:
+    """Download the full source hierarchy as an .xlsx workbook.
+
+    Read-only over the live tables; the browser receives an attachment."""
+    data = await run_in_threadpool(excel_io.serialize_to_xlsx)
+    return Response(
+        content=data,
+        media_type=excel_io.XLSX_MEDIA_TYPE,
+        headers={
+            "Content-Disposition": f'attachment; filename="{excel_io.export_filename()}"'
+        },
+    )
+
+
+@app.get("/io/template")
+async def io_template_xlsx() -> Response:
+    """Download the blank template workbook (columns + 'How to use' guide)."""
+    return Response(
+        content=excel_io.build_template_xlsx(),
+        media_type=excel_io.XLSX_MEDIA_TYPE,
+        headers={
+            "Content-Disposition": f'attachment; filename="{excel_io.TEMPLATE_FILENAME}"'
+        },
+    )
+
+
+@app.post("/io/import")
+async def io_import_xlsx(request: Request):
+    """Replace the whole hierarchy from an uploaded .xlsx body — no staging, no
+    confirmation (the explicit exception to the two-zone safeguard; the client
+    posts the file's raw bytes as the request body).
+
+    422 with a user-facing message on an invalid workbook; the live tables are
+    only written when the whole file parses (single transaction)."""
+    raw = await request.body()
+    try:
+        parsed = excel_io.parse_xlsx(raw)
+    except ValueError as e:
+        raise HTTPException(
+            status_code=422,
+            detail={"error": "invalid_xlsx", "message": str(e)},
+        )
+    summary = await run_in_threadpool(excel_io.replace_hierarchy, parsed)
+    # New/changed feeds populate on the next cycle; kick one off now.
+    scheduler.trigger_manual_poll()
+    return {"status": "ok", **summary}
+
+
+# Display-name resolution lives in naming.py; first-run seeding in seeding.py
+# (CR-260704-0800-003 — extracted from this module).

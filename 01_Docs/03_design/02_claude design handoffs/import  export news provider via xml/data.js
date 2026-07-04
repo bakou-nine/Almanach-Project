@@ -1,0 +1,122 @@
+// Sample data for Almanach prototype — mirrors the user's real structure:
+// single top-level "AI" group with subgroups for each topic area.
+window.ALMANACH_DATA = {
+  sources: [
+    // Generalist-Daily
+    { id: 'rundown',       name: 'rundown.ai',                count: 2907, color: '#f97316' },
+    { id: 'bens',          name: "Ben's Bites",               count: 19,   color: '#ef4444' },
+    // Generalist-Weekly
+    { id: 'tldr',          name: 'tldr.tech',                 count: 18,   color: '#f59e0b' },
+    { id: 'lastweek',      name: 'Last Week in AI',           count: 20,   color: '#ec4899' },
+    { id: 'dontworry',     name: "Don't Worry About the Vase", count: 20,  color: '#f59e0b' },
+    { id: 'importai',      name: 'Import AI',                 count: 20,   color: '#10b981' },
+    { id: 'interconnects', name: 'Interconnects AI',          count: 20,   color: '#ef4444' },
+    // Generalist-Established
+    { id: 'mit',           name: 'MIT Technology Review',     count: 9,    color: '#3b82f6' },
+    { id: 'axios',         name: 'axios.com',                 count: 221,  color: '#8b5cf6' },
+    { id: 'semafor',       name: 'semafor.com',               count: 65,   color: '#3b82f6' },
+    // 1.Research
+    { id: 'huggingface',   name: 'huggingface.co',            count: 10,   color: '#f59e0b' },
+    { id: 'ahead',         name: 'Ahead of AI',               count: 20,   color: '#10b981' },
+    { id: 'gradient',      name: 'The Gradient',              count: 15,   color: '#06b6d4' },
+    { id: 'quanta',        name: 'Quanta Magazine — Illuminating science', count: 0, color: '#ec4899' },
+    // 2.Infrastructure
+    { id: 'semianalysis',  name: 'SemiAnalysis',              count: 10,   color: '#3b82f6' },
+    { id: 'nextplatform',  name: 'The Next Platform: In-depth coverage of high end computing', count: 79, color: '#ef4444' },
+    // 3.Regulation
+    { id: 'normaltech',    name: 'AI as Normal Technology',   count: 20,   color: '#f59e0b' },
+    { id: 'haistanford',   name: 'hai.stanford.edu',          count: 2370, color: '#ef4444' },
+    { id: 'techpolicy',    name: 'The Tech Policy Press Podcast', count: 300, color: '#ec4899' },
+    { id: 'euact',         name: 'EU Artificial Intelligence Act', count: 25, color: '#f59e0b' },
+    // 4.Alignement&Security
+    { id: 'anthropic',     name: 'anthropic.com',             count: 423,  color: '#d97706' },
+    { id: 'openai',        name: 'openai.com',                count: 368,  color: '#0ea5e9' },
+    { id: 'deepmind',      name: 'deepmind.google',           count: 676,  color: '#10b981' },
+    { id: 'aisafety',      name: 'AI Safety Newsletter',      count: 20,   color: '#f59e0b' },
+    { id: 'metr',          name: 'METR',                      count: 79,   color: '#a855f7' },
+    { id: 'apollo',        name: 'apolloresearch.ai',         count: 14,   color: '#3b82f6' },
+    { id: 'lesswrong',     name: 'LessWrong',                 count: 27,   color: '#06b6d4' },
+    // 5.Build/agent/open-source
+    { id: 'evident',       name: 'evidentinsights.com',       count: 143,  color: '#10b981' },
+    { id: 'huggingblog',   name: 'Hugging Face — Blog',       count: 784,  color: '#f59e0b' },
+    { id: 'latentspace',   name: 'Latent Space',              count: 20,   color: '#a855f7' },
+    // Extra ungrouped
+    { id: 'flint',         name: 'flint.media',               count: 1240, color: '#10b981' },
+    { id: 'verge',         name: 'The Verge',                 count: 88,   color: '#a855f7' },
+    { id: 'wired',         name: 'wired.com',                 count: 142,  color: '#000000' },
+    { id: 'stratechery',   name: 'Stratechery',               count: 34,   color: '#3b82f6' },
+    { id: 'epoch',         name: 'epoch.ai',                  count: 801,  color: '#10b981' },
+    { id: 'deeplearning',  name: 'deeplearning.ai',           count: 698,  color: '#10b981' },
+  ],
+
+  // Single AI group, subgroups mirror the user's product
+  groups: [
+    {
+      id: 'g-ai',
+      name: 'AI',
+      collapsed: false,
+      subgroups: [
+        { id: 'sg-gd',  name: 'Generalist-Daily',          collapsed: false, sourceIds: ['rundown', 'bens'] },
+        { id: 'sg-gw',  name: 'Generalist-Weekly',         collapsed: false, sourceIds: ['tldr', 'lastweek', 'dontworry', 'importai', 'interconnects'] },
+        { id: 'sg-ge',  name: 'Generalist-Established',    collapsed: false, sourceIds: ['mit', 'axios', 'semafor'] },
+        { id: 'sg-1',   name: '1.Research',                collapsed: false, sourceIds: ['huggingface', 'ahead', 'gradient', 'quanta'] },
+        { id: 'sg-2',   name: '2.Infrastructure',          collapsed: false, sourceIds: ['semianalysis', 'nextplatform'] },
+        { id: 'sg-3',   name: '3.Regulation',              collapsed: false, sourceIds: ['normaltech', 'haistanford', 'techpolicy', 'euact'] },
+        { id: 'sg-4',   name: '4.Alignement&Security',     collapsed: false, sourceIds: ['anthropic', 'openai', 'deepmind', 'aisafety', 'metr', 'apollo', 'lesswrong'] },
+        { id: 'sg-5',   name: '5.Build/agent/open-source', collapsed: false, sourceIds: ['evident', 'huggingblog', 'latentspace'] },
+      ],
+      sourceIds: [],
+    },
+  ],
+
+  ungroupedSourceIds: ['flint', 'verge', 'wired', 'stratechery', 'epoch', 'deeplearning'],
+
+  // Articles — kept varied so the "Match case" and "Whole word" filters have interesting matches.
+  articles: [
+    { id: 'a1',  sourceId: 'lesswrong',    title: 'How should we update on AI-enabled coups post-Mythos?', preview: 'Last month, Anthropic developed Claude Mythos, a model they considered too dangerous for public release. As per Anthropic (and via testing from AISI), we know that Mythos found thousands of previously unknown vulnerab…', time: '1 d ago' },
+    { id: 'a2',  sourceId: 'flint',        title: 'Les Francais Detestent Ils Linformation', preview: '', time: '1 d ago' },
+    { id: 'a3',  sourceId: 'rundown',      title: 'How To Run The Latest Google Ai Models On Your Phone For Free', preview: '', time: '1 d ago' },
+    { id: 'a4',  sourceId: 'rundown',      title: 'Implement The Latest Coding Solutions With Ai', preview: '', time: '1 d ago' },
+    { id: 'a5',  sourceId: 'rundown',      title: 'Stress Test Any Business Idea With One Perplexity Prompt Runs For Free', preview: '', time: '1 d ago' },
+    { id: 'a6',  sourceId: 'rundown',      title: "Xai's Smartest Ai On Earth Arrives", preview: '', time: '1 d ago' },
+    { id: 'a7',  sourceId: 'rundown',      title: 'Amazon Tests Humanoid Delivery Crews', preview: '', time: '1 d ago' },
+    { id: 'a8',  sourceId: 'rundown',      title: 'Chatgpt Becomes Fastest Growing Consumer App History', preview: '', time: '1 d ago' },
+    { id: 'a9',  sourceId: 'rundown',      title: "Critterz Tests Ai's Hollywood Takeover", preview: '', time: '1 d ago' },
+    { id: 'a10', sourceId: 'rundown',      title: 'Flying Car Takes Historic Test Flight', preview: '', time: '1 d ago' },
+    { id: 'a11', sourceId: 'rundown',      title: 'Groq Creates Fastest Ai', preview: '', time: '1 d ago' },
+    { id: 'a12', sourceId: 'rundown',      title: 'Humanoid Breaks Record For Fastest Build', preview: '', time: '1 d ago' },
+    { id: 'a13', sourceId: 'rundown',      title: 'Llms Pass Legendary Turing Test', preview: '', time: '1 d ago' },
+    { id: 'a14', sourceId: 'rundown',      title: 'Microsoft Testing Chatgpt Robots', preview: '', time: '1 d ago' },
+    { id: 'a15', sourceId: 'rundown',      title: 'Pig Heart Passes Crucial Test In Human', preview: '', time: '1 d ago' },
+    { id: 'a16', sourceId: 'anthropic',    title: "Claude's economic index — May update", preview: 'New data on which job categories are seeing the fastest adoption of generative AI tools across the workforce.', time: '4 h ago' },
+    { id: 'a17', sourceId: 'tldr',         title: 'Apple readies M5 MacBook Pro; Nvidia eats datacenter capex', preview: '', time: '12 h ago' },
+    { id: 'a18', sourceId: 'deeplearning', title: 'Andrew Ng on agentic workflows and the next wave of AI products', preview: 'A long-form interview covering the practical patterns teams are using to ship reliable agents in production today.', time: '8 h ago' },
+    { id: 'a19', sourceId: 'verge',        title: 'The browser wars are back, and the contestants are AI assistants', preview: '', time: '5 h ago' },
+    { id: 'a20', sourceId: 'haistanford',  title: 'AI Index 2026: training compute doubles again', preview: '', time: '1 h ago' },
+    { id: 'a21', sourceId: 'huggingface',  title: 'New open-weights model: Llama-Nemo-2 405B released under Apache 2.0', preview: '', time: '2 h ago' },
+    { id: 'a22', sourceId: 'stratechery',  title: 'Aggregation, agents, and the post-app interface', preview: 'Why the unbundling of the app store may finally be happening — and which platforms benefit from a chat-first surface.', time: '2 h ago' },
+    { id: 'a23', sourceId: 'epoch',        title: 'Estimating frontier model training costs in 2026', preview: '', time: '3 h ago' },
+    { id: 'a24', sourceId: 'mit',          title: 'Inside the lab building physical AI for warehouses', preview: '', time: '3 h ago' },
+    { id: 'a25', sourceId: 'gradient',     title: 'A taxonomy of evaluation for multi-step reasoning', preview: '', time: '4 h ago' },
+    { id: 'a26', sourceId: 'axios',        title: 'Senate AI roadmap stalls as appropriations season heats up', preview: '', time: '5 h ago' },
+    { id: 'a27', sourceId: 'wired',        title: 'The quiet shift from "AI features" to AI-native software', preview: '', time: '5 h ago' },
+    { id: 'a28', sourceId: 'lastweek',     title: 'Issue #312: Anthropic Sonnet 4.5, Cohere Aya 3, and a Mistral surprise', preview: '', time: '6 h ago' },
+    { id: 'a29', sourceId: 'interconnects',title: 'Why RLHF still matters in a post-DPO world', preview: '', time: '8 h ago' },
+    { id: 'a30', sourceId: 'ahead',        title: 'Reading list: 14 papers you missed this quarter', preview: '', time: '10 h ago' },
+    { id: 'a31', sourceId: 'semianalysis', title: 'TSMC 2nm yield ramp; the real bottleneck is CoWoS', preview: '', time: '12 h ago' },
+    { id: 'a32', sourceId: 'euact',        title: 'Code of Practice for general-purpose AI: third draft published', preview: '', time: '14 h ago' },
+    { id: 'a33', sourceId: 'techpolicy',   title: 'How states are filling the federal AI policy vacuum', preview: '', time: '1 d ago' },
+    { id: 'a34', sourceId: 'normaltech',   title: 'The case for treating AI like electricity, not like the internet', preview: '', time: '1 d ago' },
+    { id: 'a35', sourceId: 'dontworry',    title: 'The Vibes are off (and other observations from launch week)', preview: '', time: '1 d ago' },
+    { id: 'a36', sourceId: 'importai',     title: 'Issue #401: open weights eat the world', preview: '', time: '1 d ago' },
+    { id: 'a37', sourceId: 'bens',         title: 'Daily roundup: 9 stories you should know', preview: '', time: '1 d ago' },
+    { id: 'a38', sourceId: 'openai',       title: 'A new way to build agents with the Responses API', preview: '', time: '1 d ago' },
+    { id: 'a39', sourceId: 'deepmind',     title: 'Gemini 3 Ultra: technical report', preview: 'Advances in long-context reasoning, multimodal grounding, and tool use, with benchmark results on 24 evals.', time: '2 d ago' },
+    { id: 'a40', sourceId: 'aisafety',     title: 'Issue #54: situational awareness, capability evals, and a new red-team protocol', preview: '', time: '2 d ago' },
+    { id: 'a41', sourceId: 'metr',         title: 'Measuring time-horizon on real-world software tasks', preview: '', time: '2 d ago' },
+    { id: 'a42', sourceId: 'apollo',       title: 'Sleeper-agent detection in production-grade models', preview: '', time: '2 d ago' },
+    { id: 'a43', sourceId: 'evident',      title: 'The agent-readiness benchmark, rev 2', preview: '', time: '3 d ago' },
+    { id: 'a44', sourceId: 'huggingblog',  title: 'Open-source RAG: a practitioner\'s guide for 2026', preview: '', time: '3 d ago' },
+    { id: 'a45', sourceId: 'latentspace',  title: 'The state of agent frameworks, with maintainers', preview: '', time: '3 d ago' },
+  ],
+};

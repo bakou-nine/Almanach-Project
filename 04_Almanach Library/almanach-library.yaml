@@ -1,0 +1,213 @@
+meta:
+  schema: almanach-portability/v1
+  exported_at: '2026-06-09T20:51:59Z'
+  generated_by: ALMANACH
+folders:
+- name: AI proposal 2
+  children:
+  - name: General
+    children:
+    - name: Business & strategy
+      sources:
+      - url: https://tldr.tech/ai
+        reliability: low
+        impact: medium
+      - url: https://techcrunch.com/category/artificial-intelligence
+        reliability: medium
+        impact: medium
+      - url: https://bensbites.com
+        reliability: medium
+        impact: medium
+      - url: https://stratechery.com
+        reliability: high
+        impact: medium
+      - url: https://cnbc.com/technology
+        reliability: medium
+        impact: low
+    - name: Policy, regulation & safety
+      sources:
+      - url: https://techpolicy.press
+        reliability: medium
+        impact: medium
+      - url: https://aisnakeoil.com
+        reliability: high
+        impact: medium
+      - url: https://oecd.ai
+        reliability: high
+        impact: medium
+      - url: https://technologyreview.com/topic/artificial-intelligence
+        reliability: high
+        impact: medium
+      - url: https://hai.stanford.edu/news
+        reliability: high
+        impact: medium
+    - name: Model & product releases
+      sources:
+      - url: https://epoch.ai
+        reliability: high
+        impact: medium
+      - url: https://lmarena.ai
+        reliability: medium
+        impact: high
+      - url: https://mistral.ai/news
+        reliability: high
+        impact: medium
+      - url: https://artificialanalysis.ai
+        reliability: medium
+        impact: high
+      - url: https://deepmind.google/discover/blog
+        reliability: high
+        impact: high
+      - url: https://openai.com/news
+        reliability: high
+        impact: high
+    - name: Tools, interfaces & orchestration
+      sources:
+      - url: https://cookbook.openai.com
+        reliability: high
+        impact: low
+      - url: https://developers.googleblog.com
+        reliability: medium
+        impact: medium
+      - url: https://vercel.com/blog
+        reliability: medium
+        impact: low
+      - url: https://modelcontextprotocol.io
+        reliability: high
+        impact: medium
+  - name: Specialized
+    children:
+    - name: AI in banking & finance
+      sources:
+      - url: https://bis.org
+        reliability: high
+        impact: medium
+      - url: https://evidentinsights.com
+        reliability: high
+        impact: high
+      - url: https://thebanker.com
+        reliability: high
+        impact: medium
+      - url: https://americanbanker.com
+        reliability: high
+        impact: high
+    - name: Agentic & computer-operating AI
+      sources:
+      - url: https://newsletter.pragmaticengineer.com
+        reliability: high
+        impact: medium
+      - url: https://latent.space
+        reliability: medium
+        impact: high
+      - url: https://aiagentstore.ai/ai-agent-news
+        reliability: low
+        impact: medium
+      - url: https://blog.cloudflare.com
+        reliability: medium
+        impact: medium
+      - url: https://every.to
+        reliability: medium
+        impact: medium
+      - url: https://anthropic.com/engineering
+        reliability: high
+        impact: high
+    - name: Enterprise & IT AI
+      sources:
+      - url: https://thenewstack.io
+        reliability: medium
+        impact: low
+      - url: https://venturebeat.com/category/ai
+        reliability: medium
+        impact: medium
+      - url: https://theregister.com/software/ai_ml
+        reliability: medium
+        impact: medium
+      - url: https://aws.amazon.com/blogs/machine-learning
+        reliability: high
+        impact: medium
+      - url: https://aibusiness.com
+        reliability: medium
+        impact: medium
+      - url: https://infoq.com/ai-ml-data-eng
+        reliability: high
+        impact: medium
+    - name: Compute & hardware (industrial)
+      sources:
+      - url: https://semianalysis.com
+        reliability: high
+        impact: high
+      - url: https://nextplatform.com
+        reliability: high
+        impact: medium
+      - url: https://spectrum.ieee.org/topic/semiconductors
+        reliability: high
+        impact: medium
+      - url: https://servethehome.com
+        reliability: high
+        impact: medium
+      - url: https://chipsandcheese.com
+        reliability: medium
+        impact: medium
+      - url: https://tomshardware.com
+        reliability: medium
+        impact: low
+    - name: Build-your-own AI — self-hosted & local
+      sources:
+      - url: https://hardware-corner.net
+        reliability: medium
+        impact: medium
+      - url: https://ollama.com/blog
+        reliability: medium
+        impact: medium
+      - url: https://lmstudio.ai/blog
+        reliability: medium
+        impact: medium
+      - url: https://simonwillison.net
+        reliability: high
+        impact: high
+      - url: https://blog.vllm.ai
+        reliability: high
+        impact: medium
+      - url: https://github.com/ggml-org/llama.cpp/releases
+        reliability: high
+        impact: medium
+    - name: Embodied AI & intelligent machines
+      sources:
+      - url: https://dronedj.com
+        reliability: low
+        impact: medium
+      - url: https://blogs.nvidia.com
+        reliability: high
+        impact: medium
+      - url: https://physicalintelligence.company
+        reliability: medium
+        impact: medium
+      - url: https://robohub.org
+        reliability: medium
+        impact: medium
+      - url: https://spectrum.ieee.org/topic/robotics
+        reliability: high
+        impact: high
+    - name: Frontier models & methods
+      sources:
+      - url: https://importai.substack.com
+        reliability: high
+        impact: high
+      - url: https://huggingface.co/blog
+        reliability: high
+        impact: high
+      - url: https://lilianweng.github.io
+        reliability: high
+        impact: medium
+      - url: https://deeplearning.ai/the-batch
+        reliability: high
+        impact: medium
+      - url: https://interconnects.ai
+        reliability: high
+        impact: high
+      - url: https://magazine.sebastianraschka.com
+        reliability: high
+        impact: medium
+      - url: https://alphasignal.ai
+        reliability: medium
+        impact: high

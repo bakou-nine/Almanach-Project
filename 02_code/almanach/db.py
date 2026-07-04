@@ -3,12 +3,27 @@ from __future__ import annotations
 import re
 import sqlite3
 import threading
+import uuid
 from contextlib import contextmanager
+from datetime import datetime, timezone
 from typing import Iterator
 
 from . import config
 
 _local = threading.local()
+
+
+# Canonical row-identity + timestamp helpers (CR-260704-0800-003 — moved here
+# from models.py so leaf modules like staging.py can use them without cycles;
+# models.py re-exports both).
+
+
+def now_iso() -> str:
+    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f")
+
+
+def new_id() -> str:
+    return str(uuid.uuid4())
 
 
 def _kw_match(haystack, needle, case_sensitive: int, whole_word: int) -> int:
@@ -61,7 +76,9 @@ CREATE TABLE IF NOT EXISTS source (
     last_error TEXT,
     consecutive_failure_count INTEGER NOT NULL DEFAULT 0,
     folder_id TEXT REFERENCES folder(id) ON DELETE SET NULL,
-    position REAL NOT NULL DEFAULT 0
+    position REAL NOT NULL DEFAULT 0,
+    reliability TEXT NOT NULL DEFAULT 'medium' CHECK (reliability IN ('high','medium','low')),
+    impact TEXT NOT NULL DEFAULT 'medium' CHECK (impact IN ('high','medium','low'))
 );
 
 CREATE TABLE IF NOT EXISTS article (
@@ -82,6 +99,39 @@ CREATE TABLE IF NOT EXISTS settings (
     value TEXT NOT NULL
 );
 
+-- Import staging zone (EP — Data Portability, DATA_MODEL.md §11). Two-zone
+-- safeguard: import never writes the live folder/source tables; proposed
+-- changes land here until approved in the Review screen.
+CREATE TABLE IF NOT EXISTS import_staging (
+    id TEXT PRIMARY KEY,
+    object_kind TEXT NOT NULL CHECK (object_kind IN ('folder','source')),
+    change_type TEXT NOT NULL CHECK (change_type IN ('ADDED','MODIFIED','REMOVED')),
+    staged_data TEXT,
+    created_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_import_staging_kind ON import_staging(object_kind);
+
+-- Media Content Projects (FT-260704-1620-001, DATA_MODEL.md §1.6/§1.7/§2.5).
+-- Junction cascades are junction-only in both directions: deleting a project
+-- never deletes articles; deleting an article silently drops its memberships.
+CREATE TABLE IF NOT EXISTS project (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    position REAL NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS project_article (
+    project_id TEXT NOT NULL REFERENCES project(id) ON DELETE CASCADE,
+    article_id TEXT NOT NULL REFERENCES article(id) ON DELETE CASCADE,
+    added_at TEXT NOT NULL,
+    PRIMARY KEY (project_id, article_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_project_article_project_id ON project_article(project_id);
+CREATE INDEX IF NOT EXISTS idx_project_article_article_id ON project_article(article_id);
+
 CREATE INDEX IF NOT EXISTS idx_source_url ON source(url);
 CREATE INDEX IF NOT EXISTS idx_article_url ON article(url);
 CREATE INDEX IF NOT EXISTS idx_article_published_at ON article(published_at DESC);
@@ -98,7 +148,8 @@ CREATE INDEX IF NOT EXISTS idx_folder_parent_id ON folder(parent_id);
 MAX_FOLDER_DEPTH = 5
 
 DEFAULT_SETTINGS = {
-    "polling_interval_minutes": "10",
+    # BUG-260704-0735-009: seeded from the single default in config.py.
+    "polling_interval_minutes": str(config.POLLING_INTERVAL_DEFAULT_MIN),
     "retention_days": "30",
     "next_palette_index": "0",
     "grouping_banner_dismissed": "0",
@@ -111,10 +162,19 @@ def _connect() -> sqlite3.Connection:
         str(config.db_path()),
         detect_types=sqlite3.PARSE_DECLTYPES,
         check_same_thread=False,
+        # BUG-260704-0735-003: autocommit mode — transaction() below issues an
+        # explicit BEGIN IMMEDIATE so write transactions take the write lock at
+        # BEGIN, not at first DML. Deferred locks let read-modify-write
+        # sequences from the three writer threads (event loop, scheduler,
+        # watcher) interleave and violate check-then-act invariants.
+        isolation_level=None,
     )
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
     conn.execute("PRAGMA journal_mode = WAL")
+    # Writers waiting on the lock retry for up to 5 s instead of failing
+    # immediately with SQLITE_BUSY (BUG-260704-0735-003).
+    conn.execute("PRAGMA busy_timeout = 5000")
     # Per-keyword Match case / Match whole word matching (CR-260524-1315-001).
     conn.create_function("alm_kw_match", 4, _kw_match, deterministic=True)
     return conn
@@ -130,7 +190,13 @@ def get_connection() -> sqlite3.Connection:
 
 @contextmanager
 def transaction() -> Iterator[sqlite3.Connection]:
+    """Write transaction under an IMMEDIATE lock (BUG-260704-0735-003).
+
+    BEGIN IMMEDIATE serialises writers up front, so a read-modify-write inside
+    one transaction() block (palette pointer, staging replace) cannot interleave
+    with another thread's writes. Not re-entrant — never nest transaction()."""
     conn = get_connection()
+    conn.execute("BEGIN IMMEDIATE")
     try:
         yield conn
         conn.commit()
@@ -163,7 +229,30 @@ def initialise() -> None:
     _migrate_legacy_groups_to_folder(cur)
     _drop_legacy_source_grouping_columns(cur)
     _ensure_article_hierarchy_columns(cur)
+    _ensure_source_rating_columns(cur)
     conn.commit()
+
+
+def _ensure_source_rating_columns(cur: sqlite3.Cursor) -> None:
+    """Add Source.reliability + Source.impact if missing (FT — Source Ratings).
+
+    Additive migration (DATA_MODEL.md §7) — on a fresh DB created from SCHEMA
+    both columns already exist (no-op); on a pre-ratings DB the SCHEMA CREATE is
+    skipped (table exists) so the columns are added here, backfilling existing
+    rows with 'medium'. SQLite cannot add a NOT NULL column with a CHECK in one
+    step on every version, so the value enum is enforced application-side
+    (models.set_source_ratings) mirroring discovery_method.
+    """
+    cur.execute("PRAGMA table_info(source)")
+    existing = {row["name"] for row in cur.fetchall()}
+    if "reliability" not in existing:
+        cur.execute(
+            "ALTER TABLE source ADD COLUMN reliability TEXT NOT NULL DEFAULT 'medium'"
+        )
+    if "impact" not in existing:
+        cur.execute(
+            "ALTER TABLE source ADD COLUMN impact TEXT NOT NULL DEFAULT 'medium'"
+        )
 
 
 def _ensure_article_hierarchy_columns(cur: sqlite3.Cursor) -> None:

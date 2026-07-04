@@ -35,7 +35,11 @@ def set_value(key: str, value: str) -> None:
 
 
 def polling_interval_minutes() -> int:
-    return max(5, min(120, get_int("polling_interval_minutes", 20)))
+    # BUG-260704-0735-009: fallback = the single default in config.py, so the
+    # scheduler cadence and the Settings surface can never disagree.
+    return max(5, min(120, get_int(
+        "polling_interval_minutes", config.POLLING_INTERVAL_DEFAULT_MIN
+    )))
 
 
 def retention_days() -> int:

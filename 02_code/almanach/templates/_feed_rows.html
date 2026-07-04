@@ -3,11 +3,16 @@
    no spinner — just the cards. Article rows are draggable and carry a
    row ⋮ menu per CR-260523-0900-001. #}
 {% for a in feed.articles %}
+  {# CR-260704-0800-002: cards are keyboard-focusable; Enter opens the article
+     (activation + arrow traversal in app.js). #}
   <article class="article"
            data-article-id="{{ a.id }}"
            data-url="{{ a.url }}"
            data-published-at="{{ a.published_at }}"
            data-folder-id="{{ a.folder_id or '' }}"
+           data-project-ids="{{ a.projects|map(attribute='id')|join(',') }}"
+           tabindex="0" role="link"
+           aria-label="{{ a.title|e }}"
            draggable="true">
     <div class="article-meta">
       {# BUG-260525-0745-001: a single source-coloured dot is the only pastille.
@@ -17,12 +22,38 @@
       <span class="article-source">{{ a.source_name }}</span>
       <span class="article-sep">·</span>
       <span class="article-time">{{ a.relative_time }}</span>
+      {# FT-260704-1620-001: bookmark save affordance (handoff screen 5) —
+         right-aligned before the ⋮ menu, filled + accent when saved. #}
+      <button type="button"
+              class="bookmark-btn{% if a.projects %} saved{% endif %}"
+              title="{% if a.projects %}Saved to {{ a.projects|length }} project{{ '' if a.projects|length == 1 else 's' }}{% else %}Save to project{% endif %}"
+              aria-label="Save to project">
+        <i class="ti {{ 'ti-bookmark-filled' if a.projects else 'ti-bookmark' }}"></i>
+      </button>
       <button class="row-action-btn article-menu-btn"
               type="button" title="Article actions" aria-label="Article actions">
         <i class="ti ti-dots-vertical"></i>
       </button>
     </div>
+    {# BUG-260704-1629-001: the title is NOT a save trigger — clicking it opens
+       the article (click-to-read). Save/remove assignment lives on the bookmark
+       button and the row ⋮ menu's "Save to project" entry. #}
     <p class="article-title">{{ a.title }}</p>
     {% if a.summary %}<p class="article-summary">{{ a.summary }}</p>{% endif %}
+    <div class="article-saved-tags"{% if not a.projects %} hidden{% endif %}>
+      {% for p in a.projects %}
+        <button type="button" class="article-saved-tag" data-project-id="{{ p.id }}"
+                title="Open {{ p.name|e }}">
+          <i class="ti ti-folder"></i><span>{{ p.name }}</span>
+        </button>
+      {% endfor %}
+    </div>
   </article>
 {% endfor %}
+{# BUG-260704-0735-004: explicit batch metadata — the client reads (and removes)
+   this sentinel for the next cursor + end-of-feed signal instead of
+   regex-counting `class="article"` occurrences in the returned HTML. #}
+<div class="feed-batch-meta"
+     data-has-more="{{ '1' if feed.has_more else '0' }}"
+     data-next-after="{{ feed.next_after or '' }}"
+     hidden></div>

@@ -1,0 +1,191 @@
+# almanach_seed.yaml
+# First-run seed for Almanach (folder-aware).
+#
+# HOW IT WORKS
+#   Each source lists only its homepage `url`. At load the app resolves
+#   feed_url + discovery_method (discovery.discover), display_name (feed <title>),
+#   and colour (palette round-robin) — exactly the path _seed_if_empty already uses.
+#   So nothing here goes stale: dead feeds are skipped, not fatal.
+#
+#   Folders nest two levels: track -> category (depth 2, within the depth-5 cap).
+#   Each source belongs to exactly ONE folder (Source.folder_id is single).
+#
+# RATINGS (per source, 3 levels: high | medium | low)
+#   reliability — how established / trustworthy the source is.
+#   impact      — how unique/strong its news is and how well it serves my purpose.
+#
+# SCHEMA NOTE
+#   `reliability` and `impact` are NOT yet columns on Source (DATA_MODEL.md §1.1).
+#   Adding them is an additive migration scoped as a CR; until it lands the loader
+#   can ignore both fields. Once the columns exist they round-trip on YAML export.
+
+meta:
+  schema: almanach-seed/v1
+  generated: "2026-05-25"
+  rating_values: [high, medium, low]
+  import_mode: first_run_only      # load when DB has no sources, then leave alone
+  source_field: url                # feed_url/method/name/colour derived at load
+
+folders:
+  - name: Specialized
+    children:
+      - name: Frontier models & methods
+        sources:
+          - url: https://huggingface.co/blog
+            reliability: high
+            impact: high
+          - url: https://importai.substack.com
+            reliability: high
+            impact: high
+          - url: https://www.deeplearning.ai/the-batch/
+            reliability: high
+            impact: medium
+          - url: https://magazine.sebastianraschka.com
+            reliability: high
+            impact: medium
+          - url: https://arxiv.org/list/cs.LG/recent
+            reliability: high
+            impact: medium
+
+      - name: Compute & hardware
+        sources:
+          - url: https://semianalysis.com
+            reliability: high
+            impact: high
+          - url: https://www.nextplatform.com
+            reliability: high
+            impact: medium
+          - url: https://www.servethehome.com
+            reliability: high
+            impact: medium
+          - url: https://spectrum.ieee.org/topic/semiconductors/
+            reliability: high
+            impact: medium
+          - url: https://www.tomshardware.com
+            reliability: medium
+            impact: low
+
+      - name: Build-your-own AI — self-hosted & local
+        sources:
+          - url: https://www.reddit.com/r/LocalLLaMA/
+            reliability: medium
+            impact: high
+          - url: https://simonwillison.net
+            reliability: high
+            impact: high
+          - url: https://ollama.com/blog
+            reliability: medium
+            impact: medium
+          - url: https://lmstudio.ai/blog
+            reliability: medium
+            impact: medium
+          - url: https://github.com/ggml-org/llama.cpp/releases
+            reliability: high
+            impact: medium
+
+      - name: Embodied AI & intelligent machines
+        sources:
+          - url: https://spectrum.ieee.org/topic/robotics/
+            reliability: high
+            impact: high
+          - url: https://www.therobotreport.com
+            reliability: high
+            impact: medium
+          - url: https://dronedj.com
+            reliability: medium
+            impact: medium
+
+      - name: Enterprise & IT AI
+        sources:
+          - url: https://www.infoq.com/ai-ml-data-eng/
+            reliability: high
+            impact: medium
+          - url: https://venturebeat.com/category/ai/
+            reliability: medium
+            impact: medium
+          - url: https://www.theregister.com/software/ai_ml/
+            reliability: medium
+            impact: medium
+          - url: https://thenewstack.io
+            reliability: medium
+            impact: low
+
+      - name: AI in banking & finance
+        sources:
+          - url: https://www.americanbanker.com
+            reliability: high
+            impact: high
+          - url: https://www.finextra.com/channel/ai
+            reliability: medium
+            impact: high
+          - url: https://www.thebanker.com
+            reliability: high
+            impact: medium
+          - url: https://www.bis.org
+            reliability: high
+            impact: medium
+
+  - name: General
+    children:
+      - name: Model & product releases
+        sources:
+          - url: https://www.anthropic.com/news
+            reliability: high
+            impact: high
+          - url: https://openai.com/news
+            reliability: high
+            impact: high
+          - url: https://deepmind.google/discover/blog/
+            reliability: high
+            impact: high
+          - url: https://ai.meta.com/blog/
+            reliability: high
+            impact: medium
+          - url: https://artificialanalysis.ai
+            reliability: medium
+            impact: high
+
+      - name: Tools, interfaces & orchestration
+        sources:
+          - url: https://www.latent.space
+            reliability: medium
+            impact: high
+          - url: https://blog.langchain.dev
+            reliability: medium
+            impact: medium
+          - url: https://www.llamaindex.ai/blog
+            reliability: medium
+            impact: medium
+          - url: https://modelcontextprotocol.io
+            reliability: high
+            impact: medium
+
+      - name: Business & strategy
+        sources:
+          - url: https://www.theinformation.com
+            reliability: high
+            impact: high
+          - url: https://stratechery.com
+            reliability: high
+            impact: medium
+          - url: https://techcrunch.com/category/artificial-intelligence/
+            reliability: medium
+            impact: medium
+          - url: https://tldr.tech/ai
+            reliability: medium
+            impact: medium
+
+      - name: Policy, regulation & safety
+        sources:
+          - url: https://www.technologyreview.com/topic/artificial-intelligence/
+            reliability: high
+            impact: medium
+          - url: https://hai.stanford.edu/news
+            reliability: high
+            impact: medium
+          - url: https://oecd.ai
+            reliability: high
+            impact: medium
+          - url: https://www.alignmentforum.org
+            reliability: medium
+            impact: low

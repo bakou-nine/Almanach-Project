@@ -1,0 +1,25 @@
+{# Review proposed sources modal (US-260525-1200-004). Lists staged folder /
+   source proposals with Claude's reliability/impact; the user approves
+   (optionally adjusting a rating) or rejects each before it goes live
+   (AC-260525-1200-040 / -041). Two-zone safeguard: nothing here is live until
+   approved (AC-260525-1200-002). Rows are rendered client-side from /review. #}
+<div class="modal-overlay" id="review-modal" hidden>
+  <div class="modal modal-wide" role="dialog" aria-modal="true" aria-labelledby="review-title">
+    <header class="modal-header">
+      <h3 id="review-title">Review proposed sources</h3>
+      <button class="icon-btn" id="review-close" aria-label="Close">
+        <i class="ti ti-x"></i>
+      </button>
+    </header>
+    <p class="form-hint" id="review-intro">
+      Approve to add to your library, or reject to discard. Adjust a rating
+      before approving if you disagree.
+    </p>
+    <div class="review-list" id="review-list">
+      <div class="content-select-loading">Loading…</div>
+    </div>
+    <footer class="modal-footer">
+      <button type="button" class="btn" id="review-done">Done</button>
+    </footer>
+  </div>
+</div>

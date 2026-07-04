@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import html
+import ipaddress
 import re
+import socket
 from typing import Optional
 from urllib.parse import urlparse, urlunparse
 
@@ -63,6 +65,38 @@ def is_valid_http_url(raw: str) -> bool:
     if not parsed.hostname:
         return False
     return True
+
+
+def private_target_reason(url: str) -> Optional[str]:
+    """SSRF guard (CR-260704-0800-001): reason string when `url` targets a
+    loopback, private, link-local, or otherwise non-global address — None when
+    the target looks public.
+
+    Literal IPs are classified directly; hostnames are resolved and rejected if
+    ANY resolved address is non-global. An unresolvable hostname returns None —
+    the subsequent fetch fails with its own error, which is not an SSRF risk.
+    """
+    host = urlparse(url).hostname
+    if not host:
+        return "URL has no host"
+    try:
+        ip = ipaddress.ip_address(host)
+    except ValueError:
+        ip = None
+    if ip is not None:
+        return None if ip.is_global else f"{host} is a private or local address"
+    try:
+        infos = socket.getaddrinfo(host, None)
+    except socket.gaierror:
+        return None
+    for info in infos:
+        try:
+            resolved = ipaddress.ip_address(info[4][0])
+        except ValueError:
+            continue
+        if not resolved.is_global:
+            return f"{host} resolves to a private or local address"
+    return None
 
 
 def origin_of(url: str) -> str:

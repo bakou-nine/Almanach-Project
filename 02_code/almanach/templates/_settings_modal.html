@@ -1,0 +1,30 @@
+{# Settings modal (EP — Data Portability). Entry point for Library Export
+   (US-260525-1200-001) and Review proposed (US-260525-1200-004). #}
+<div class="modal-overlay" id="settings-modal" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+    <header class="modal-header">
+      <h3 id="settings-title">Settings</h3>
+      <button class="icon-btn" id="settings-close" aria-label="Close">
+        <i class="ti ti-x"></i>
+      </button>
+    </header>
+
+    <section class="settings-section">
+      <h4 class="settings-section-title">Library portability</h4>
+      <p class="form-hint">
+        Export your source library (folders + sources + ratings) to a YAML file
+        you can back up or move to another install.
+      </p>
+      <div class="settings-row">
+        <button type="button" class="btn btn-primary" id="export-library-btn">
+          <span class="submit-label"><i class="ti ti-download"></i> Export library</span>
+          <span class="submit-spinner" hidden><i class="ti ti-loader-2"></i></span>
+        </button>
+        <button type="button" class="btn" id="open-review-btn">
+          <i class="ti ti-inbox"></i> Review proposed (<span id="settings-review-count">0</span>)
+        </button>
+      </div>
+      <p class="settings-result" id="export-result" hidden></p>
+    </section>
+  </div>
+</div>

@@ -1,7 +1,43 @@
 {# Full feed pane partial — returned by /feed-partial (rows_only=false).
    No pagination chrome (CR-260522-2101-001 iteration 2). Every article
    uses the full card layout (design fidelity to screenshot.png).
-   Filter bar (CR-260523-1500-001) + sidebar scope chip (CR-260523-1501-001). #}
+   Filter bar (CR-260523-1500-001) + sidebar scope chip (CR-260523-1501-001).
+   Project mode (FT-260704-1620-001): when `feed.project` is set, render the
+   project view instead — eyebrow + name + saved-count subtitle + Back button,
+   standard article rows, no filter bar / no scroll cursor. #}
+{% if feed.project %}
+<div class="feed-header project-view-header">
+  <div class="feed-title">
+    <div class="feed-eyebrow"><i class="ti ti-folder"></i>Project</div>
+    <h2>{{ feed.project.name }}</h2>
+    <p class="feed-meta">
+      {% if feed.total_articles == 0 %}
+        No saved articles yet
+      {% else %}
+        <b>{{ feed.total_articles }}</b> saved article{{ '' if feed.total_articles == 1 else 's' }}
+      {% endif %}
+    </p>
+  </div>
+  <div class="feed-controls">
+    <button type="button" class="btn btn-ghost" id="back-to-news">
+      <i class="ti ti-chevron-left"></i><span>Back to news</span>
+    </button>
+  </div>
+</div>
+
+<div class="article-list" id="article-list"
+     data-next-after="" data-has-more="0"
+     data-active-source="">
+  {% if not feed.articles %}
+    <div class="empty-state project-empty">
+      <i class="ti ti-folder"></i>
+      <p class="project-empty-title">Nothing saved here yet</p>
+      <p class="project-empty-text">Browse the news, click an article&rsquo;s bookmark, and add it to <b>{{ feed.project.name }}</b>.</p>
+    </div>
+  {% endif %}
+  {% include "_feed_rows.html" %}
+</div>
+{% else %}
 <div class="feed-header">
   <div class="feed-title">
     <h2>{{ feed.title }}</h2>
@@ -25,6 +61,8 @@
      data-source-ids="{{ feed.filter_source_ids|join(',') }}"
      data-folder-ids="{{ feed.filter_folder_ids|join(',') }}"
      data-keyword-mode="{{ feed.filter_keyword_mode or 'any' }}"
+     data-reliability="{{ feed.filter_reliability or '' }}"
+     data-sort="{{ feed.filter_sort or '' }}"
      data-scope-folder-id="{{ feed.scope_folder_id or '' }}"
      data-scope-folder-name="{{ feed.scope_folder_name or '' }}">
   <div class="filter-row">
@@ -79,6 +117,20 @@
                 title="Match articles containing ALL active keywords">Match all</button>
       </div>
     </div>
+    {# Rating filter + impact sort (FT — Source Ratings, US-260525-1200-007). #}
+    <div class="filter-group filter-rating-group">
+      <span class="filter-label">Rating</span>
+      <div class="segmented">
+        <button type="button" class="filter-chip-btn rel-shortcut" data-rel="high"
+                title="Show only articles from high-reliability sources">Rel: High</button>
+        <button type="button" class="filter-chip-btn rel-shortcut" data-rel="medium"
+                title="Show articles from medium- and high-reliability sources">≥ Med</button>
+        <button type="button" class="filter-chip-btn impact-sort-btn" data-sort="impact"
+                title="Sort the feed so high-impact sources come first">
+          <i class="ti ti-bolt"></i><span>By impact</span>
+        </button>
+      </div>
+    </div>
   </div>
   <div class="filter-active" id="filter-active" hidden></div>
 </div>
@@ -127,4 +179,12 @@
 <div class="feed-scroll-spinner" id="feed-spinner" hidden>
   <i class="ti ti-loader-2"></i>
 </div>
+{# BUG-260704-0735-005: a failed scroll batch shows this retry affordance —
+   visibly distinct from the end-of-feed marker, never a silent stop. #}
+<div class="feed-load-error" id="feed-load-error" hidden>
+  <i class="ti ti-alert-triangle"></i>
+  <span>Couldn't load more articles.</span>
+  <button type="button" class="btn" id="feed-retry-btn">Retry</button>
+</div>
 <div class="feed-end-marker" id="feed-end-marker" hidden></div>
+{% endif %}

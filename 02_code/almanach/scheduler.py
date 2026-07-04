@@ -84,16 +84,23 @@ def trigger_manual_poll() -> None:
     _scheduler.add_job(_poll_all_sources, id=f"manual-{time.time()}", replace_existing=False)
 
 
-def run_manual_poll_blocking() -> None:
+def run_manual_poll_blocking() -> bool:
     """Run a poll cycle synchronously in the caller's thread.
 
     Used by the /refresh HTTP endpoint so the response only returns once the
     cycle has completed — the frontend can then show real completion feedback
-    (BUG-260521-2051-001 defect #2). Serialised via _manual_poll_lock so
-    concurrent /refresh clicks queue rather than racing.
+    (BUG-260521-2051-001 defect #2). BUG-260704-0735-001: a cycle already in
+    flight returns False immediately instead of queueing behind the lock, so
+    stacked /refresh clicks cannot hold a threadpool worker each.
+    Returns True when a cycle actually ran.
     """
-    with _manual_poll_lock:
+    if not _manual_poll_lock.acquire(blocking=False):
+        return False
+    try:
         _poll_all_sources()
+        return True
+    finally:
+        _manual_poll_lock.release()
 
 
 def start() -> None:

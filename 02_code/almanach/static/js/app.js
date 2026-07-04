@@ -20,11 +20,22 @@
       // {word, matchCase, wholeWord} (trimmed, deduped case-insensitively on word).
       keywords: [],
       keywordMode: "any",// "any" (OR) | "all" (AND) — how multiple keywords combine
+      // FT — Source Ratings (US-260525-1200-007): reliability threshold filter
+      // (null | "high" | "medium" | "low") + impact sort (null | "impact").
+      reliability: null,
+      sort: null,
       // CR-260524-1421-001 — sticky "Exact match" toggle: when on, the next word
       // added is committed as a whole-word match (case-insensitive, wholeWord only);
       // off = loose case-insensitive substring (default).
       exactMode: false,
     },
+    // Media Content Projects (FT-260704-1620-001): active project view (null =
+    // normal news feed), cached /projects list, and the article row the save
+    // popover is open for (+ its anchor button).
+    activeProjectId: null,
+    projects: [],
+    saveMenuFor: null,
+    saveMenuAnchor: null,
     // Cache of /filter-tree response so reopening the popover is instant.
     filterTree: null,
     filterTreeNameById: null,
@@ -38,8 +49,15 @@
     overMenu: false,
   };
 
+  // BUG-260704-0735-004: monotonic request tokens per pane. Every full
+  // re-render bumps its pane's token; a response (or in-flight scroll batch)
+  // whose captured token is stale is discarded instead of overwriting newer
+  // state — the last user action always wins (AC-260704-0735-007/-008).
+  const seq = { feed: 0, sidebar: 0 };
+
   const HOVER_GRACE_MS = 500;
   const LAST_SYNC_POLL_MS = 15000;
+  const REVIEW_POLL_MS = 4000;
   const REFRESH_CONFIRM_MS = 1400;
   const SCROLL_TRIGGER_PX = 200;
 
@@ -76,26 +94,38 @@
 
   // ----- sidebar partial swap -----
 
+  // BUG-260704-0735-005: never rejects. On failure the existing sidebar DOM is
+  // retained and a toast surfaces the problem. Returns false on failure so
+  // callers that report an overall outcome (onManualRefresh) can stay honest.
   async function refreshSidebar() {
-    const params = new URLSearchParams();
-    if (state.activeSourceId) params.set("active", state.activeSourceId);
-    if (state.scopeFolderId) params.set("scope", state.scopeFolderId);
-    // CR-260523-1630-001: forward the active date predicate so sidebar
-    // unread pills narrow with the filter bar. Content multi-select and
-    // sidebar scope deliberately NOT forwarded (AC-260523-1630-004).
-    const dateBounds = computeFilterDateBounds();
-    if (dateBounds.from) params.set("from", dateBounds.from);
-    if (dateBounds.to) params.set("to", dateBounds.to);
-    const q = params.toString();
-    const html = await api("/sidebar-partial" + (q ? "?" + q : ""));
-    $("#source-list").innerHTML = html;
-    bindSidebar();
-    bindFolders();
-    bindDragDrop();
-    updateLastSyncLabel();
-    // CR-260525-0745-002: re-apply the sidebar selection visuals after a rebuild
-    // (the content selection lives in client state, not the server-rendered HTML).
-    paintSidebarSelection();
+    const token = ++seq.sidebar;   // BUG-260704-0735-004
+    try {
+      const params = new URLSearchParams();
+      if (state.activeSourceId) params.set("active", state.activeSourceId);
+      if (state.scopeFolderId) params.set("scope", state.scopeFolderId);
+      // CR-260523-1630-001: forward the active date predicate so sidebar
+      // unread pills narrow with the filter bar. Content multi-select and
+      // sidebar scope deliberately NOT forwarded (AC-260523-1630-004).
+      const dateBounds = computeFilterDateBounds();
+      if (dateBounds.from) params.set("from", dateBounds.from);
+      if (dateBounds.to) params.set("to", dateBounds.to);
+      const q = params.toString();
+      const html = await api("/sidebar-partial" + (q ? "?" + q : ""));
+      if (token !== seq.sidebar) return true;   // superseded — drop stale response
+      $("#source-list").innerHTML = html;
+      bindSidebar();
+      bindFolders();
+      bindDragDrop();
+      bindProjects();
+      updateLastSyncLabel();
+      // CR-260525-0745-002: re-apply the sidebar selection visuals after a rebuild
+      // (the content selection lives in client state, not the server-rendered HTML).
+      paintSidebarSelection();
+      return true;
+    } catch (e) {
+      if (token === seq.sidebar) showToast("Could not update the sidebar.", "error");
+      return false;
+    }
   }
 
   async function updateLastSyncLabel() {
@@ -110,6 +140,11 @@
 
   function buildFeedParams() {
     const params = new URLSearchParams();
+    // Project view (FT-260704-1620-001): one param, filters don't apply.
+    if (state.activeProjectId) {
+      params.set("project", state.activeProjectId);
+      return params;
+    }
     if (state.activeSourceId) params.set("source", state.activeSourceId);
     if (state.scopeFolderId) params.set("scope_folder_id", state.scopeFolderId);
     const dateBounds = computeFilterDateBounds();
@@ -130,46 +165,67 @@
       });
       params.set("keyword_mode", state.filter.keywordMode);
     }
+    if (state.filter.reliability) params.set("reliability", state.filter.reliability);
+    if (state.filter.sort) params.set("sort", state.filter.sort);
     params.set("size", state.pageSize);
     return params;
   }
 
+  // BUG-260704-0735-006: single time semantics for every date bound sent to
+  // the server. The DB stores naive-UTC ISO strings, so bounds are serialised
+  // as naive UTC too (toISOString minus the Z suffix). Custom-range days are
+  // interpreted in the user's LOCAL time and converted — previously they were
+  // sent as raw local wall-clock strings while shortcut chips sent UTC, so the
+  // same nominal range returned different article sets (AC-260704-0735-011).
+  function toNaiveUtc(d) {
+    return d.toISOString().replace("Z", "");
+  }
+
   function computeFilterDateBounds() {
     // Shortcut wins if set (mutually exclusive with custom range — UI keeps
-    // them in sync). Returns {from, to} as ISO strings, both inclusive.
+    // them in sync). Returns {from, to} as naive-UTC strings, both inclusive.
     if (state.filter.shortcut) {
       const now = new Date();
       const ms = { "1d": 86400e3, "1w": 7 * 86400e3, "1m": 30 * 86400e3 }[state.filter.shortcut];
-      const from = new Date(now.getTime() - ms);
-      return { from: from.toISOString(), to: null };
+      return { from: toNaiveUtc(new Date(now.getTime() - ms)), to: null };
     }
     let from = null, to = null;
-    if (state.filter.from) from = state.filter.from + "T00:00:00";
-    if (state.filter.to) to = state.filter.to + "T23:59:59";
+    if (state.filter.from) from = toNaiveUtc(new Date(state.filter.from + "T00:00:00"));
+    if (state.filter.to) to = toNaiveUtc(new Date(state.filter.to + "T23:59:59.999"));
     return { from, to };
   }
 
+  // BUG-260704-0735-005: never rejects. On failure the current feed DOM is
+  // retained and a toast surfaces the problem. Returns false on failure.
   async function refreshFeed() {
     // Full reload — replaces the whole feed pane (header + first batch).
     // Resets the scroll cursor.
-    const params = buildFeedParams();
-    const html = await api("/feed-partial?" + params.toString());
-    $("#feed-pane").innerHTML = html;
-    readFeedCursor();
-    bindFeed();
-    bindBanner();
-    bindFilterBar();
-    // CR-260524-0644-001: keep the keyword input focused after an Enter-apply
-    // re-renders the pane, so the user can keep refining without re-clicking.
-    if (keywordShouldRefocus) {
-      keywordShouldRefocus = false;
-      const kw = $("#keyword-input");
-      if (kw) {
-        kw.focus();
-        const v = kw.value;
-        kw.value = "";
-        kw.value = v;  // move caret to end
+    const token = ++seq.feed;   // BUG-260704-0735-004
+    try {
+      const params = buildFeedParams();
+      const html = await api("/feed-partial?" + params.toString());
+      if (token !== seq.feed) return true;   // superseded — drop stale response
+      $("#feed-pane").innerHTML = html;
+      readFeedCursor();
+      bindFeed();
+      bindBanner();
+      bindFilterBar();
+      // CR-260524-0644-001: keep the keyword input focused after an Enter-apply
+      // re-renders the pane, so the user can keep refining without re-clicking.
+      if (keywordShouldRefocus) {
+        keywordShouldRefocus = false;
+        const kw = $("#keyword-input");
+        if (kw) {
+          kw.focus();
+          const v = kw.value;
+          kw.value = "";
+          kw.value = v;  // move caret to end
+        }
       }
+      return true;
+    } catch (e) {
+      if (token === seq.feed) showToast("Could not update the feed.", "error");
+      return false;
     }
   }
 
@@ -182,6 +238,9 @@
     state.feedLoading = false;
     const spinner = $("#feed-spinner");
     if (spinner) spinner.hidden = true;
+    // BUG-260704-0735-005: a fresh render clears any prior batch-failure state.
+    const loadErr = $("#feed-load-error");
+    if (loadErr) loadErr.hidden = true;
     const list = $("#article-list");
     if (!list) {
       state.feedNextAfter = null;
@@ -190,6 +249,11 @@
     }
     state.feedNextAfter = list.getAttribute("data-next-after") || null;
     state.feedHasMore = list.getAttribute("data-has-more") === "1";
+    // BUG-260704-0735-004: the full render embeds _feed_rows.html, which now
+    // carries a .feed-batch-meta sentinel. #article-list's own attributes are
+    // authoritative here — drop the sentinel so the first scroll batch can't
+    // read a stale one.
+    list.querySelectorAll(".feed-batch-meta").forEach(m => m.remove());
     const end = $("#feed-end-marker");
     // End-of-feed marker shows only at the end of a NON-empty feed; an empty
     // feed shows the empty-state instead (no marker, no spinner).
@@ -198,6 +262,11 @@
 
   async function loadMoreFeed() {
     if (state.feedLoading || !state.feedHasMore || !state.feedNextAfter) return;
+    // BUG-260704-0735-004: bind this batch to the filter state active at
+    // dispatch. If a full re-render (filter/sidebar change) bumps the token
+    // while the fetch is in flight, the batch belongs to the OLD list and is
+    // discarded instead of being appended to the new one.
+    const token = seq.feed;
     state.feedLoading = true;
     const spinner = $("#feed-spinner");
     if (spinner) spinner.hidden = false;
@@ -206,31 +275,45 @@
       params.set("after", state.feedNextAfter);
       params.set("rows_only", "true");
       const html = await api("/feed-partial?" + params.toString());
+      if (token !== seq.feed) return;   // stale batch — discard
       const list = $("#article-list");
       if (list && html) {
         list.insertAdjacentHTML("beforeend", html);
       }
-      // Re-read the cursor from the LAST card's data-published-at attribute.
-      const lastCard = list ? list.querySelector(".article:last-of-type") : null;
-      if (lastCard) {
-        state.feedNextAfter = lastCard.getAttribute("data-published-at");
-      }
-      // If the appended html had fewer than pageSize cards, end-of-feed.
-      const appendedCount = html
-        ? (html.match(/class="article"/g) || []).length
-        : 0;
-      if (appendedCount < state.pageSize) {
+      // BUG-260704-0735-004: cursor + end-of-feed come from the explicit
+      // .feed-batch-meta sentinel the server appends to every rows_only
+      // response — no more regex counting.
+      const metas = list ? list.querySelectorAll(".feed-batch-meta") : [];
+      const meta = metas.length ? metas[metas.length - 1] : null;
+      if (meta) {
+        state.feedNextAfter = meta.getAttribute("data-next-after") || null;
+        state.feedHasMore = meta.getAttribute("data-has-more") === "1";
+      } else {
         state.feedHasMore = false;
+      }
+      if (metas.length) metas.forEach(m => m.remove());
+      if (!state.feedHasMore) {
         const end = $("#feed-end-marker");
         if (end) end.hidden = false;
       }
       // Re-bind the article click handler on the newly-appended rows.
       bindArticleRows();
     } catch (e) {
-      // Network blip — silent; user can scroll again.
+      // BUG-260704-0735-005: a failed batch is distinguishable from
+      // end-of-feed — show the inline retry affordance near the list bottom.
+      if (token === seq.feed) {
+        const err = $("#feed-load-error");
+        if (err) err.hidden = false;
+        const end = $("#feed-end-marker");
+        if (end) end.hidden = true;
+      }
     } finally {
-      state.feedLoading = false;
-      if (spinner) spinner.hidden = true;
+      // Only release the loading state if this batch still owns the pane —
+      // a newer render manages its own spinner/loading lifecycle.
+      if (token === seq.feed) {
+        state.feedLoading = false;
+        if (spinner) spinner.hidden = true;
+      }
     }
   }
 
@@ -293,10 +376,14 @@
     // "All sources" clears the whole selection; a real source row selects that
     // source — plain click replaces the selection, shift-click toggles it
     // cumulatively.
+    // BUG-260704-0735-005: fire-and-forget with an explicit catch — a failed
+    // selection must surface, not vanish as an unhandled rejection.
     if (!id || row.classList.contains("all-sources")) {
-      selectSidebarBranch({ kind: "all" }, false);
+      selectSidebarBranch({ kind: "all" }, false)
+        .catch(() => showToast("Could not apply the selection.", "error"));
     } else {
-      selectSidebarBranch({ kind: "source", id: id }, ev.shiftKey);
+      selectSidebarBranch({ kind: "source", id: id }, ev.shiftKey)
+        .catch(() => showToast("Could not apply the selection.", "error"));
     }
   }
 
@@ -311,7 +398,8 @@
     const row = nameEl.closest(".folder-row");
     if (!row) return;
     const id = nameEl.getAttribute("data-folder-id");
-    selectSidebarBranch({ kind: "folder", id: id }, !!ev.shiftKey);
+    selectSidebarBranch({ kind: "folder", id: id }, !!ev.shiftKey)
+      .catch(() => showToast("Could not apply the selection.", "error"));
   }
 
   // CR-260525-0745-002: drive the content-filter selection from a sidebar
@@ -324,6 +412,10 @@
     await ensureFilterTreeLoaded();
     if (!state.filterTreeIndex) buildFilterTreeIndex();
     const idx = state.filterTreeIndex;
+
+    // FT-260704-1620-001: any source/folder/all selection leaves the project
+    // view — the feed returns to the news list.
+    state.activeProjectId = null;
 
     // Feed scoping now flows through the filter selection — clear the legacy
     // single-scope vars so they never double-filter.
@@ -363,6 +455,21 @@
   // sources" is active when nothing is selected. Re-applied after each sidebar
   // re-render so the visual state survives a rebuild.
   function paintSidebarSelection() {
+    // FT-260704-1620-001: project rows first — independent of the filter tree.
+    // While a project view is open it is the only active row.
+    $$("#source-list .project-row").forEach(r => {
+      r.classList.toggle(
+        "active",
+        !!state.activeProjectId
+          && r.getAttribute("data-project-id") === state.activeProjectId
+      );
+    });
+    if (state.activeProjectId) {
+      $$("#source-list .source-item, #source-list .folder-row").forEach(
+        r => r.classList.remove("active")
+      );
+      return;
+    }
     if (!state.filterTreeIndex) return;
     const idx = state.filterTreeIndex;
     const sel = contentSelGetSelectedSources();
@@ -388,6 +495,7 @@
   function openAddSourceModal() {
     const modal = $("#add-source-modal");
     modal.hidden = false;
+    modalOpened("add-source-modal", false);  // CR-260704-0800-002 (own focus below)
     const input = $("#add-source-url");
     input.value = "";
     $("#add-source-error").hidden = true;
@@ -397,6 +505,7 @@
   function closeAddSourceModal() {
     $("#add-source-modal").hidden = true;
     toggleSubmitSpinner(false);
+    modalClosed("add-source-modal");  // CR-260704-0800-002: focus restore
   }
 
   function toggleSubmitSpinner(on) {
@@ -512,6 +621,64 @@
         await handleRowAction(row, action);
       };
     });
+    // FT — Source Ratings (US-260525-1200-006): rating-option clicks set the
+    // value without closing the menu, so the user can adjust both dimensions.
+    menu.querySelectorAll(".rating-opt").forEach(opt => {
+      opt.onclick = async (ev) => {
+        ev.stopPropagation();
+        const dim = opt.getAttribute("data-rating");
+        const val = opt.getAttribute("data-value");
+        if (opt.classList.contains("is-active")) return;
+        await setSourceRating(row, dim, val);
+      };
+    });
+    // CR-260704-0800-002: menus are keyboard-reachable — move focus to the
+    // first visible menu item so Tab traverses the items (disabled ones stay
+    // focusable but inert via the is-disabled click guard, AC-260704-0800-004).
+    const firstItem = Array.from(menu.querySelectorAll(".row-menu-item"))
+      .find(el => !el.hidden);
+    if (firstItem) firstItem.focus();
+  }
+
+  // PATCH the rating, update the row's badge + data-attr in place so the change
+  // shows immediately (AC-260525-1200-060), then sync the sidebar in the
+  // background. The open menu's active highlight is refreshed too.
+  async function setSourceRating(row, dim, value) {
+    const id = row.getAttribute("data-source-id");
+    if (!id) return;
+    try {
+      const body = {};
+      body[dim] = value;
+      const res = await api("/sources/" + id + "/ratings", { method: "PATCH", body });
+      row.setAttribute("data-reliability", res.reliability);
+      row.setAttribute("data-impact", res.impact);
+      updateRowRatingBadges(row, res.reliability, res.impact);
+      const menu = $("#row-menu");
+      if (menu && state.menuOpenFor === row) applyMenuRatingItems(menu, row, "source");
+      showToast("Rating updated.");
+      refreshSidebar();
+    } catch (e) {
+      const msg = (e.detail && e.detail.message) || "Could not update rating.";
+      showToast(msg, "error");
+    }
+  }
+
+  // Re-render the two rating pills on a source row to match the new levels.
+  function updateRowRatingBadges(row, rel, imp) {
+    const wrap = row.querySelector(".rating-badges");
+    if (!wrap) return;
+    const relBadge = wrap.querySelector(".rating-rel");
+    const impBadge = wrap.querySelector(".rating-imp");
+    if (relBadge) {
+      relBadge.className = "rating-badge rating-rel rating-" + rel;
+      relBadge.title = "Reliability: " + rel;
+      relBadge.innerHTML = '<i class="ti ti-shield-half-filled"></i>' + rel.charAt(0).toUpperCase();
+    }
+    if (impBadge) {
+      impBadge.className = "rating-badge rating-imp rating-" + imp;
+      impBadge.title = "Impact: " + imp;
+      impBadge.innerHTML = '<i class="ti ti-bolt"></i>' + imp.charAt(0).toUpperCase();
+    }
   }
 
   // ----- promote/demote enablement (CR-260523-0900-001) -----
@@ -530,6 +697,41 @@
     const can = canPromoteDemote(row, kind);
     setMenuItemEnabled(items.promote, can.promote, can.promoteReason);
     setMenuItemEnabled(items.demote, can.demote, can.demoteReason);
+    // BUG-260704-0735-007: article rows have no rename/mute/remove handlers —
+    // hide those items (and their divider) instead of rendering enabled
+    // actions that silently no-op. Source/folder contexts are unchanged.
+    const isArticle = kind === "article";
+    ["rename", "mute", "remove"].forEach(action => {
+      const el = menu.querySelector('[data-action="' + action + '"]');
+      if (el) el.hidden = isArticle;
+    });
+    const divider = menu.querySelector(".row-menu-divider:not(.source-only):not(.article-only)");
+    if (divider) divider.hidden = isArticle;
+    // BUG-260704-1629-001: the save-to-project entry (and its divider) is the
+    // article-row way into the popover — hidden for source/folder rows.
+    menu.querySelectorAll(".article-only").forEach(el => {
+      el.hidden = !isArticle;
+    });
+    applyMenuRatingItems(menu, row, kind);
+  }
+
+  // FT — Source Ratings (US-260525-1200-006): show the reliability/impact
+  // editors only for source rows, and mark the row's current values active.
+  function applyMenuRatingItems(menu, row, kind) {
+    const isSource = kind === "source";
+    menu.querySelectorAll(".source-only").forEach(el => {
+      el.hidden = !isSource;
+    });
+    if (!isSource) return;
+    const current = {
+      reliability: row.getAttribute("data-reliability") || "medium",
+      impact: row.getAttribute("data-impact") || "medium",
+    };
+    menu.querySelectorAll(".rating-opt").forEach(btn => {
+      const dim = btn.getAttribute("data-rating");
+      const val = btn.getAttribute("data-value");
+      btn.classList.toggle("is-active", current[dim] === val);
+    });
   }
 
   function setMenuItemEnabled(el, enabled, reason) {
@@ -600,11 +802,17 @@
   }
 
   function closeRowMenu() {
-    $("#row-menu").hidden = true;
+    const menu = $("#row-menu");
+    // CR-260704-0800-002: if focus lives inside the menu, hand it back to the
+    // spawning row so keyboard users keep their place.
+    const focusWasInMenu = menu && menu.contains(document.activeElement);
+    const row = state.menuOpenFor;
+    menu.hidden = true;
     state.menuOpenFor = null;
     state.overRow = false;
     state.overMenu = false;
     cancelMenuClose();
+    if (focusWasInMenu && row && document.contains(row)) row.focus();
   }
 
   function bindRowMenuHover() {
@@ -639,7 +847,14 @@
     if (row.classList.contains("article")) {
       const articleId = row.getAttribute("data-article-id");
       if (action === "promote") return promoteRow("article", articleId, row);
-      // Articles have no rename/mute/remove in MVP; menu items are decorative.
+      if (action === "save-project") {
+        // BUG-260704-1629-001: ⋮ menu entry opens the same save popover as the
+        // bookmark button (checkbox toggle = add/remove assignment), anchored
+        // to the bookmark per the handoff geometry.
+        return toggleSaveMenu(row, row.querySelector(".bookmark-btn"));
+      }
+      // Articles have no rename/mute/remove in MVP; those items are HIDDEN for
+      // article rows by applyMenuContextItems (BUG-260704-0735-007).
       return;
     }
     const id = row.getAttribute("data-source-id");
@@ -704,77 +919,114 @@
     }
   }
 
-  function confirmFolderRemove(row, id) {
-    const name = row.getAttribute("data-folder-name") || "folder";
+  // CR-260704-0800-003: single confirm-dialog implementation — formerly
+  // duplicated across confirmRemove / confirmFolderRemove.
+  function confirmAction(message, onConfirm) {
     const modal = $("#confirm-modal");
-    $("#confirm-message").textContent =
-      "Remove folder " + name + "? Its sub-folders will be deleted and its sources will move to Ungrouped.";
+    $("#confirm-message").textContent = message;
     modal.hidden = false;
+    modalOpened("confirm-modal");  // CR-260704-0800-002
     const cleanup = () => {
       modal.hidden = true;
       $("#confirm-cancel").onclick = null;
       $("#confirm-ok").onclick = null;
+      modalClosed("confirm-modal");
     };
     $("#confirm-cancel").onclick = cleanup;
     $("#confirm-ok").onclick = async () => {
       cleanup();
-      try {
-        await api("/folders/" + id, { method: "DELETE" });
-        await refreshSidebar();
-        await refreshFeed();
-        showToast("Removed.");
-      } catch (e) {
-        showToast("Remove failed.", "error");
-      }
+      await onConfirm();
     };
+  }
+
+  function confirmFolderRemove(row, id) {
+    const name = row.getAttribute("data-folder-name") || "folder";
+    confirmAction(
+      "Remove folder " + name + "? Its sub-folders will be deleted and its sources will move to Ungrouped.",
+      async () => {
+        try {
+          await api("/folders/" + id, { method: "DELETE" });
+          await refreshSidebar();
+          await refreshFeed();
+          showToast("Removed.");
+        } catch (e) {
+          showToast("Remove failed.", "error");
+        }
+      }
+    );
   }
 
   // ----- rename inline -----
 
-  function startRename(row) {
-    const nameEl = row.querySelector(".source-name");
-    if (!nameEl) return;
-    const id = row.getAttribute("data-source-id");
-    const original = nameEl.textContent;
+  // CR-260704-0800-003: single inline-rename implementation — formerly
+  // duplicated as startRename (source) / startFolderRename (folder).
+  // opts: {inputClass, requireValue, makeSpan(label) -> span, submit(label)}.
+  function startInlineRename(nameEl, opts) {
+    const original = nameEl.textContent.trim();
     const input = document.createElement("input");
     input.type = "text";
-    input.className = "source-name-input";
+    input.className = opts.inputClass;
     input.value = original;
     nameEl.replaceWith(input);
     input.focus();
     input.select();
 
+    let done = false;
     const restore = (label) => {
-      const span = document.createElement("span");
-      span.className = "source-name";
-      span.textContent = label;
-      input.replaceWith(span);
+      input.replaceWith(opts.makeSpan(label));
     };
 
     const save = async () => {
+      if (done) return;
       const newLabel = input.value.trim();
-      if (!newLabel || newLabel === original) {
+      if (!newLabel) {
+        if (opts.requireValue) {
+          input.classList.add("error");
+          input.focus();
+          return;
+        }
+        done = true;
         restore(original);
         return;
       }
+      if (newLabel === original) { done = true; restore(original); return; }
+      done = true;
       try {
-        await api("/sources/" + id, {
-          method: "PATCH",
-          body: { display_name: newLabel },
-        });
+        await opts.submit(newLabel);
         await refreshSidebar();
         showToast("Renamed.");
       } catch (e) {
         restore(original);
-        showToast("Rename failed.", "error");
+        const msg = (e.detail && e.detail.message) || "Rename failed.";
+        showToast(msg, "error");
       }
     };
 
     input.addEventListener("keydown", (ev) => {
       if (ev.key === "Enter") { ev.preventDefault(); save(); }
-      else if (ev.key === "Escape") { ev.preventDefault(); restore(original); }
+      else if (ev.key === "Escape") { ev.preventDefault(); done = true; restore(original); }
     });
     input.addEventListener("blur", () => save());
+  }
+
+  function startRename(row) {
+    const nameEl = row.querySelector(".source-name");
+    if (!nameEl) return;
+    const id = row.getAttribute("data-source-id");
+    startInlineRename(nameEl, {
+      inputClass: "source-name-input",
+      requireValue: false,
+      makeSpan: (label) => {
+        const span = document.createElement("span");
+        span.className = "source-name";
+        span.textContent = label;
+        return span;
+      },
+      submit: (label) => api("/sources/" + id, {
+        method: "PATCH",
+        body: { display_name: label },
+      }),
+    });
   }
 
   // ----- mute -----
@@ -801,32 +1053,22 @@
 
   function confirmRemove(row, id) {
     const name = row.getAttribute("data-display-name") || "source";
-    const modal = $("#confirm-modal");
-    $("#confirm-message").textContent =
-      "Remove " + name + "? This will delete the source and all its articles.";
-    modal.hidden = false;
-
-    const cleanup = () => {
-      modal.hidden = true;
-      $("#confirm-cancel").onclick = null;
-      $("#confirm-ok").onclick = null;
-    };
-    $("#confirm-cancel").onclick = cleanup;
-    $("#confirm-ok").onclick = async () => {
-      cleanup();
-      try {
-        await api("/sources/" + id, { method: "DELETE" });
-        if (state.activeSourceId === id) {
-          state.activeSourceId = null;
-          state.page = 1;
+    confirmAction(
+      "Remove " + name + "? This will delete the source and all its articles.",
+      async () => {
+        try {
+          await api("/sources/" + id, { method: "DELETE" });
+          if (state.activeSourceId === id) {
+            state.activeSourceId = null;
+          }
+          await refreshSidebar();
+          await refreshFeed();
+          showToast("Removed.");
+        } catch (e) {
+          showToast("Remove failed.", "error");
         }
-        await refreshSidebar();
-        await refreshFeed();
-        showToast("Removed.");
-      } catch (e) {
-        showToast("Remove failed.", "error");
       }
-    };
+    );
   }
 
   // ----- feed pane -----
@@ -836,6 +1078,24 @@
     const refresh = $("#refresh-btn");
     if (refresh) {
       refresh.addEventListener("click", onManualRefresh);
+    }
+    // Project view (FT-260704-1620-001): "‹ Back to news" returns to the All
+    // sources feed (AC-260704-1620-014).
+    const back = $("#back-to-news");
+    if (back) {
+      back.addEventListener("click", () => {
+        selectSidebarBranch({ kind: "all" }, false)
+          .catch(() => showToast("Could not go back to the news feed.", "error"));
+      });
+    }
+    // BUG-260704-0735-005: retry a failed scroll batch.
+    const retry = $("#feed-retry-btn");
+    if (retry) {
+      retry.addEventListener("click", () => {
+        const err = $("#feed-load-error");
+        if (err) err.hidden = true;
+        loadMoreFeed();
+      });
     }
   }
 
@@ -879,13 +1139,24 @@
   async function onArticleClick(ev) {
     if (ev.target.closest(".row-action-btn")) return;
     const article = ev.currentTarget;
+    // FT-260704-1620-001 (handoff screen 5): a folder tag opens its project
+    // view; the bookmark button (or the row ⋮ menu's "Save to project" entry)
+    // opens the save-to-project popover. The title is NOT a trigger
+    // (BUG-260704-1629-001) — clicks anywhere else on the card open the article.
+    const tag = ev.target.closest(".article-saved-tag");
+    if (tag) {
+      selectProject(tag.getAttribute("data-project-id"));
+      return;
+    }
+    if (ev.target.closest(".bookmark-btn")) {
+      toggleSaveMenu(article, article.querySelector(".bookmark-btn"));
+      return;
+    }
     const id = article.getAttribute("data-article-id");
     const url = article.getAttribute("data-url");
     if (!url) return;
     window.open(url, "_blank", "noopener");
     article.classList.add("read");
-    const badge = article.querySelector(".badge-new");
-    if (badge) badge.remove();
     try {
       await api("/articles/" + id + "/read", { method: "POST" });
       refreshSidebar();
@@ -898,16 +1169,27 @@
     setRefreshButtonState("loading");
     try {
       const result = await api("/refresh", { method: "POST" });
-      await refreshSidebar();
-      await refreshFeed();
+      // BUG-260704-0735-005: pane refreshers no longer throw — they toast their
+      // own failure and return false. Only report overall success when both
+      // panes actually updated.
+      const sidebarOk = await refreshSidebar();
+      const feedOk = await refreshFeed();
       if (result && typeof result.last_sync === "string") {
         const el = $("#last-sync-label");
         if (el) el.textContent = "Last sync · " + result.last_sync;
       } else {
         updateLastSyncLabel();
       }
-      setRefreshButtonState("done");
-      showToast("Refresh complete.");
+      if (sidebarOk && feedOk) {
+        setRefreshButtonState("done");
+        // BUG-260704-0735-001: /refresh no longer queues concurrent cycles — a
+        // cycle already in flight reports "already_running".
+        showToast(result && result.status === "already_running"
+          ? "Refresh already in progress."
+          : "Refresh complete.");
+      } else {
+        setRefreshButtonState("error");
+      }
     } catch (e) {
       setRefreshButtonState("error");
       showToast("Refresh failed.", "error");
@@ -938,6 +1220,344 @@
       if (icon) { icon.classList.remove("ti-refresh"); icon.classList.add("ti-x"); }
       setTimeout(() => setRefreshButtonState("idle"), REFRESH_CONFIRM_MS);
     }
+  }
+
+  // ----- Media Content Projects (FT-260704-1620-001) -----
+
+  // Sidebar PROJECTS section + save-to-project popover, per the handoff
+  // bundle (screens 3/5/7). Server-side persistence via /projects.
+
+  function bindProjects() {
+    const addBtn = $("#new-project-btn");
+    if (addBtn) addBtn.addEventListener("click", onNewProject);
+    $$("#source-list .project-row").forEach(row => {
+      row.addEventListener("click", (ev) => {
+        if (ev.target.closest("input")) return;
+        if (ev.target.closest(".project-rename-btn")) {
+          ev.stopPropagation();
+          startProjectRename(row);
+          return;
+        }
+        if (ev.target.closest(".project-delete-btn")) {
+          ev.stopPropagation();
+          confirmDeleteProject(row);
+          return;
+        }
+        selectProject(row.getAttribute("data-project-id"));
+      });
+      // Delegated at row level so it survives the span swap an empty-commit
+      // revert performs (startInlineRename.restore).
+      row.addEventListener("dblclick", (ev) => {
+        if (!ev.target.closest(".project-name")) return;
+        ev.stopPropagation();
+        startProjectRename(row);
+      });
+    });
+  }
+
+  function selectProject(id) {
+    if (!id) return;
+    closeSaveMenu();
+    state.activeProjectId = id;
+    refreshFeed();
+    paintSidebarSelection();
+  }
+
+  // "+" creates the project, then immediately enters inline rename on the
+  // fresh row with the placeholder name selected (AC-260704-1620-005).
+  async function onNewProject() {
+    try {
+      const created = await api("/projects", { method: "POST", body: {} });
+      await refreshSidebar();
+      const row = $('#source-list .project-row[data-project-id="' + created.id + '"]');
+      if (row) {
+        row.scrollIntoView({ block: "nearest" });
+        startProjectRename(row);
+      }
+    } catch (e) {
+      showToast("Could not create the project.", "error");
+    }
+  }
+
+  // Inline rename via the shared implementation: Enter/blur commits, Escape
+  // cancels, an empty commit reverts to the previous name (AC-260704-1620-008).
+  function startProjectRename(row) {
+    const nameEl = row.querySelector(".project-name");
+    if (!nameEl) return;
+    const id = row.getAttribute("data-project-id");
+    startInlineRename(nameEl, {
+      inputClass: "source-name-input",
+      requireValue: false,
+      makeSpan: (label) => {
+        const span = document.createElement("span");
+        span.className = "project-name";
+        span.textContent = label;
+        return span;
+      },
+      submit: (label) => api("/projects/" + id, {
+        method: "PATCH",
+        body: { name: label },
+      }),
+    });
+  }
+
+  // Delete with saved articles asks for confirmation naming the project and
+  // count (AC-260704-1620-007); an empty project deletes directly.
+  function confirmDeleteProject(row) {
+    const id = row.getAttribute("data-project-id");
+    const name = row.getAttribute("data-project-name") || "project";
+    const count = parseInt(row.getAttribute("data-count") || "0", 10) || 0;
+    const doDelete = async () => {
+      try {
+        await api("/projects/" + id, { method: "DELETE" });
+        if (state.activeProjectId === id) state.activeProjectId = null;
+        await refreshSidebar();
+        await refreshFeed();
+        showToast("Project deleted.");
+      } catch (e) {
+        showToast("Delete failed.", "error");
+      }
+    };
+    if (count > 0) {
+      confirmAction(
+        'Delete "' + name + '"? ' + count + " saved article"
+          + (count === 1 ? "" : "s") + " will be removed from it.",
+        doDelete
+      );
+    } else {
+      doDelete();
+    }
+  }
+
+  // -- save-to-project popover (handoff screen 5) --
+
+  function articleProjectIds(articleRow) {
+    const raw = articleRow.getAttribute("data-project-ids") || "";
+    return new Set(raw.split(",").filter(Boolean));
+  }
+
+  function toggleSaveMenu(articleRow, anchor) {
+    if (state.saveMenuFor === articleRow) {
+      closeSaveMenu();
+      return;
+    }
+    openSaveMenu(articleRow, anchor);
+  }
+
+  async function openSaveMenu(articleRow, anchor) {
+    closeSaveMenu();
+    try {
+      const data = await api("/projects");
+      state.projects = data.projects || [];
+    } catch (e) {
+      showToast("Could not load projects.", "error");
+      return;
+    }
+    state.saveMenuFor = articleRow;
+    state.saveMenuAnchor = anchor || null;
+    if (anchor) anchor.classList.add("active");
+    const menu = $("#save-menu");
+    const input = $("#save-menu-input");
+    if (input) input.value = "";
+    updateSaveMenuCreateEnabled();
+    renderSaveMenuList();
+    positionSaveMenu(menu, anchor || articleRow);
+    menu.hidden = false;
+  }
+
+  function closeSaveMenu() {
+    const menu = $("#save-menu");
+    if (menu) menu.hidden = true;
+    if (state.saveMenuAnchor) state.saveMenuAnchor.classList.remove("active");
+    state.saveMenuFor = null;
+    state.saveMenuAnchor = null;
+  }
+
+  // Right-align the 232px popover under its anchor (handoff: top 32px,
+  // right 0 relative to the bookmark), clamped to the viewport; opens above
+  // when there is no room below.
+  function positionSaveMenu(menu, anchor) {
+    const rect = anchor.getBoundingClientRect();
+    menu.style.visibility = "hidden";
+    menu.hidden = false;
+    const pr = menu.getBoundingClientRect();
+    let left = rect.right - pr.width;
+    let top = rect.bottom + 4;
+    if (left < 8) left = 8;
+    if (left + pr.width > window.innerWidth - 8) {
+      left = Math.max(8, window.innerWidth - pr.width - 8);
+    }
+    if (top + pr.height > window.innerHeight - 8) {
+      top = Math.max(8, rect.top - pr.height - 4);
+    }
+    menu.style.top = top + "px";
+    menu.style.left = left + "px";
+    menu.hidden = true;
+    menu.style.visibility = "";
+  }
+
+  function renderSaveMenuList() {
+    const list = $("#save-menu-list");
+    if (!list || !state.saveMenuFor) return;
+    const inIds = articleProjectIds(state.saveMenuFor);
+    if (!state.projects.length) {
+      list.innerHTML = '<div class="save-menu-empty">No projects yet — create one below.</div>';
+      return;
+    }
+    list.innerHTML = state.projects.map(p => {
+      const on = inIds.has(p.id);
+      return '<button type="button" class="save-menu-item' + (on ? " on" : "") + '"'
+        + ' role="menuitemcheckbox" aria-checked="' + on + '"'
+        + ' data-project-id="' + escapeHtml(p.id) + '">'
+        + '<span class="save-menu-check" aria-hidden="true">'
+        + (on ? '<i class="ti ti-check"></i>' : "")
+        + "</span>"
+        + '<span class="save-menu-name">' + escapeHtml(p.name) + "</span>"
+        + '<span class="save-menu-count">' + p.count + "</span>"
+        + "</button>";
+    }).join("");
+    $$(".save-menu-item", list).forEach(item => {
+      item.addEventListener("click", (ev) => {
+        ev.stopPropagation();
+        toggleArticleInProject(item.getAttribute("data-project-id"));
+      });
+    });
+  }
+
+  // Checkbox toggle = save/unsave, effective immediately (AC-260704-1620-009):
+  // bookmark fill, folder tags, popover row, and sidebar count pill all update
+  // in place; unsaving from inside the open project view removes the row via a
+  // re-render (AC-260704-1620-016).
+  async function toggleArticleInProject(projectId) {
+    const articleRow = state.saveMenuFor;
+    if (!articleRow || !projectId) return;
+    const articleId = articleRow.getAttribute("data-article-id");
+    const saved = articleProjectIds(articleRow).has(projectId);
+    try {
+      const resp = await api(
+        "/projects/" + projectId + "/articles/" + articleId,
+        { method: saved ? "DELETE" : "PUT" }
+      );
+      const ids = articleProjectIds(articleRow);
+      if (saved) ids.delete(projectId); else ids.add(projectId);
+      articleRow.setAttribute("data-project-ids", Array.from(ids).join(","));
+      const cached = state.projects.find(p => p.id === projectId);
+      if (cached) cached.count = resp.count;
+      updateSidebarProjectCount(projectId, resp.count);
+      if (saved && state.activeProjectId === projectId) {
+        // Unsaved from inside this project's view — the row leaves the list
+        // and the subtitle/pill counts shrink (AC-260704-1620-016).
+        closeSaveMenu();
+        refreshFeed();
+        return;
+      }
+      updateArticleProjectUI(articleRow);
+      renderSaveMenuList();
+    } catch (e) {
+      showToast(saved ? "Could not remove from the project." : "Could not save to the project.", "error");
+    }
+  }
+
+  // Popover footer: Enter or Create makes a new project containing this
+  // article; the input clears and refocuses (AC-260704-1620-010/-012).
+  async function onSaveMenuCreate() {
+    const input = $("#save-menu-input");
+    const articleRow = state.saveMenuFor;
+    if (!input || !articleRow) return;
+    const name = input.value.trim();
+    if (!name) return;
+    const articleId = articleRow.getAttribute("data-article-id");
+    try {
+      const created = await api("/projects", {
+        method: "POST",
+        body: { name: name, article_id: articleId },
+      });
+      state.projects.push(created);
+      const ids = articleProjectIds(articleRow);
+      ids.add(created.id);
+      articleRow.setAttribute("data-project-ids", Array.from(ids).join(","));
+      updateArticleProjectUI(articleRow);
+      renderSaveMenuList();
+      input.value = "";
+      updateSaveMenuCreateEnabled();
+      input.focus();
+      refreshSidebar();
+    } catch (e) {
+      const msg = (e.detail && e.detail.message) || "Could not create the project.";
+      showToast(msg, "error");
+    }
+  }
+
+  function updateSaveMenuCreateEnabled() {
+    const input = $("#save-menu-input");
+    const btn = $("#save-menu-create");
+    if (!input || !btn) return;
+    const enabled = !!input.value.trim();
+    btn.disabled = !enabled;
+    btn.classList.toggle("disabled", !enabled);
+  }
+
+  // Rebuild an article row's bookmark fill + folder tags from its membership
+  // set (data-project-ids) and the cached project names.
+  function updateArticleProjectUI(articleRow) {
+    const ids = articleProjectIds(articleRow);
+    const names = {};
+    state.projects.forEach(p => { names[p.id] = p.name; });
+    const bm = articleRow.querySelector(".bookmark-btn");
+    if (bm) {
+      bm.classList.toggle("saved", ids.size > 0);
+      bm.title = ids.size
+        ? "Saved to " + ids.size + " project" + (ids.size === 1 ? "" : "s")
+        : "Save to project";
+      const icon = bm.querySelector("i");
+      if (icon) icon.className = "ti " + (ids.size ? "ti-bookmark-filled" : "ti-bookmark");
+    }
+    const tags = articleRow.querySelector(".article-saved-tags");
+    if (tags) {
+      tags.innerHTML = Array.from(ids).map(pid =>
+        '<button type="button" class="article-saved-tag" data-project-id="' + escapeHtml(pid) + '"'
+          + ' title="Open ' + escapeHtml(names[pid] || "project") + '">'
+          + '<i class="ti ti-folder"></i><span>' + escapeHtml(names[pid] || "project") + "</span>"
+          + "</button>"
+      ).join("");
+      tags.hidden = ids.size === 0;
+    }
+  }
+
+  function updateSidebarProjectCount(projectId, count) {
+    const row = $('#source-list .project-row[data-project-id="' + projectId + '"]');
+    if (!row) return;
+    row.setAttribute("data-count", String(count));
+    const pill = row.querySelector(".project-count");
+    if (pill) pill.textContent = String(count);
+  }
+
+  // Static popover bindings (the element persists across partial re-renders).
+  function bindSaveMenu() {
+    const menu = $("#save-menu");
+    const input = $("#save-menu-input");
+    const create = $("#save-menu-create");
+    if (!menu || menu.__almBound) return;
+    menu.__almBound = true;
+    if (input) {
+      input.addEventListener("input", updateSaveMenuCreateEnabled);
+      input.addEventListener("keydown", (ev) => {
+        if (ev.key === "Enter") {
+          ev.preventDefault();
+          onSaveMenuCreate();
+        }
+      });
+    }
+    if (create) create.addEventListener("click", onSaveMenuCreate);
+    // Handoff dismissal contract: outside mousedown closes without changing
+    // any saves (AC-260704-1620-011). Re-clicking the trigger is left to the
+    // click handler so it toggles instead of reopening.
+    document.addEventListener("mousedown", (ev) => {
+      if (!state.saveMenuFor) return;
+      if (ev.target.closest("#save-menu")) return;
+      if (ev.target.closest(".bookmark-btn")) return;
+      closeSaveMenu();
+    });
   }
 
   // ----- FT05 grouping (CR-260522-2101-001) -----
@@ -1140,54 +1760,25 @@
 
   function startFolderRename(nameEl) {
     const id = nameEl.getAttribute("data-folder-id");
-    const original = nameEl.textContent.trim();
-    const input = document.createElement("input");
-    input.type = "text";
-    input.className = "folder-name-input";
-    input.value = original;
-    nameEl.replaceWith(input);
-    input.focus();
-    input.select();
-
-    const restore = (label) => {
-      const span = document.createElement("span");
-      span.className = "folder-name";
-      span.setAttribute("data-folder-id", id);
-      span.textContent = label;
-      span.addEventListener("dblclick", (ev) => {
-        ev.stopPropagation();
-        startFolderRename(span);
-      });
-      input.replaceWith(span);
-    };
-
-    let done = false;
-    const save = async () => {
-      if (done) return;
-      const newLabel = input.value.trim();
-      if (!newLabel) {
-        input.classList.add("error");
-        input.focus();
-        return;
-      }
-      if (newLabel === original) { done = true; restore(original); return; }
-      done = true;
-      try {
-        await api("/folders/" + id, { method: "PATCH", body: { name: newLabel } });
-        await refreshSidebar();
-        showToast("Renamed.");
-      } catch (e) {
-        restore(original);
-        const msg = (e.detail && e.detail.message) || "Rename failed.";
-        showToast(msg, "error");
-      }
-    };
-
-    input.addEventListener("keydown", (ev) => {
-      if (ev.key === "Enter") { ev.preventDefault(); save(); }
-      else if (ev.key === "Escape") { ev.preventDefault(); done = true; restore(original); }
+    startInlineRename(nameEl, {
+      inputClass: "folder-name-input",
+      requireValue: true,
+      makeSpan: (label) => {
+        const span = document.createElement("span");
+        span.className = "folder-name";
+        span.setAttribute("data-folder-id", id);
+        span.textContent = label;
+        span.addEventListener("dblclick", (ev) => {
+          ev.stopPropagation();
+          startFolderRename(span);
+        });
+        return span;
+      },
+      submit: (label) => api("/folders/" + id, {
+        method: "PATCH",
+        body: { name: label },
+      }),
     });
-    input.addEventListener("blur", () => save());
   }
 
   // -- drag and drop (US-260522-2116-008 — Notion-style outliner UX) --
@@ -1807,6 +2398,24 @@
         if (state.filter.keywords.length >= 2) applyFilterChange();
       });
     });
+    // Reliability threshold chips (FT — Source Ratings, US-260525-1200-007).
+    $$("#filter-bar .rel-shortcut").forEach(btn => {
+      btn.addEventListener("click", (ev) => {
+        ev.stopPropagation();
+        const rel = btn.getAttribute("data-rel");
+        state.filter.reliability = state.filter.reliability === rel ? null : rel;
+        applyFilterChange();
+      });
+    });
+    // Impact-sort toggle.
+    const impactSort = $("#filter-bar .impact-sort-btn");
+    if (impactSort) {
+      impactSort.addEventListener("click", (ev) => {
+        ev.stopPropagation();
+        state.filter.sort = state.filter.sort === "impact" ? null : "impact";
+        applyFilterChange();
+      });
+    }
     // Empty-state "Clear filters" button.
     const clear = $("#clear-filters-btn");
     if (clear) {
@@ -1859,6 +2468,8 @@
     state.filter.sourceIds = [];
     state.filter.folderIds = [];
     state.filter.keywords = [];
+    state.filter.reliability = null;
+    state.filter.sort = null;
     applyFilterChange();
   }
 
@@ -1910,6 +2521,12 @@
         btn.classList.toggle("is-active", m === state.filter.keywordMode);
       });
     }
+    // Rating threshold + impact-sort affordances (FT — Source Ratings).
+    $$("#filter-bar .rel-shortcut").forEach(btn => {
+      btn.classList.toggle("is-active", state.filter.reliability === btn.getAttribute("data-rel"));
+    });
+    const impactSort = $("#filter-bar .impact-sort-btn");
+    if (impactSort) impactSort.classList.toggle("is-active", state.filter.sort === "impact");
     syncExactToggle();
     repaintFilterActive();
   }
@@ -1920,21 +2537,10 @@
     container.innerHTML = "";
     const chips = [];
 
-    if (state.scopeFolderId) {
-      chips.push({
-        kind: "scope",
-        label: "Scope: " + (state.scopeFolderName || "folder"),
-        onClear: () => {
-          state.scopeFolderId = null;
-          state.scopeFolderName = null;
-          // Clear active state in the sidebar too.
-          $$("#source-list .folder-row.active").forEach(r => r.classList.remove("active"));
-          const all = $("#source-list .source-item.all-sources");
-          if (all) all.classList.add("active");
-          applyFilterChange();
-        },
-      });
-    }
+    // CR-260704-0800-003: the legacy sidebar-scope chip was removed here —
+    // state.scopeFolderId is never set non-null since CR-260525-0745-002
+    // routed sidebar selection through the content filter, so the chip code
+    // was unreachable.
     if (state.filter.shortcut) {
       chips.push({
         kind: "date",
@@ -1959,6 +2565,21 @@
         onClear: () => removeKeyword(kw.word),
       });
     });
+    if (state.filter.reliability) {
+      const relLabel = { high: "High", medium: "Medium", low: "Low" }[state.filter.reliability] || state.filter.reliability;
+      chips.push({
+        kind: "rating",
+        label: "Reliability ≥ " + relLabel,
+        onClear: () => { state.filter.reliability = null; applyFilterChange(); },
+      });
+    }
+    if (state.filter.sort === "impact") {
+      chips.push({
+        kind: "sort",
+        label: "Sorted by impact",
+        onClear: () => { state.filter.sort = null; applyFilterChange(); },
+      });
+    }
     const nameById = state.filterTreeNameById || {};
     state.filter.folderIds.forEach(fid => {
       const n = nameById["folder:" + fid] || "Folder";
@@ -2007,16 +2628,8 @@
     clearAll.type = "button";
     clearAll.className = "filter-clear-all-btn";
     clearAll.textContent = "Clear all";
-    clearAll.addEventListener("click", () => {
-      // "Clear all" wipes filter bar; sidebar scope is kept (it has its own chip).
-      state.filter.shortcut = null;
-      state.filter.from = null;
-      state.filter.to = null;
-      state.filter.sourceIds = [];
-      state.filter.folderIds = [];
-      state.filter.keywords = [];
-      applyFilterChange();
-    });
+    // CR-260704-0800-003: single clear-filters implementation.
+    clearAll.addEventListener("click", clearAllFilters);
     container.appendChild(clearAll);
   }
 
@@ -2336,6 +2949,502 @@
     });
   }
 
+  // ----- settings modal + library export (EP — Data Portability) -----
+
+  function bindSettingsModal() {
+    const btn = $("#settings-btn");
+    if (btn) btn.addEventListener("click", openSettingsModal);
+    const close = $("#settings-close");
+    if (close) close.addEventListener("click", closeSettingsModal);
+    const overlay = $("#settings-modal");
+    if (overlay) {
+      overlay.addEventListener("click", (ev) => {
+        if (ev.target.id === "settings-modal") closeSettingsModal();
+      });
+    }
+    const exportBtn = $("#export-library-btn");
+    if (exportBtn) exportBtn.addEventListener("click", onExportLibrary);
+    const openReview = $("#open-review-btn");
+    if (openReview) {
+      openReview.addEventListener("click", () => {
+        closeSettingsModal();
+        openReviewModal();
+      });
+    }
+  }
+
+  function openSettingsModal() {
+    const m = $("#settings-modal");
+    if (!m) return;
+    const res = $("#export-result");
+    if (res) res.hidden = true;
+    m.hidden = false;
+    modalOpened("settings-modal");  // CR-260704-0800-002
+    updateReviewCount();
+  }
+
+  function closeSettingsModal() {
+    const m = $("#settings-modal");
+    if (m) m.hidden = true;
+    modalClosed("settings-modal");  // CR-260704-0800-002
+  }
+
+  function toggleExportSpinner(on) {
+    const btn = $("#export-library-btn");
+    if (!btn) return;
+    btn.disabled = !!on;
+    const label = btn.querySelector(".submit-label");
+    const spin = btn.querySelector(".submit-spinner");
+    if (label) label.hidden = !!on;
+    if (spin) spin.hidden = !on;
+  }
+
+  async function onExportLibrary() {
+    const res = $("#export-result");
+    toggleExportSpinner(true);
+    try {
+      const data = await api("/export", { method: "POST" });
+      // AC-260525-1200-010: success names the saved file.
+      if (res) {
+        res.className = "settings-result is-ok";
+        res.textContent = "Export complete — saved " + (data.file || "almanach-library.yaml") + ".";
+        res.hidden = false;
+      }
+      showToast("Export complete — " + (data.file || "almanach-library.yaml"));
+    } catch (e) {
+      // AC-260525-1200-011: failure shows an error, never a false success.
+      const msg = (e.detail && e.detail.message) || "Export failed.";
+      if (res) {
+        res.className = "settings-result is-error";
+        res.textContent = msg;
+        res.hidden = false;
+      }
+      showToast(msg, "error");
+    } finally {
+      toggleExportSpinner(false);
+    }
+  }
+
+  // ----- review proposed sources (US-260525-1200-004) -----
+
+  function bindReviewBadge() {
+    const badge = $("#review-badge");
+    if (badge) badge.addEventListener("click", openReviewModal);
+    const close = $("#review-close");
+    if (close) close.addEventListener("click", closeReviewModal);
+    const done = $("#review-done");
+    if (done) done.addEventListener("click", closeReviewModal);
+    const overlay = $("#review-modal");
+    if (overlay) {
+      overlay.addEventListener("click", (ev) => {
+        if (ev.target.id === "review-modal") closeReviewModal();
+      });
+    }
+  }
+
+  function closeReviewModal() {
+    const m = $("#review-modal");
+    if (m) m.hidden = true;
+    modalClosed("review-modal");  // CR-260704-0800-002
+  }
+
+  async function openReviewModal() {
+    const m = $("#review-modal");
+    if (!m) return;
+    const list = $("#review-list");
+    if (list) list.innerHTML = '<div class="content-select-loading">Loading…</div>';
+    m.hidden = false;
+    modalOpened("review-modal");  // CR-260704-0800-002
+    await renderReviewList();
+  }
+
+  async function renderReviewList() {
+    const list = $("#review-list");
+    if (!list) return;
+    let data;
+    try {
+      data = await api("/review");
+    } catch (e) {
+      list.innerHTML = '<div class="content-select-empty">Could not load proposals.</div>';
+      return;
+    }
+    const items = (data && data.items) || [];
+    if (items.length === 0) {
+      list.innerHTML = '<div class="content-select-empty">No proposed sources right now.</div>';
+      return;
+    }
+    list.innerHTML = "";
+    items.forEach(item => list.appendChild(reviewRow(item)));
+  }
+
+  function reviewRow(item) {
+    const row = document.createElement("div");
+    row.className = "review-row";
+    row.setAttribute("data-id", item.id);
+
+    const main = document.createElement("div");
+    main.className = "review-row-main";
+
+    const ct = document.createElement("span");
+    ct.className = "review-change review-change-" + (item.change_type || "ADDED").toLowerCase();
+    ct.textContent = item.change_type;
+    main.appendChild(ct);
+
+    const title = document.createElement("span");
+    title.className = "review-row-title";
+    if (item.object_kind === "folder") {
+      title.innerHTML = '<i class="ti ti-folder"></i> ' + escapeHtml((item.folder_path || [item.name]).join(" › "));
+    } else {
+      const label = item.display_name || item.url || "source";
+      const path = (item.folder_path && item.folder_path.length)
+        ? '<span class="review-row-path">' + escapeHtml(item.folder_path.join(" › ")) + '</span>'
+        : "";
+      title.innerHTML = '<span class="review-row-name">' + escapeHtml(label) + "</span>" + path;
+    }
+    main.appendChild(title);
+    row.appendChild(main);
+
+    // Rating selectors only for source ADDED/MODIFIED (not folders, not REMOVED).
+    if (item.object_kind === "source" && item.change_type !== "REMOVED") {
+      const ratings = document.createElement("div");
+      ratings.className = "review-row-ratings";
+      ratings.appendChild(reviewRatingGroup("reliability", item.reliability || "medium"));
+      ratings.appendChild(reviewRatingGroup("impact", item.impact || "medium"));
+      row.appendChild(ratings);
+    }
+
+    const actions = document.createElement("div");
+    actions.className = "review-row-actions";
+    const approve = document.createElement("button");
+    approve.type = "button";
+    approve.className = "btn btn-primary review-approve";
+    approve.textContent = item.change_type === "REMOVED" ? "Approve removal" : "Approve";
+    approve.addEventListener("click", () => onReviewApprove(row, item, approve));
+    const reject = document.createElement("button");
+    reject.type = "button";
+    reject.className = "btn review-reject";
+    reject.textContent = "Reject";
+    reject.addEventListener("click", () => onReviewReject(row, item));
+    actions.appendChild(approve);
+    actions.appendChild(reject);
+    row.appendChild(actions);
+    return row;
+  }
+
+  function reviewRatingGroup(dim, value) {
+    const group = document.createElement("div");
+    group.className = "review-rating";
+    group.setAttribute("data-rating", dim);
+    group.setAttribute("data-value", value);
+    const label = document.createElement("span");
+    label.className = "review-rating-label";
+    label.textContent = dim === "reliability" ? "Rel" : "Impact";
+    group.appendChild(label);
+    ["high", "medium", "low"].forEach(l => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "rating-opt" + (l === value ? " is-active" : "");
+      b.textContent = l.charAt(0).toUpperCase();
+      b.title = l;
+      b.addEventListener("click", () => {
+        group.setAttribute("data-value", l);
+        group.querySelectorAll(".rating-opt").forEach(x => x.classList.remove("is-active"));
+        b.classList.add("is-active");
+      });
+      group.appendChild(b);
+    });
+    return group;
+  }
+
+  async function onReviewApprove(row, item, approveBtn) {
+    const body = {};
+    if (item.object_kind === "source" && item.change_type !== "REMOVED") {
+      row.querySelectorAll(".review-rating").forEach(g => {
+        body[g.getAttribute("data-rating")] = g.getAttribute("data-value");
+      });
+    }
+    approveBtn.disabled = true;
+    approveBtn.textContent = "…";
+    try {
+      const res = await api("/review/" + item.id + "/approve", { method: "POST", body });
+      row.remove();
+      await refreshSidebar();
+      await refreshFeed();
+      setReviewCount(res.remaining);
+      const list = $("#review-list");
+      if (list && !list.querySelector(".review-row")) {
+        list.innerHTML = '<div class="content-select-empty">No proposed sources right now.</div>';
+      }
+      showToast("Approved.");
+    } catch (e) {
+      approveBtn.disabled = false;
+      approveBtn.textContent = item.change_type === "REMOVED" ? "Approve removal" : "Approve";
+      const msg = (e.detail && e.detail.message) || "Approve failed.";
+      showToast(msg, "error");
+    }
+  }
+
+  async function onReviewReject(row, item) {
+    try {
+      const res = await api("/review/" + item.id + "/reject", { method: "POST" });
+      row.remove();
+      setReviewCount(res.remaining);
+      const list = $("#review-list");
+      if (list && !list.querySelector(".review-row")) {
+        list.innerHTML = '<div class="content-select-empty">No proposed sources right now.</div>';
+      }
+      showToast("Rejected.");
+    } catch (e) {
+      showToast("Reject failed.", "error");
+    }
+  }
+
+  function setReviewCount(n) {
+    const count = typeof n === "number" ? n : 0;
+    const badge = $("#review-badge");
+    const countEl = $("#review-count");
+    const settingsCount = $("#settings-review-count");
+    if (countEl) countEl.textContent = count;
+    if (settingsCount) settingsCount.textContent = count;
+    if (badge) badge.hidden = count <= 0;
+  }
+
+  async function updateReviewCount() {
+    try {
+      const data = await api("/review/count");
+      if (data && typeof data.count === "number") setReviewCount(data.count);
+    } catch (e) { /* silent */ }
+  }
+
+  // ----- Excel sources data menu (CR-260704-1825-001) -----
+
+  // Header "Sources data" popover: export / blank template are plain
+  // downloads; upload POSTs the picked .xlsx file's raw bytes and the server
+  // replaces the whole hierarchy immediately (no confirmation).
+  function bindSourcesIO() {
+    const btn = $("#io-btn");
+    const menu = $("#io-menu");
+    const file = $("#io-file");
+    if (!btn || !menu || !file) return;
+
+    function closeMenu() {
+      menu.hidden = true;
+      btn.classList.remove("active");
+      btn.setAttribute("aria-expanded", "false");
+    }
+    btn.addEventListener("click", () => {
+      const open = menu.hidden;
+      menu.hidden = !open;
+      btn.classList.toggle("active", open);
+      btn.setAttribute("aria-expanded", open ? "true" : "false");
+    });
+    document.addEventListener("mousedown", (ev) => {
+      if (!menu.hidden && !menu.contains(ev.target) && !btn.contains(ev.target)) closeMenu();
+    });
+    document.addEventListener("keydown", (ev) => {
+      if (ev.key === "Escape" && !menu.hidden) closeMenu();
+    });
+
+    function download(path) {
+      const a = document.createElement("a");
+      a.href = path;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    }
+    $("#io-export").addEventListener("click", () => {
+      closeMenu();
+      download("/io/export");
+      showToast("Sources exported.");
+    });
+    $("#io-template").addEventListener("click", () => {
+      closeMenu();
+      download("/io/template");
+      showToast("Blank template downloaded.");
+    });
+    $("#io-upload").addEventListener("click", () => {
+      closeMenu();
+      file.value = "";
+      file.click();
+    });
+    file.addEventListener("change", async () => {
+      const f = file.files && file.files[0];
+      if (!f) return;
+      // The .xlsx bytes are binary, so post the File directly with a raw
+      // fetch — the api() helper JSON-stringifies non-string bodies.
+      let result;
+      try {
+        const resp = await fetch("/io/import", { method: "POST", body: f, cache: "no-store" });
+        if (!resp.ok) {
+          let detail = null;
+          try { detail = (await resp.json()).detail; } catch (e) { /* ignore */ }
+          const msg = (detail && detail.message) ||
+            (typeof detail === "string" ? detail : "Could not import that file.");
+          showToast(msg, "error");
+          return;
+        }
+        result = await resp.json();
+      } catch (e) {
+        showToast("Could not import that file.", "error");
+        return;
+      }
+      // The old selection may not exist any more — reset to All sources.
+      state.activeSourceId = null;
+      state.scopeFolderId = null;
+      state.scopeFolderName = null;
+      state.activeProjectId = null;
+      await Promise.all([refreshSidebar(), refreshFeed()]);
+      const n = result.sources;
+      const g = result.groups;
+      let msg = "Imported " + n + " source" + (n === 1 ? "" : "s") +
+                " across " + g + " group" + (g === 1 ? "" : "s") + ".";
+      if (result.skipped && result.skipped.length) {
+        msg += " Skipped " + result.skipped.length + " without a valid url.";
+      }
+      showToast(msg);
+    });
+  }
+
+  // ----- keyboard accessibility (CR-260704-0800-002) -----
+
+  // Delegated keyboard handling for the sidebar tree and the feed. #source-list
+  // and #feed-pane persist across partial re-renders (only their innerHTML is
+  // swapped), so binding once at init covers every future row.
+  function bindKeyboardNav() {
+    const list = $("#source-list");
+    if (list && !list.__almKeyBound) {
+      list.__almKeyBound = true;
+      list.addEventListener("keydown", onSidebarKeydown);
+    }
+    const pane = $("#feed-pane");
+    if (pane && !pane.__almKeyBound) {
+      pane.__almKeyBound = true;
+      pane.addEventListener("keydown", onFeedKeydown);
+    }
+  }
+
+  function visibleSidebarRows() {
+    return $$("#source-list .source-item, #source-list .folder-row, #source-list .project-row")
+      .filter(r => r.offsetParent !== null);
+  }
+
+  function onSidebarKeydown(ev) {
+    const row = ev.target.closest(".source-item, .folder-row, .project-row");
+    if (!row) return;
+    if ((ev.key === "Enter" || ev.key === " ") && ev.target === row) {
+      ev.preventDefault();
+      if (row.classList.contains("project-row")) {
+        // FT-260704-1620-001: keyboard activation opens the project view.
+        selectProject(row.getAttribute("data-project-id"));
+      } else if (row.classList.contains("folder-row")) {
+        const nameEl = row.querySelector(".folder-name");
+        if (nameEl) {
+          onFolderTitleClick({
+            currentTarget: nameEl,
+            stopPropagation: () => {},
+            shiftKey: ev.shiftKey,
+          });
+        }
+      } else {
+        // Reuse the click logic (incl. muted no-op) with Shift multi-select.
+        onRowClick({ currentTarget: row, target: row, shiftKey: ev.shiftKey });
+      }
+      return;
+    }
+    if (ev.key === "ArrowDown" || ev.key === "ArrowUp") {
+      ev.preventDefault();
+      const rows = visibleSidebarRows();
+      const next = rows[rows.indexOf(row) + (ev.key === "ArrowDown" ? 1 : -1)];
+      if (next) next.focus();
+      return;
+    }
+    // ArrowRight expands / ArrowLeft collapses a folder row.
+    if ((ev.key === "ArrowRight" || ev.key === "ArrowLeft")
+        && row.classList.contains("folder-row") && ev.target === row) {
+      const collapsed = row.classList.contains("collapsed");
+      if ((ev.key === "ArrowRight" && collapsed) || (ev.key === "ArrowLeft" && !collapsed)) {
+        ev.preventDefault();
+        const chev = row.querySelector(".chevron");
+        if (chev) chev.click();
+      }
+    }
+  }
+
+  function onFeedKeydown(ev) {
+    const card = ev.target.closest(".article");
+    if (!card) return;
+    if ((ev.key === "Enter" || ev.key === " ") && ev.target === card) {
+      ev.preventDefault();
+      card.click();   // routes through onArticleClick
+      return;
+    }
+    if (ev.key === "ArrowDown" || ev.key === "ArrowUp") {
+      ev.preventDefault();
+      const cards = $$("#feed-pane .article");
+      const next = cards[cards.indexOf(card) + (ev.key === "ArrowDown" ? 1 : -1)];
+      if (next) {
+        next.focus();
+        next.scrollIntoView({ block: "nearest" });
+      }
+    }
+  }
+
+  // -- modal focus management: trap while open, restore on close --
+
+  const modalReturnFocus = {};
+
+  function modalFocusables(overlay) {
+    return $$(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+      overlay
+    ).filter(el => !el.disabled && !el.hidden && el.offsetParent !== null);
+  }
+
+  // Record the triggering control and move focus into the modal. Pass
+  // focusFirst=false when the modal manages its own initial focus.
+  function modalOpened(id, focusFirst) {
+    modalReturnFocus[id] = document.activeElement;
+    if (focusFirst === false) return;
+    const overlay = $("#" + id);
+    if (!overlay) return;
+    setTimeout(() => {
+      const items = modalFocusables(overlay);
+      if (items.length) items[0].focus();
+    }, 0);
+  }
+
+  function modalClosed(id) {
+    const prev = modalReturnFocus[id];
+    modalReturnFocus[id] = null;
+    if (prev && document.contains(prev) && typeof prev.focus === "function") {
+      prev.focus();
+    }
+  }
+
+  // Tab trap: while a modal is open, Tab cycles inside it and wraps at the
+  // ends (AC-260704-0800-005).
+  document.addEventListener("keydown", (ev) => {
+    if (ev.key !== "Tab") return;
+    const open = MODAL_CLOSERS.map(m => $("#" + m.id)).find(el => el && !el.hidden);
+    if (!open) return;
+    const items = modalFocusables(open);
+    if (!items.length) return;
+    const first = items[0];
+    const last = items[items.length - 1];
+    if (!open.contains(document.activeElement)) {
+      ev.preventDefault();
+      (ev.shiftKey ? last : first).focus();
+      return;
+    }
+    if (ev.shiftKey && document.activeElement === first) {
+      ev.preventDefault();
+      last.focus();
+    } else if (!ev.shiftKey && document.activeElement === last) {
+      ev.preventDefault();
+      first.focus();
+    }
+  });
+
   // ----- global -----
 
   document.addEventListener("click", (ev) => {
@@ -2344,11 +3453,26 @@
     }
   });
 
+  // BUG-260704-0735-008: Escape dismisses the topmost open surface generically
+  // — one surface per press, covering ALL four modals (settings + review
+  // included), each via its own close routine so per-modal side effects are
+  // preserved. Priority: open row menu first, then modals by stacking order.
+  const MODAL_CLOSERS = [
+    { id: "confirm-modal", close: () => { const c = $("#confirm-cancel"); if (c) c.click(); } },
+    { id: "add-source-modal", close: () => closeAddSourceModal() },
+    { id: "review-modal", close: () => closeReviewModal() },
+    { id: "settings-modal", close: () => closeSettingsModal() },
+  ];
+
   document.addEventListener("keydown", (ev) => {
-    if (ev.key === "Escape") {
-      if (!$("#add-source-modal").hidden) closeAddSourceModal();
-      if (!$("#confirm-modal").hidden) $("#confirm-cancel").click();
-      if (state.menuOpenFor) closeRowMenu();
+    if (ev.key !== "Escape") return;
+    // Save-to-project popover closes first, without changing any saves
+    // (AC-260704-1620-011).
+    if (state.saveMenuFor) { closeSaveMenu(); return; }
+    if (state.menuOpenFor) { closeRowMenu(); return; }
+    for (const m of MODAL_CLOSERS) {
+      const el = $("#" + m.id);
+      if (el && !el.hidden) { m.close(); return; }
     }
   });
 
@@ -2366,6 +3490,8 @@
     bindFolders();
     bindDragDrop();
     bindNewGroupBtn();
+    bindProjects();
+    bindSaveMenu();
     bindFeed();
     bindFeedScroll();
     bindAddSourceForm();
@@ -2374,7 +3500,12 @@
     bindPaneSeparator();
     bindFilterBar();
     bindFilterPopoverDismiss();
+    bindSettingsModal();
+    bindReviewBadge();
+    bindSourcesIO();  // CR-260704-1825-001
+    bindKeyboardNav();  // CR-260704-0800-002
     updateLastSyncLabel();
+    updateReviewCount();
     startLastSyncPoll();
   }
 
@@ -2384,6 +3515,10 @@
     // and so AC-260522-2030-009 (header re-renders after scheduled poll
     // completion) is observably satisfied without a websocket.
     setInterval(updateLastSyncLabel, LAST_SYNC_POLL_MS);
+    // Poll the staged-proposal count so the "Review proposed (N)" badge appears
+    // / updates as the watcher stages an import, without an app restart
+    // (AC-260525-1200-030).
+    setInterval(updateReviewCount, REVIEW_POLL_MS);
   }
 
   if (document.readyState === "loading") {

@@ -189,15 +189,19 @@ def _parse_sitemap_entries(raw: bytes) -> list[dict]:
         else:
             title = _slug_to_title(url)
 
+        # BUG-260704-0735-002: news:publication_date / lastmod arrive as raw
+        # ISO text, usually offset-aware — normalise to the canonical naive-UTC
+        # format at write time so string ordering stays chronological across
+        # RSS- and sitemap-backed sources. Unparseable/missing → now.
         if news_pub_el is not None and news_pub_el.text and news_pub_el.text.strip():
-            published = news_pub_el.text.strip()
+            published = models.normalise_timestamp(news_pub_el.text) or _now_iso()
         else:
             lastmod_el = url_el.find(f"{ns}lastmod")
             published = (
-                lastmod_el.text.strip()
+                models.normalise_timestamp(lastmod_el.text)
                 if (lastmod_el is not None and lastmod_el.text)
-                else _now_iso()
-            )
+                else None
+            ) or _now_iso()
 
         entries.append(
             {"url": url, "title": title, "summary": None, "published": published}

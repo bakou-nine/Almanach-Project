@@ -9,6 +9,58 @@
   <div class="header-actions">
     <span class="sync-status-dot" aria-hidden="true"></span>
     <span id="last-sync-label">Last sync · {{ sidebar.last_sync }}</span>
+    {# Review-proposed badge (EP — Data Portability). Hidden when nothing is
+       staged; the count refreshes client-side as the watcher stages imports
+       (AC-260525-1200-030). #}
+    <button class="review-badge" id="review-badge"
+            {% if not review_count %}hidden{% endif %}
+            title="Review proposed sources" aria-label="Review proposed sources">
+      <i class="ti ti-inbox"></i>
+      <span>Review proposed (<span id="review-count">{{ review_count }}</span>)</span>
+    </button>
+    {# Excel import/export menu (CR-260704-1825-001, handoff view 8). Export /
+       template are plain downloads; upload replaces the whole hierarchy with
+       no confirmation — the explicit exception to the staged Review path. #}
+    <div class="io-wrap">
+      <button class="io-btn" id="io-btn" title="Import / export sources (Excel)"
+              aria-haspopup="menu" aria-expanded="false">
+        <i class="ti ti-download"></i>
+        <span>Sources data</span>
+        <i class="ti ti-chevron-down io-caret"></i>
+      </button>
+      <div class="io-menu" id="io-menu" hidden role="menu" aria-label="Sources data">
+        <div class="io-menu-sec">Export</div>
+        <button type="button" class="io-item" id="io-export" role="menuitem">
+          <span class="io-item-ic"><i class="ti ti-download"></i></span>
+          <span class="io-item-body">
+            <span class="io-item-title">Export current sources</span>
+            <span class="io-item-sub">Full hierarchy → Excel (.xlsx)</span>
+          </span>
+        </button>
+        <button type="button" class="io-item" id="io-template" role="menuitem">
+          <span class="io-item-ic"><i class="ti ti-file"></i></span>
+          <span class="io-item-body">
+            <span class="io-item-title">Download blank template</span>
+            <span class="io-item-sub">Empty Excel with the columns + guide</span>
+          </span>
+        </button>
+        <div class="io-menu-div"></div>
+        <div class="io-menu-sec">Import</div>
+        <button type="button" class="io-item" id="io-upload" role="menuitem">
+          <span class="io-item-ic"><i class="ti ti-upload"></i></span>
+          <span class="io-item-body">
+            <span class="io-item-title">Upload Excel file</span>
+            <span class="io-item-sub">Replaces the whole list — no confirmation</span>
+          </span>
+        </button>
+        <input type="file" id="io-file"
+               accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+               hidden>
+      </div>
+    </div>
+    <button class="icon-btn" id="settings-btn" title="Settings" aria-label="Settings">
+      <i class="ti ti-settings"></i>
+    </button>
   </div>
 </header>
 
@@ -45,7 +97,23 @@
 {% include "_add_source_form.html" %}
 {% include "_confirm_dialog.html" %}
 {% include "_row_menu.html" %}
+{% include "_settings_modal.html" %}
+{% include "_review_modal.html" %}
 {% include "_toast.html" %}
+
+{# Save-to-project popover (FT-260704-1620-001, handoff screen 5). One global
+   element, positioned by JS next to the clicked bookmark/title; the list is
+   rendered client-side from /projects + the row's data-project-ids. Dismiss on
+   outside mousedown or Escape. #}
+<div class="save-menu" id="save-menu" hidden role="menu" aria-label="Save to project">
+  <div class="save-menu-head">Save to project</div>
+  <div class="save-menu-list" id="save-menu-list"></div>
+  <div class="save-menu-new">
+    <input type="text" class="save-menu-input" id="save-menu-input"
+           placeholder="New project…" autocomplete="off" aria-label="New project name">
+    <button type="button" class="save-menu-add disabled" id="save-menu-create" disabled>Create</button>
+  </div>
+</div>
 
 {# Filter popovers (CR-260523-1500-001) #}
 <div class="filter-popover" id="date-range-popover" hidden role="dialog" aria-label="Date range">

@@ -10,7 +10,7 @@ import httpx
 from bs4 import BeautifulSoup
 
 from . import config
-from .urls import origin_of
+from .urls import origin_of, private_target_reason
 
 FEED_CONTENT_TYPES = (
     "application/rss+xml",
@@ -41,11 +41,22 @@ class DiscoveryResult:
     steps: list[StepResult] = field(default_factory=list)
 
 
+def _guard_private_target(request: httpx.Request) -> None:
+    """SSRF guard (CR-260704-0800-001): every discovery request — including
+    redirect hops and harvested-link probes — is rejected when it targets a
+    loopback/private/link-local address. Raising RequestError routes the block
+    through the existing fetch_error handling."""
+    reason = private_target_reason(str(request.url))
+    if reason:
+        raise httpx.RequestError(f"blocked private target: {reason}", request=request)
+
+
 def _client(timeout: float) -> httpx.Client:
     return httpx.Client(
         timeout=timeout,
         follow_redirects=True,
         headers={"User-Agent": config.USER_AGENT},
+        event_hooks={"request": [_guard_private_target]},
     )
 
 

@@ -15,4 +15,32 @@
   <button class="row-menu-item row-menu-danger" data-action="remove">
     <i class="ti ti-trash"></i> Remove
   </button>
+  {# BUG-260704-1629-001: article-row entry point to the save-to-project popover
+     (add + remove assignment via the checkbox toggle). JS shows these only for
+     article rows (applyMenuContextItems). #}
+  <div class="row-menu-divider article-only" hidden></div>
+  <button class="row-menu-item article-only" data-action="save-project" hidden>
+    <i class="ti ti-bookmark"></i> Save to project
+  </button>
+  {# Source-only rating editors (FT — Source Ratings, US-260525-1200-006).
+     Shown only for source rows; only the three curated values are offered
+     (AC-260525-1200-061). JS toggles `.source-only` visibility + marks the
+     current value active per open. #}
+  <div class="row-menu-divider source-only"></div>
+  <div class="row-menu-rating source-only" data-rating="reliability">
+    <span class="row-menu-rating-label"><i class="ti ti-shield-half-filled"></i> Reliability</span>
+    <div class="row-menu-rating-opts">
+      <button type="button" class="rating-opt" data-rating="reliability" data-value="high" title="High">H</button>
+      <button type="button" class="rating-opt" data-rating="reliability" data-value="medium" title="Medium">M</button>
+      <button type="button" class="rating-opt" data-rating="reliability" data-value="low" title="Low">L</button>
+    </div>
+  </div>
+  <div class="row-menu-rating source-only" data-rating="impact">
+    <span class="row-menu-rating-label"><i class="ti ti-bolt"></i> Impact</span>
+    <div class="row-menu-rating-opts">
+      <button type="button" class="rating-opt" data-rating="impact" data-value="high" title="High">H</button>
+      <button type="button" class="rating-opt" data-rating="impact" data-value="medium" title="Medium">M</button>
+      <button type="button" class="rating-opt" data-rating="impact" data-value="low" title="Low">L</button>
+    </div>
+  </div>
 </div>
